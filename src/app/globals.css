@@ -151,23 +151,30 @@
   min-width: 0;
 }
 
-/* 월뷰 컬럼 정렬:
-   - 헤더(.rbc-month-header), 배경셀(.rbc-row-bg), 날짜 숫자 row(.rbc-row-content > .rbc-row:first-child)를
-     모두 grid repeat(7, 1fr)로 강제 → 세로 구분선과 날짜/요일 글자 모두 같은 x축
-   - 이벤트 segment row(.rbc-row-content > .rbc-row:not(:first-child))는 rbc 기본 flex 유지
-     → multi-day 이벤트 pill의 day-span이 보존됨 */
-.rbc-month-view .rbc-month-header,
-.rbc-month-view .rbc-row-bg,
-.rbc-month-view .rbc-row-content > .rbc-row:first-child {
-  display: grid !important;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+/* 세로 구분선은 월뷰 전체에 gradient 한 장으로 — header/body가 다른 DOM이어도 같은 overlay가 덮으니 어긋날 수 없음 */
+.rbc-month-view {
+  position: relative;
 }
 
-.rbc-month-view .rbc-header,
-.rbc-month-view .rbc-day-bg,
-.rbc-month-view .rbc-date-cell {
-  min-width: 0;
-  box-sizing: border-box;
+.rbc-month-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(100% / 7 - 1px),
+    var(--border) calc(100% / 7 - 1px),
+    var(--border) calc(100% / 7)
+  );
+}
+
+/* rbc가 cell 사이에 직접 그리는 border는 제거 (overlay와 이중으로 그려져 어긋남 유발) */
+.rbc-month-view .rbc-header + .rbc-header,
+.rbc-month-view .rbc-day-bg + .rbc-day-bg {
+  border-left: 0 !important;
 }
 
 .rbc-header + .rbc-header,
