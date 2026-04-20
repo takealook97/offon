@@ -1,0 +1,12 @@
+import type { VercelConfig } from '@vercel/config/v1';
+
+export const config: VercelConfig = {
+  framework: 'nextjs',
+  buildCommand: 'prisma generate && next build',
+  crons: [
+    { path: '/api/cron/missing-clockin', schedule: '0 1 * * *' },
+    { path: '/api/cron/missing-clockout', schedule: '0 12 * * *' },
+  ],
+};
+
+export default config;

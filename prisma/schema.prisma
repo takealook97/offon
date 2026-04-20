@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
+enum AttendanceStatus {
+  NOT_STARTED
+  WORKING
+  DONE
+  MISSING
+}
+
+enum LeaveType {
+  FULL_DAY
+  HALF_DAY_AM
+  HALF_DAY_PM
+}
+
+enum LeaveStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+model Member {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  slackId   String    @unique
+  position  String?
+  role      Role      @default(EMPLOYEE)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  attendances    Attendance[]
+  leaveRequests  LeaveRequest[] @relation("Requester")
+  approvedLeaves LeaveRequest[] @relation("Approver")
+  leaveBalance   LeaveBalance?
+  loginCodes     LoginCode[]
+
+  @@index([slackId])
+  @@index([email])
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  memberId        String
+  workDate        DateTime         @db.Date
+  clockInAt       DateTime?
+  clockOutAt      DateTime?
+  workedMinutes   Int              @default(0)
+  overtimeMinutes Int              @default(0)
+  status          AttendanceStatus @default(NOT_STARTED)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@unique([memberId, workDate])
+  @@index([workDate])
+}
+
+model LeaveRequest {
+  id         String      @id @default(cuid())
+  memberId   String
+  type       LeaveType
+  startDate  DateTime    @db.Date
+  endDate    DateTime    @db.Date
+  days       Decimal     @db.Decimal(4, 1)
+  status     LeaveStatus @default(REQUESTED)
+  approverId String?
+  reason     String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  member   Member  @relation("Requester", fields: [memberId], references: [id])
+  approver Member? @relation("Approver", fields: [approverId], references: [id])
+
+  @@index([memberId, status])
+  @@index([startDate, endDate])
+}
+
+model LeaveBalance {
+  id        String    @id @default(cuid())
+  memberId  String    @unique
+  totalDays Decimal   @db.Decimal(5, 1) @default(0)
+  usedDays  Decimal   @db.Decimal(5, 1) @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  member Member @relation(fields: [memberId], references: [id])
+}
+
+model LoginCode {
+  id        String    @id @default(cuid())
+  memberId  String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@index([memberId, expiresAt])
+}
+
+model AuditLog {
+  id        String    @id @default(cuid())
+  actorId   String?
+  action    String
+  target    String?
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([action, createdAt])
+}
