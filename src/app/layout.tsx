@@ -14,7 +14,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className="min-h-svh flex flex-col">
+      <body className="min-h-svh flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
           {children}
           <Toaster position="top-right" richColors closeButton />

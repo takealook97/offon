@@ -10,22 +10,25 @@ export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === 'dark';
-  const label = isDark ? '다크 모드' : '라이트 모드';
+  const isDark = mounted && resolvedTheme === 'dark';
+  const label = !mounted ? '테마 전환' : isDark ? '다크 모드' : '라이트 모드';
 
   return (
     <Button
       variant="ghost"
       size="icon"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label={`테마 전환 (현재: ${label})`}
+      aria-label={!mounted ? '테마 전환' : `테마 전환 (현재: ${label})`}
       title={label}
+      suppressHydrationWarning
     >
-      {mounted ? (
-        isDark ? <Moon className="size-4" /> : <Sun className="size-4" />
-      ) : (
-        <Sun className="size-4 opacity-0" />
-      )}
+      <span suppressHydrationWarning>
+        {mounted ? (
+          isDark ? <Moon className="size-4" /> : <Sun className="size-4" />
+        ) : (
+          <Sun className="size-4 opacity-0" />
+        )}
+      </span>
     </Button>
   );
 }

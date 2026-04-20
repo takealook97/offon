@@ -78,6 +78,7 @@ export function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               className="h-11 pl-9"
+              suppressHydrationWarning
             />
           </div>
         </div>
