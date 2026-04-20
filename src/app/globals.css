@@ -195,12 +195,12 @@
 }
 
 .rbc-off-range-bg {
-  background: color-mix(in oklab, var(--muted) 50%, transparent);
+  background: var(--card);
 }
 
 .rbc-off-range .rbc-button-link {
   color: var(--muted-foreground);
-  opacity: 0.6;
+  opacity: 0.45;
 }
 
 .rbc-date-cell {
