@@ -23,6 +23,22 @@ const localizer = dateFnsLocalizer({
   locales: { ko },
 });
 
+const formats = {
+  monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
+  dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${format(start, 'd MMMM yyyy')} – ${format(end, 'd')}`,
+  dayHeaderFormat: (date: Date) => format(date, 'EEEE, d MMMM yyyy', { locale: ko }),
+  weekdayFormat: (date: Date) => format(date, 'EEE', { locale: ko }),
+  dayFormat: (date: Date) => format(date, 'dDay (EEE)', { locale: ko }),
+  timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: ko }),
+  eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${format(start, 'HH:mm', { locale: ko })} ~ ${format(end, 'HH:mm', { locale: ko })}`,
+  agendaDateFormat: (date: Date) => format(date, 'MMonth dDay (EEE)', { locale: ko }),
+  agendaTimeFormat: (date: Date) => format(date, 'HH:mm', { locale: ko }),
+  agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${format(start, 'HH:mm', { locale: ko })} – ${format(end, 'HH:mm', { locale: ko })}`,
+};
+
 type UiEvent = {
   id: string;
   title: string;
@@ -93,6 +109,7 @@ export function CalendarView() {
         <Calendar
           localizer={localizer}
           culture="ko"
+          formats={formats}
           events={events}
           view={view}
           onView={setView}

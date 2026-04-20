@@ -71,9 +71,13 @@ export async function GET(req: NextRequest) {
       const endIso = a.clockOutAt?.toISOString() ?? a.clockInAt.toISOString();
       const inLabel = formatKST(a.clockInAt, 'HH:mm');
       const outLabel = a.clockOutAt ? formatKST(a.clockOutAt, 'HH:mm') : 'In progress';
+      const hours = Math.floor(a.workedMinutes / 60);
+      const mins = a.workedMinutes % 60;
+      const durationLabel =
+        hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
       events.push({
         id: `att-${a.id}`,
-        title: `${inLabel} ~ ${outLabel} (${a.workedMinutes}m)`,
+        title: `${inLabel} ~ ${outLabel} · ${durationLabel}`,
         start: startIso,
         end: endIso,
         allDay: false,
