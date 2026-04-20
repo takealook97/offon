@@ -9,17 +9,26 @@ function parseDate(s: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function halfDayRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
-  const start = new Date(workDate);
-  const end = new Date(workDate);
+const pad = (n: number) => String(n).padStart(2, '0');
+
+function kstIsoFromDate(d: Date, h = 0, min = 0): string {
+  const y = d.getUTCFullYear();
+  const m = pad(d.getUTCMonth() + 1);
+  const day = pad(d.getUTCDate());
+  return `${y}-${m}-${day}T${pad(h)}:${pad(min)}:00+09:00`;
+}
+
+function addDaysUtc(d: Date, n: number): Date {
+  const copy = new Date(d);
+  copy.setUTCDate(copy.getUTCDate() + n);
+  return copy;
+}
+
+function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
   if (type === 'HALF_DAY_AM') {
-    start.setHours(9, 0, 0, 0);
-    end.setHours(13, 0, 0, 0);
-  } else {
-    start.setHours(13, 0, 0, 0);
-    end.setHours(18, 0, 0, 0);
+    return { start: kstIsoFromDate(workDate, 9), end: kstIsoFromDate(workDate, 13) };
   }
-  return { start, end };
+  return { start: kstIsoFromDate(workDate, 13), end: kstIsoFromDate(workDate, 18) };
 }
 
 function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
@@ -55,13 +64,11 @@ export async function GET(req: NextRequest) {
       const label = typeLabel(l.type);
       const title = `${l.member.name} ${label}`;
       if (l.type === 'FULL_DAY') {
-        const endExclusive = new Date(l.endDate);
-        endExclusive.setDate(endExclusive.getDate() + 1);
         return {
           id: `team-leave-${l.id}`,
           title,
-          start: l.startDate.toISOString(),
-          end: endExclusive.toISOString(),
+          start: kstIsoFromDate(l.startDate),
+          end: kstIsoFromDate(addDaysUtc(l.endDate, 1)),
           allDay: true,
           resource: {
             kind: 'LEAVE',
@@ -71,15 +78,15 @@ export async function GET(req: NextRequest) {
           },
         };
       }
-      const range = halfDayRange(
+      const range = halfDayIsoRange(
         l.startDate,
         l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
       );
       return {
         id: `team-leave-${l.id}`,
         title,
-        start: range.start.toISOString(),
-        end: range.end.toISOString(),
+        start: range.start,
+        end: range.end,
         allDay: false,
         resource: {
           kind: 'LEAVE',

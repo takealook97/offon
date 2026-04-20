@@ -10,18 +10,26 @@ function parseDate(s: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function halfDayRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
-  const base = new Date(workDate);
-  const start = new Date(base);
-  const end = new Date(base);
+const pad = (n: number) => String(n).padStart(2, '0');
+
+function kstIsoFromDate(d: Date, h = 0, min = 0): string {
+  const y = d.getUTCFullYear();
+  const m = pad(d.getUTCMonth() + 1);
+  const day = pad(d.getUTCDate());
+  return `${y}-${m}-${day}T${pad(h)}:${pad(min)}:00+09:00`;
+}
+
+function addDaysUtc(d: Date, n: number): Date {
+  const copy = new Date(d);
+  copy.setUTCDate(copy.getUTCDate() + n);
+  return copy;
+}
+
+function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
   if (type === 'HALF_DAY_AM') {
-    start.setHours(9, 0, 0, 0);
-    end.setHours(13, 0, 0, 0);
-  } else {
-    start.setHours(13, 0, 0, 0);
-    end.setHours(18, 0, 0, 0);
+    return { start: kstIsoFromDate(workDate, 9), end: kstIsoFromDate(workDate, 13) };
   }
-  return { start, end };
+  return { start: kstIsoFromDate(workDate, 13), end: kstIsoFromDate(workDate, 18) };
 }
 
 function formatDuration(minutes: number): string {
@@ -100,13 +108,11 @@ export async function GET(req: NextRequest) {
 
     for (const l of leaves) {
       if (l.type === 'FULL_DAY') {
-        const endExclusive = new Date(l.endDate);
-        endExclusive.setDate(endExclusive.getDate() + 1);
         events.push({
           id: `leave-${l.id}`,
           title: '연차(종일)',
-          start: l.startDate.toISOString(),
-          end: endExclusive.toISOString(),
+          start: kstIsoFromDate(l.startDate),
+          end: kstIsoFromDate(addDaysUtc(l.endDate, 1)),
           allDay: true,
           resource: {
             kind: 'LEAVE',
@@ -115,7 +121,7 @@ export async function GET(req: NextRequest) {
           },
         });
       } else {
-        const { start: s, end: e } = halfDayRange(
+        const { start: s, end: e } = halfDayIsoRange(
           l.startDate,
           l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
         );
@@ -123,8 +129,8 @@ export async function GET(req: NextRequest) {
         events.push({
           id: `leave-${l.id}`,
           title: `연차${suffix}`,
-          start: s.toISOString(),
-          end: e.toISOString(),
+          start: s,
+          end: e,
           allDay: false,
           resource: {
             kind: 'LEAVE',
