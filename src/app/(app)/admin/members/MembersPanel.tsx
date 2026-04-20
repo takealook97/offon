@@ -79,10 +79,10 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead>Slack ID</TableHead>
               <TableHead>직책</TableHead>
               <TableHead>권한</TableHead>
-              <TableHead className="text-right">기본</TableHead>
-              <TableHead className="text-right">추가</TableHead>
-              <TableHead className="text-right">사용</TableHead>
-              <TableHead className="text-right">잔여</TableHead>
+              <TableHead className="w-[72px] pr-4 text-right tabular-nums">기본</TableHead>
+              <TableHead className="w-[72px] pr-4 text-right tabular-nums">추가</TableHead>
+              <TableHead className="w-[72px] pr-4 text-right tabular-nums">사용</TableHead>
+              <TableHead className="w-[72px] pr-4 text-right tabular-nums">잔여</TableHead>
               <TableHead>상태</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
@@ -102,16 +102,16 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 <TableCell>
                   <RoleBadge role={m.role} />
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                <TableCell className="w-[72px] pr-4 text-right font-mono text-sm tabular-nums text-muted-foreground">
                   {safe(m.baseDays)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                <TableCell className="w-[72px] pr-4 text-right font-mono text-sm tabular-nums text-muted-foreground">
                   {safe(m.bonusDays)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                <TableCell className="w-[72px] pr-4 text-right font-mono text-sm tabular-nums text-muted-foreground">
                   {safe(m.usedDays)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm font-medium tabular-nums">
+                <TableCell className="w-[72px] pr-4 text-right font-mono text-sm font-medium tabular-nums">
                   {remaining(m)}
                 </TableCell>
                 <TableCell>
