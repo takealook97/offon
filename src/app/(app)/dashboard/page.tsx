@@ -1,6 +1,9 @@
+import { Calendar, CalendarClock, Clock3, CalendarCheck, CalendarPlus } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
-import { formatKST, monthRangeKST, todayKST, weekRangeKST } from '@/lib/time';
+import { formatKST, monthRangeKST, nowKST, todayKST, weekRangeKST } from '@/lib/time';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { AttendanceActions } from './AttendanceActions';
 import { LeaveRequestForm } from './LeaveRequestForm';
 
@@ -10,22 +13,39 @@ function formatMinutes(m: number): string {
   return `${h}시간 ${mm}분`;
 }
 
+function progressOf(current: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.min(100, Math.round((current / target) * 100));
+}
+
 export default async function DashboardPage() {
   const session = await requireSession();
   const today = todayKST();
   const week = weekRangeKST();
   const month = monthRangeKST();
 
-  const [todayAttendance, weekRows, monthRows, balance] = await Promise.all([
+  const [me, todayAttendance, weekRows, monthRows, balance] = await Promise.all([
+    prisma.member.findUnique({
+      where: { id: session.memberId },
+      select: { name: true },
+    }),
     prisma.attendance.findUnique({
       where: { memberId_workDate: { memberId: session.memberId, workDate: today } },
     }),
     prisma.attendance.findMany({
-      where: { memberId: session.memberId, workDate: { gte: week.start, lte: week.end }, deletedAt: null },
+      where: {
+        memberId: session.memberId,
+        workDate: { gte: week.start, lte: week.end },
+        deletedAt: null,
+      },
       select: { workedMinutes: true, overtimeMinutes: true },
     }),
     prisma.attendance.findMany({
-      where: { memberId: session.memberId, workDate: { gte: month.start, lte: month.end }, deletedAt: null },
+      where: {
+        memberId: session.memberId,
+        workDate: { gte: month.start, lte: month.end },
+        deletedAt: null,
+      },
       select: { workedMinutes: true, overtimeMinutes: true },
     }),
     prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
@@ -34,60 +54,181 @@ export default async function DashboardPage() {
   const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0);
   const weekOvertime = weekRows.reduce((s, r) => s + r.overtimeMinutes, 0);
   const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0);
-  const remaining = balance
-    ? Number(balance.totalDays) - Number(balance.usedDays)
-    : 0;
+  const totalDays = balance ? Number(balance.totalDays) : 0;
+  const usedDays = balance ? Number(balance.usedDays) : 0;
+  const remainingDays = totalDays - usedDays;
+
+  const weekProgress = progressOf(weekTotal, 40 * 60);
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-4 md:grid-cols-2">
-      <Card title="오늘의 근태">
-        <div className="space-y-2 text-sm">
-          <div>출근: {todayAttendance?.clockInAt ? formatKST(todayAttendance.clockInAt, 'HH:mm') : '—'}</div>
-          <div>퇴근: {todayAttendance?.clockOutAt ? formatKST(todayAttendance.clockOutAt, 'HH:mm') : '—'}</div>
-          <div>상태: {todayAttendance?.status ?? 'NOT_STARTED'}</div>
-          {todayAttendance?.clockOutAt && (
-            <div>근무: {formatMinutes(todayAttendance.workedMinutes)} (초과 {formatMinutes(todayAttendance.overtimeMinutes)})</div>
-          )}
-        </div>
-        <AttendanceActions
-          hasClockIn={!!todayAttendance?.clockInAt}
-          hasClockOut={!!todayAttendance?.clockOutAt}
+    <div className="space-y-6">
+      <header>
+        <p className="text-sm text-muted-foreground">
+          {formatKST(nowKST(), 'yyyy년 M월 d일 (EEEE)')}
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          안녕하세요, {me?.name ?? ''}님
+        </h1>
+      </header>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+          <div className="space-y-1">
+            <CardDescription className="flex items-center gap-1.5">
+              <CalendarClock className="size-3.5" /> 오늘의 근태
+            </CardDescription>
+            <CardTitle className="text-xl">
+              {todayAttendance?.status === 'DONE'
+                ? '퇴근 완료'
+                : todayAttendance?.status === 'WORKING'
+                ? '근무 중'
+                : todayAttendance?.status === 'MISSING'
+                ? '근태 누락'
+                : '출근 전'}
+            </CardTitle>
+          </div>
+          <AttendanceStatusBadge status={todayAttendance?.status ?? 'NOT_STARTED'} />
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid grid-cols-2 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4 sm:grid-cols-4">
+            <ClockSlot
+              label="출근"
+              value={
+                todayAttendance?.clockInAt ? formatKST(todayAttendance.clockInAt, 'HH:mm') : '—'
+              }
+            />
+            <ClockSlot
+              label="퇴근"
+              value={
+                todayAttendance?.clockOutAt ? formatKST(todayAttendance.clockOutAt, 'HH:mm') : '—'
+              }
+            />
+            <ClockSlot
+              label="근무 시간"
+              value={
+                todayAttendance?.clockOutAt ? formatMinutes(todayAttendance.workedMinutes) : '—'
+              }
+            />
+            <ClockSlot
+              label="초과 근무"
+              value={
+                todayAttendance?.clockOutAt
+                  ? formatMinutes(todayAttendance.overtimeMinutes)
+                  : '—'
+              }
+            />
+          </div>
+          <AttendanceActions
+            hasClockIn={!!todayAttendance?.clockInAt}
+            hasClockOut={!!todayAttendance?.clockOutAt}
+          />
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          icon={Clock3}
+          label="이번 주 근무"
+          value={formatMinutes(weekTotal)}
+          sub={`초과 ${formatMinutes(weekOvertime)}`}
+          progress={weekProgress}
         />
-      </Card>
-
-      <Card title="이번 주 근무">
-        <div className="space-y-1 text-sm">
-          <div>총 근무: {formatMinutes(weekTotal)}</div>
-          <div>초과: {formatMinutes(weekOvertime)}</div>
-        </div>
-      </Card>
-
-      <Card title="이번 달 근무">
-        <div className="text-sm">총 {formatMinutes(monthTotal)}</div>
-      </Card>
-
-      <Card title="연차">
-        <div className="space-y-1 text-sm">
-          <div>부여: {balance?.totalDays?.toString() ?? '0'}일</div>
-          <div>사용: {balance?.usedDays?.toString() ?? '0'}일</div>
-          <div className="font-medium">잔여: {remaining}일</div>
-        </div>
-      </Card>
-
-      <div className="md:col-span-2">
-        <Card title="연차 신청">
-          <LeaveRequestForm />
-        </Card>
+        <StatCard
+          icon={Calendar}
+          label="이번 달 근무"
+          value={formatMinutes(monthTotal)}
+          sub={`${monthRows.length}일 근무`}
+        />
+        <StatCard
+          icon={CalendarCheck}
+          label="연차 잔여"
+          value={`${remainingDays}일`}
+          sub={`부여 ${totalDays}일 · 사용 ${usedDays}일`}
+        />
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardDescription className="flex items-center gap-1.5">
+            <CalendarPlus className="size-3.5" /> 연차 신청
+          </CardDescription>
+          <CardTitle className="text-lg">새 연차 신청</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LeaveRequestForm />
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function ClockSlot({ label, value }: { label: string; value: string }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h2 className="mb-3 text-sm font-semibold text-zinc-500">{title}</h2>
-      <div className="space-y-3">{children}</div>
-    </section>
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-mono text-lg font-semibold tabular-nums">{value}</p>
+    </div>
   );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  progress,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  sub?: string;
+  progress?: number;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardDescription>{label}</CardDescription>
+        <Icon className="size-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-2xl font-semibold tracking-tight">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+        {progress !== undefined && (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-foreground/80 transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AttendanceStatusBadge({
+  status,
+}: {
+  status: 'NOT_STARTED' | 'WORKING' | 'DONE' | 'MISSING';
+}) {
+  if (status === 'WORKING')
+    return (
+      <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
+        <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
+        근무 중
+      </Badge>
+    );
+  if (status === 'DONE')
+    return (
+      <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+        완료
+      </Badge>
+    );
+  if (status === 'MISSING')
+    return (
+      <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-300">
+        누락
+      </Badge>
+    );
+  return <Badge variant="secondary">대기</Badge>;
 }
