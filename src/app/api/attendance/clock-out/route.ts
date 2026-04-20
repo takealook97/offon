@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
+import { formatKST } from '@/lib/time';
 import { logAudit } from '@/lib/audit';
 import { sendChannel } from '@/lib/slack';
 
@@ -76,8 +77,9 @@ export async function POST() {
         select: { name: true },
       });
       if (m) {
+        const text = `${formatKST(clockOut, 'yyyyMMdd HH:mm')}\n${m.name}님이 퇴근하셨습니다🌙`;
         try {
-          await sendChannel(channel, `${m.name} 퇴근`);
+          await sendChannel(channel, text);
         } catch (err) {
           await logAudit({
             actorId: session.memberId,
