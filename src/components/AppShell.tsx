@@ -1,30 +1,36 @@
-'use client';
-
 import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { Calendar, LayoutDashboard, Menu, Users, ClipboardList } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
+import { Calendar, LayoutDashboard, Users, ClipboardList } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogoutButton } from '@/components/LogoutButton';
-import { cn } from '@/lib/cn';
+import { MobileNav } from '@/components/MobileNav';
+import { DesktopNav } from '@/components/DesktopNav';
 
-type NavItem = {
+export type NavItem = {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  iconName: 'dashboard' | 'calendar' | 'users' | 'clipboard';
   admin?: boolean;
 };
 
 const NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/calendar', label: 'Calendar', icon: Calendar },
-  { href: '/admin/members', label: 'Members', icon: Users, admin: true },
-  { href: '/admin/leaves', label: 'Leave Approve', icon: ClipboardList, admin: true },
+  { href: '/dashboard', label: 'Dashboard', iconName: 'dashboard' },
+  { href: '/calendar', label: 'Calendar', iconName: 'calendar' },
+  { href: '/admin/members', label: 'Members', iconName: 'users', admin: true },
+  { href: '/admin/leaves', label: 'Leave Approve', iconName: 'clipboard', admin: true },
 ];
+
+export function iconFor(name: NavItem['iconName']) {
+  switch (name) {
+    case 'dashboard':
+      return LayoutDashboard;
+    case 'calendar':
+      return Calendar;
+    case 'users':
+      return Users;
+    case 'clipboard':
+      return ClipboardList;
+  }
+}
 
 export function AppShell({
   me,
@@ -33,81 +39,15 @@ export function AppShell({
   me: { name: string; role: 'EMPLOYEE' | 'ADMIN' };
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const items = NAV.filter((item) => (item.admin ? me.role === 'ADMIN' : true));
-
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 md:px-6 lg:px-8">
-          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetHeader className="border-b border-border/60 px-6 py-4">
-                <SheetTitle className="text-left">
-                  <span className="flex items-center gap-2">
-                    <Image src="/logo.png" alt="" width={28} height={28} className="rounded-md" priority />
-                    <span className="text-lg font-semibold tracking-tight">offon</span>
-                  </span>
-                </SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col p-3">
-                {items.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setDrawerOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
-                      isActive(href)
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
-                    )}
-                  >
-                    <Icon className="size-4" />
-                    {label}
-                  </Link>
-                ))}
-              </nav>
-              <Separator />
-              <div className="flex flex-col gap-1 p-3">
-                <div className="flex items-center justify-between px-3 py-2 text-sm">
-                  <div className="flex flex-col">
-                    <span className="font-medium">{me.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {me.role === 'ADMIN' ? 'Admin' : 'An employee'}
-                    </span>
-                  </div>
-                  <ThemeToggle />
-                </div>
-                <LogoutButton className="justify-start" />
-              </div>
-            </SheetContent>
-          </Sheet>
+          <MobileNav items={items} me={me} />
 
-          <nav className="hidden items-center gap-1 md:flex">
-            {items.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  'rounded-md px-3 py-1.5 text-sm transition-colors',
-                  isActive(href)
-                    ? 'bg-accent text-accent-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
-                )}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
+          <DesktopNav items={items} />
 
           <div className="ml-auto flex items-center gap-1">
             <span className="hidden text-sm text-muted-foreground md:inline">
