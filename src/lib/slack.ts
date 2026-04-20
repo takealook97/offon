@@ -8,3 +8,8 @@ export async function sendDm(slackUserId: string, text: string): Promise<void> {
   if (!channel) throw new Error(`could not open a Slack DM channel for ${slackUserId}`);
   await client.chat.postMessage({ channel, text });
 }
+
+export async function sendChannel(channel: string, text: string): Promise<void> {
+  await client.chat.postMessage({ channel, text });
+}
+

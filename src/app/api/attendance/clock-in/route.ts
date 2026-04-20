@@ -3,6 +3,21 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { todayKST } from '@/lib/time';
 import { logAudit } from '@/lib/audit';
+import { sendChannel } from '@/lib/slack';
+
+async function notifyChannel(name: string, kind: 'Clock in' | 'Clock out', memberId: number) {
+  const channel = process.env.SLACK_OFFON_CHANNEL;
+  if (!channel) return;
+  try {
+    await sendChannel(channel, `${name} ${kind}`);
+  } catch (err) {
+    await logAudit({
+      actorId: memberId,
+      action: 'SLACK_SEND_FAIL',
+      metadata: { stage: `channel_${kind}`, error: String(err) },
+    });
+  }
+}
 
 export async function POST() {
   try {
@@ -50,6 +65,11 @@ export async function POST() {
         target: String(updated.id),
         metadata: { reopen: true },
       });
+      const reopenMember = await prisma.member.findUnique({
+        where: { id: session.memberId },
+        select: { name: true },
+      });
+      if (reopenMember) await notifyChannel(reopenMember.name, 'Clock in', session.memberId);
       return NextResponse.json({ ok: true, attendance: updated });
     }
 
@@ -73,6 +93,11 @@ export async function POST() {
       action: 'CLOCK_IN',
       target: String(created.id),
     });
+    const m = await prisma.member.findUnique({
+      where: { id: session.memberId },
+      select: { name: true },
+    });
+    if (m) await notifyChannel(m.name, 'Clock in', session.memberId);
     return NextResponse.json({ ok: true, attendance: created });
   } catch (e) {
     if (e instanceof Response) return e;
