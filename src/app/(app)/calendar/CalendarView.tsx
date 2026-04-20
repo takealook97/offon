@@ -71,7 +71,7 @@ function eventStyle(ev: UiEvent): string {
   return 'rbc-event-missing';
 }
 
-export function CalendarView() {
+export function CalendarView({ memberId }: { memberId?: number }) {
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
@@ -93,6 +93,7 @@ export function CalendarView() {
       start: range.start.toISOString(),
       end: range.end.toISOString(),
     });
+    if (memberId) qs.set('memberId', String(memberId));
     fetch(`/api/calendar/events?${qs}`)
       .then((r) => r.json())
       .then((data: CalendarEventsResponse) => {
@@ -109,7 +110,7 @@ export function CalendarView() {
         );
       })
       .catch(() => setEvents([]));
-  }, [range.start, range.end]);
+  }, [range.start, range.end, memberId]);
 
   const eventPropGetter = useCallback((event: UiEvent) => {
     return { className: eventStyle(event) };

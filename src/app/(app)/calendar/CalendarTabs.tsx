@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 import { CalendarView } from './CalendarView';
 import { TeamCalendarView } from './TeamCalendarView';
+import { MemberSearch } from './MemberSearch';
 
-type Mode = 'personal' | 'team';
+type Mode = 'personal' | 'team' | 'search';
 
 export function CalendarTabs() {
   const [mode, setMode] = useState<Mode>('personal');
@@ -17,12 +18,17 @@ export function CalendarTabs() {
         <div className="inline-flex gap-1 rounded-md bg-muted p-0.5">
           <TabButton label="내 캘린더" active={mode === 'personal'} onClick={() => setMode('personal')} />
           <TabButton label="팀 캘린더" active={mode === 'team'} onClick={() => setMode('team')} />
+          <TabButton label="검색" active={mode === 'search'} onClick={() => setMode('search')} />
         </div>
-        {mode === 'personal' ? <PersonalLegend /> : <TeamLegend />}
+        {mode === 'personal' || mode === 'search' ? <PersonalLegend /> : <TeamLegend />}
       </div>
-      <Card className="p-0">
-        {mode === 'personal' ? <CalendarView /> : <TeamCalendarView />}
-      </Card>
+      {mode === 'search' ? (
+        <MemberSearch />
+      ) : (
+        <Card className="p-0">
+          {mode === 'personal' ? <CalendarView /> : <TeamCalendarView />}
+        </Card>
+      )}
     </div>
   );
 }
