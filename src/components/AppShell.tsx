@@ -112,7 +112,7 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-1">
             <span className="hidden text-sm text-muted-foreground md:inline">
               {me.name}
-              {me.role === 'ADMIN' && <span className="ml-1.5 text-xs">· admin</span>}
+              {me.role === 'ADMIN' && <span className="ml-1.5">· admin</span>}
             </span>
             <ThemeToggle />
             <div className="hidden md:block">
