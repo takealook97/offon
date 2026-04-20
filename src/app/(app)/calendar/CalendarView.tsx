@@ -8,20 +8,30 @@ import {
   type ToolbarProps,
   Views,
 } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay, isSameWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import {
+  attendanceMinutesIn,
+  formatMinutes,
+  rangeForView,
+  weeksInMonth,
+} from './totals';
+
+const WEEK_OPTS = { weekStartsOn: 0 as const };
 
 const localizer = dateFnsLocalizer({
   format,
   parse,
-  startOfWeek,
+  startOfWeek: (d: Date) => startOfWeek(d, WEEK_OPTS),
   getDay,
   locales: { ko },
 });
+
+const VIEWS_ALLOWED: View[] = [Views.MONTH, Views.AGENDA];
 
 const formats = {
   monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
@@ -103,8 +113,51 @@ export function CalendarView() {
     return { className: eventStyle(event) };
   }, []);
 
+  // The agenda view maps onto the month aggregation too, for the badge and the weekly summary
+  const viewMode: 'month' | 'week' | 'day' =
+    view === Views.DAY ? 'day' : view === Views.WEEK ? 'week' : 'month';
+
+  const apiEvents: CalendarEvent[] = useMemo(
+    () =>
+      events.map((e) => ({
+        id: e.id,
+        title: e.title,
+        start: e.start.toISOString(),
+        end: e.end.toISOString(),
+        allDay: e.allDay,
+        resource: e.resource,
+      })),
+    [events],
+  );
+
+  const totalMinutes = useMemo(
+    () => attendanceMinutesIn(apiEvents, rangeForView(viewMode, date)),
+    [apiEvents, viewMode, date],
+  );
+
+  const totalLabel = useMemo(() => {
+    if (viewMode === 'month') return format(date, 'MMonth', { locale: ko });
+    if (viewMode === 'week') {
+      const r = rangeForView('week', date);
+      return `${format(r.start, 'M/d', { locale: ko })} – ${format(r.end, 'M/d', { locale: ko })}`;
+    }
+    return format(date, 'M/d (EEE)', { locale: ko });
+  }, [viewMode, date]);
+
+  const Toolbar = useMemo(
+    () => (props: ToolbarProps<UiEvent>) =>
+      (
+        <CustomToolbar
+          {...props}
+          totalMinutes={totalMinutes}
+          totalLabel={totalLabel}
+        />
+      ),
+    [totalMinutes, totalLabel],
+  );
+
   return (
-    <div className="p-2 sm:p-4">
+    <div className="space-y-3 p-2 sm:p-4">
       <div className="h-[calc(100svh-220px)] min-h-[520px]">
         <Calendar
           localizer={localizer}
@@ -119,7 +172,8 @@ export function CalendarView() {
           endAccessor="end"
           allDayAccessor="allDay"
           eventPropGetter={eventPropGetter}
-          components={{ toolbar: CustomToolbar }}
+          views={VIEWS_ALLOWED}
+          components={{ toolbar: Toolbar }}
           messages={{
             month: 'Month',
             week: 'Week',
@@ -136,6 +190,9 @@ export function CalendarView() {
           style={{ height: '100%' }}
         />
       </div>
+      {viewMode === 'month' && (
+        <WeeklySummary apiEvents={apiEvents} date={date} />
+      )}
     </div>
   );
 }
@@ -147,8 +204,10 @@ const VIEW_LABEL: Record<string, string> = {
   agenda: 'Agenda',
 };
 
-function CustomToolbar(props: ToolbarProps<UiEvent>) {
-  const { label, onNavigate, onView, view, views } = props;
+function CustomToolbar(
+  props: ToolbarProps<UiEvent> & { totalMinutes: number; totalLabel: string },
+) {
+  const { label, onNavigate, onView, view, views, totalMinutes, totalLabel } = props;
   const viewList = Array.isArray(views)
     ? views
     : (Object.keys(views).filter((v) => (views as Record<string, boolean>)[v]) as View[]);
@@ -156,20 +215,10 @@ function CustomToolbar(props: ToolbarProps<UiEvent>) {
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-1.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onNavigate('PREV')}
-          aria-label="Previous"
-        >
+        <Button variant="ghost" size="icon" onClick={() => onNavigate('PREV')} aria-label="Previous">
           <ChevronLeft className="size-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onNavigate('NEXT')}
-          aria-label="Next"
-        >
+        <Button variant="ghost" size="icon" onClick={() => onNavigate('NEXT')} aria-label="Next">
           <ChevronRight className="size-4" />
         </Button>
         <Button variant="outline" size="sm" onClick={() => onNavigate('TODAY')}>
@@ -179,23 +228,89 @@ function CustomToolbar(props: ToolbarProps<UiEvent>) {
       <h2 className="order-first w-full text-center text-base font-semibold sm:order-none sm:w-auto sm:text-lg">
         {label}
       </h2>
-      <div className="flex gap-1 rounded-md bg-muted p-0.5">
-        {viewList.map((v) => (
-          <button
-            key={v as string}
-            type="button"
-            onClick={() => onView(v as View)}
-            className={cn(
-              'rounded px-2.5 py-1 text-xs transition-colors',
-              view === v
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {VIEW_LABEL[v as string] ?? (v as string)}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
+          <Clock className="size-3 text-muted-foreground" aria-hidden />
+          <span className="text-muted-foreground">{totalLabel}</span>
+          <span className="font-mono tabular-nums">{formatMinutes(totalMinutes)}</span>
+        </span>
+        <div className="flex gap-1 rounded-md bg-muted p-0.5">
+          {viewList.map((v) => (
+            <button
+              key={v as string}
+              type="button"
+              onClick={() => onView(v as View)}
+              className={cn(
+                'rounded px-2.5 py-1 text-xs transition-colors',
+                view === v
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {VIEW_LABEL[v as string] ?? (v as string)}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
+  );
+}
+
+function WeeklySummary({
+  apiEvents,
+  date,
+}: {
+  apiEvents: CalendarEvent[];
+  date: Date;
+}) {
+  const today = new Date();
+  const weeks = useMemo(() => weeksInMonth(date), [date]);
+  const monthTotal = useMemo(
+    () => attendanceMinutesIn(apiEvents, rangeForView('month', date)),
+    [apiEvents, date],
+  );
+
+  return (
+    <section className="rounded-lg border border-border/60 bg-card">
+      <header className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+        <h3 className="text-sm font-semibold text-muted-foreground">Weekly summary</h3>
+        <span className="text-xs text-muted-foreground">
+          <span className="mr-1">Month total</span>
+          <span className="font-mono font-medium tabular-nums text-foreground">
+            {formatMinutes(monthTotal)}
+          </span>
+        </span>
+      </header>
+      <ul className="divide-y divide-border/60">
+        {weeks.map((w) => {
+          const minutes = attendanceMinutesIn(apiEvents, w);
+          const isCurrent = isSameWeek(today, w.start, WEEK_OPTS);
+          const isFuture = w.start.getTime() > today.getTime();
+          return (
+            <li
+              key={w.start.toISOString()}
+              className={cn(
+                'flex items-center justify-between px-4 py-2.5 text-sm transition-colors',
+                isCurrent && 'bg-accent/40',
+              )}
+            >
+              <span className="font-mono tabular-nums text-muted-foreground">
+                {format(w.start, 'M/d', { locale: ko })} –{' '}
+                {format(w.end, 'M/d', { locale: ko })}
+                {isCurrent && <span className="ml-2 text-xs text-foreground">(this week)</span>}
+              </span>
+              <span
+                className={cn(
+                  'font-mono tabular-nums',
+                  minutes > 0 ? 'font-medium' : 'text-muted-foreground',
+                )}
+              >
+                {minutes > 0 ? formatMinutes(minutes) : isFuture ? '—' : '0m'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
