@@ -24,6 +24,12 @@ function halfDayRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
   return { start, end };
 }
 
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await requireSession();
@@ -40,6 +46,9 @@ export async function GET(req: NextRequest) {
           workDate: { gte: start, lte: end },
           deletedAt: null,
         },
+        include: {
+          sessions: { where: { deletedAt: null }, orderBy: { startAt: 'asc' } },
+        },
       }),
       prisma.leaveRequest.findMany({
         where: {
@@ -53,9 +62,10 @@ export async function GET(req: NextRequest) {
     ]);
 
     const events: CalendarEvent[] = [];
+    const now = new Date();
 
     for (const a of attendances) {
-      if (a.status === 'MISSING') {
+      if (a.status === 'MISSING' && a.sessions.length === 0) {
         events.push({
           id: `missing-${a.id}`,
           title: '근태 누락',
@@ -66,28 +76,28 @@ export async function GET(req: NextRequest) {
         });
         continue;
       }
-      if (!a.clockInAt) continue;
-      const startIso = a.clockInAt.toISOString();
-      const endIso = a.clockOutAt?.toISOString() ?? a.clockInAt.toISOString();
-      const inLabel = formatKST(a.clockInAt, 'HH:mm');
-      const outLabel = a.clockOutAt ? formatKST(a.clockOutAt, 'HH:mm') : '진행 중';
-      const hours = Math.floor(a.workedMinutes / 60);
-      const mins = a.workedMinutes % 60;
-      const durationLabel =
-        hours > 0 ? `${hours}시간 ${mins}분` : `${mins}분`;
-      events.push({
-        id: `att-${a.id}`,
-        title: `${inLabel} ~ ${outLabel} · ${durationLabel}`,
-        start: startIso,
-        end: endIso,
-        allDay: false,
-        resource: {
-          kind: 'ATTENDANCE',
-          workedMinutes: a.workedMinutes,
-          overtimeMinutes: a.overtimeMinutes,
-          attendanceStatus: a.status === 'WORKING' ? 'WORKING' : 'DONE',
-        },
-      });
+      for (const s of a.sessions) {
+        const endAt = s.endAt ?? now;
+        const minutes = Math.max(
+          0,
+          Math.floor((endAt.getTime() - s.startAt.getTime()) / 60000),
+        );
+        const inLabel = formatKST(s.startAt, 'HH:mm');
+        const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : '진행 중';
+        events.push({
+          id: `sess-${s.id}`,
+          title: `${inLabel} ~ ${outLabel} · ${formatDuration(minutes)}`,
+          start: s.startAt.toISOString(),
+          end: endAt.toISOString(),
+          allDay: false,
+          resource: {
+            kind: 'ATTENDANCE',
+            workedMinutes: minutes,
+            overtimeMinutes: 0,
+            attendanceStatus: s.endAt ? 'DONE' : 'WORKING',
+          },
+        });
+      }
     }
 
     for (const l of leaves) {

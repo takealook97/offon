@@ -10,30 +10,37 @@ export async function POST() {
     const now = new Date();
     const date = todayKST();
 
+    const activeOpen = await prisma.attendanceSession.findFirst({
+      where: {
+        endAt: null,
+        deletedAt: null,
+        attendance: { memberId: session.memberId, deletedAt: null },
+      },
+    });
+    if (activeOpen) {
+      return NextResponse.json(
+        { ok: false, error: '이미 근무 중입니다' },
+        { status: 400 },
+      );
+    }
+
     const existing = await prisma.attendance.findUnique({
       where: { memberId_workDate: { memberId: session.memberId, workDate: date } },
     });
 
     if (existing) {
-      const open = await prisma.attendanceSession.findFirst({
-        where: { attendanceId: existing.id, endAt: null, deletedAt: null },
-      });
-      if (open) {
-        return NextResponse.json(
-          { ok: false, error: '이미 근무 중입니다' },
-          { status: 400 },
-        );
-      }
       const updated = await prisma.$transaction(async (tx) => {
         await tx.attendanceSession.create({
           data: { attendanceId: existing.id, startAt: now },
         });
+        const minStart =
+          existing.clockInAt && existing.clockInAt < now ? existing.clockInAt : now;
         return tx.attendance.update({
           where: { id: existing.id },
           data: {
             status: 'WORKING',
             clockOutAt: null,
-            clockInAt: existing.clockInAt ?? now,
+            clockInAt: minStart,
           },
         });
       });
