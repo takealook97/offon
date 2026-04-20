@@ -151,10 +151,10 @@
   min-width: 0;
 }
 
-/* Month view alignment: a grid rather than flex, so each seventh lands without rounding error */
+/* Month view alignment: the header, background and date rows use a grid; the event rows keep the library default */
 .rbc-month-view .rbc-month-header,
 .rbc-month-view .rbc-row-bg,
-.rbc-month-view .rbc-row-content > .rbc-row {
+.rbc-month-view .rbc-row-content > .rbc-row:first-child {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
