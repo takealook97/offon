@@ -4,6 +4,7 @@ import { requireSession } from '@/lib/session';
 import { formatKST, monthRangeKST, nowKST, todayKST, weekRangeKST } from '@/lib/time';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SessionTimeline } from '@/components/SessionTimeline';
 import { AttendanceActions } from './AttendanceActions';
 import { LeaveRequestForm } from './LeaveRequestForm';
 
@@ -139,6 +140,7 @@ export default async function DashboardPage() {
             />
           </div>
           <AttendanceActions isWorking={isWorking} />
+          <SessionTimeline sessions={sessions} />
         </CardContent>
       </Card>
 

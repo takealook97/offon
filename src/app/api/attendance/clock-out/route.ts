@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
-import { todayKST } from '@/lib/time';
 import { logAudit } from '@/lib/audit';
 
 const STANDARD_MINUTES = 480;
@@ -9,20 +8,15 @@ const STANDARD_MINUTES = 480;
 export async function POST() {
   try {
     const session = await requireSession();
-    const date = todayKST();
-    const existing = await prisma.attendance.findUnique({
-      where: { memberId_workDate: { memberId: session.memberId, workDate: date } },
-    });
-    if (!existing) {
-      return NextResponse.json(
-        { ok: false, error: 'There is no clock-in recorded' },
-        { status: 400 },
-      );
-    }
 
     const open = await prisma.attendanceSession.findFirst({
-      where: { attendanceId: existing.id, endAt: null, deletedAt: null },
+      where: {
+        endAt: null,
+        deletedAt: null,
+        attendance: { memberId: session.memberId, deletedAt: null },
+      },
       orderBy: { startAt: 'desc' },
+      include: { attendance: true },
     });
     if (!open) {
       return NextResponse.json(
@@ -38,23 +32,29 @@ export async function POST() {
         where: { id: open.id },
         data: { endAt: clockOut },
       });
-      const sessions = await tx.attendanceSession.findMany({
-        where: {
-          attendanceId: existing.id,
-          deletedAt: null,
-          endAt: { not: null },
-        },
+      const all = await tx.attendanceSession.findMany({
+        where: { attendanceId: open.attendanceId, deletedAt: null },
         select: { startAt: true, endAt: true },
       });
-      const worked = sessions.reduce(
+      const closed = all.filter((s) => s.endAt);
+      const worked = closed.reduce(
         (sum, s) => sum + Math.floor((s.endAt!.getTime() - s.startAt.getTime()) / 60000),
         0,
       );
       const overtime = Math.max(0, worked - STANDARD_MINUTES);
+      const minStart = all.reduce<Date | null>(
+        (min, s) => (min === null || s.startAt < min ? s.startAt : min),
+        null,
+      );
+      const maxEnd = closed.reduce<Date | null>(
+        (max, s) => (max === null || s.endAt! > max ? s.endAt! : max),
+        null,
+      );
       return tx.attendance.update({
-        where: { id: existing.id },
+        where: { id: open.attendanceId },
         data: {
-          clockOutAt: clockOut,
+          clockInAt: minStart ?? open.attendance.clockInAt,
+          clockOutAt: maxEnd,
           workedMinutes: worked,
           overtimeMinutes: overtime,
           status: 'DONE',
