@@ -54,8 +54,12 @@ export type MemberRow = {
   usedDays: number;
 };
 
+function safe(n: number): number {
+  return Number.isFinite(n) ? n : 0;
+}
+
 function remaining(m: MemberRow): number {
-  return m.baseDays + m.bonusDays - m.usedDays;
+  return safe(m.baseDays) + safe(m.bonusDays) - safe(m.usedDays);
 }
 
 export function MembersPanel({ rows }: { rows: MemberRow[] }) {
@@ -75,8 +79,7 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead>Slack ID</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead className="text-right">Remaining</TableHead>
-              <TableHead className="text-right">Base · Bonus · Used</TableHead>
+              <TableHead className="text-right">Base · Bonus · Used · Left</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
@@ -96,11 +99,13 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 <TableCell>
                   <RoleBadge role={m.role} />
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm font-medium tabular-nums">
-                  {remaining(m)}
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs text-muted-foreground tabular-nums">
-                  {m.baseDays} · {m.bonusDays >= 0 ? '+' : ''}{m.bonusDays} · {m.usedDays}
+                <TableCell className="text-right font-mono text-xs tabular-nums">
+                  <span className="text-muted-foreground">
+                    {safe(m.baseDays)} · {safe(m.bonusDays) >= 0 ? '+' : ''}
+                    {safe(m.bonusDays)} · {safe(m.usedDays)}
+                  </span>
+                  <span className="mx-1.5 text-border">·</span>
+                  <span className="text-sm font-medium text-foreground">{remaining(m)}</span>
                 </TableCell>
                 <TableCell>
                   <StatusBadge active={m.active} />
@@ -140,11 +145,11 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
             </div>
             <div className="mt-3 flex items-center justify-between text-xs">
               <span className="text-muted-foreground">
-                Base <span className="font-mono tabular-nums">{m.baseDays}</span>
+                Base <span className="font-mono tabular-nums">{safe(m.baseDays)}</span>
                 <span className="mx-1.5">·</span>
-                Add <span className="font-mono tabular-nums">{m.bonusDays >= 0 ? '+' : ''}{m.bonusDays}</span>
+                Add <span className="font-mono tabular-nums">{safe(m.bonusDays) >= 0 ? '+' : ''}{safe(m.bonusDays)}</span>
                 <span className="mx-1.5">·</span>
-                Used <span className="font-mono tabular-nums">{m.usedDays}</span>
+                Used <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
               </span>
               <span className="font-mono font-medium tabular-nums">Remaining {remaining(m)}Day</span>
             </div>
@@ -370,7 +375,7 @@ function EditDialog({
     bonusDays: member.bonusDays,
   });
 
-  const remainingPreview = form.baseDays + form.bonusDays - member.usedDays;
+  const remainingPreview = safe(form.baseDays) + safe(form.bonusDays) - safe(member.usedDays);
 
   const save = () =>
     start(async () => {
@@ -454,7 +459,7 @@ function EditDialog({
 
           <div className="rounded-md border border-border/60 bg-muted/30 p-3">
             <Label className="text-xs text-muted-foreground">Leave</Label>
-            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+            <div className="mt-2 grid gap-3 sm:grid-cols-4">
               <Field label="Base (days)">
                 <Input
                   type="number"
@@ -462,7 +467,9 @@ function EditDialog({
                   max={365}
                   step={0.5}
                   value={form.baseDays}
-                  onChange={(e) => setForm((f) => ({ ...f, baseDays: Number(e.target.value) }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, baseDays: safe(Number(e.target.value)) }))
+                  }
                 />
               </Field>
               <Field label="Bonus (days)">
@@ -472,27 +479,30 @@ function EditDialog({
                   max={365}
                   step={0.5}
                   value={form.bonusDays}
-                  onChange={(e) => setForm((f) => ({ ...f, bonusDays: Number(e.target.value) }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, bonusDays: safe(Number(e.target.value)) }))
+                  }
                 />
               </Field>
               <div className="space-y-1.5">
                 <Label className="text-xs">Used (days)</Label>
                 <Input
                   type="number"
-                  value={member.usedDays}
+                  value={safe(member.usedDays)}
                   disabled
                   className="bg-muted font-mono tabular-nums"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Remaining (days)</Label>
+                <Input
+                  type="number"
+                  value={remainingPreview}
+                  disabled
+                  className="bg-muted font-mono font-medium tabular-nums"
+                />
+              </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Remaining ={' '}
-              <span className="font-mono font-medium tabular-nums text-foreground">
-                {remainingPreview}
-              </span>
-              Day (Base {form.baseDays} {form.bonusDays >= 0 ? '+' : ''}
-              {form.bonusDays} − used {member.usedDays})
-            </p>
           </div>
         </div>
         <DialogFooter>
