@@ -12,7 +12,7 @@ export async function POST() {
     const session = await requireSession();
     const date = todayKST();
     const existing = await prisma.attendance.findUnique({
-      where: { memberId_workDate: { memberId: session.sub, workDate: date } },
+      where: { memberId_workDate: { memberId: session.memberId, workDate: date } },
     });
     if (!existing || !existing.clockInAt) {
       return NextResponse.json(
@@ -35,9 +35,9 @@ export async function POST() {
       },
     });
     await logAudit({
-      actorId: session.sub,
+      actorId: session.memberId,
       action: 'CLOCK_OUT',
-      target: record.id,
+      target: String(record.id),
       metadata: { worked, overtime },
     });
     return NextResponse.json({ ok: true, attendance: record });

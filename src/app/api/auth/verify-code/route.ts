@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     where: { id: latest.id },
     data: { usedAt: new Date() },
   });
-  const token = await signSession({ sub: member.id, role: member.role });
+  const token = await signSession({ memberId: member.id, role: member.role });
   await setSessionCookie(token);
   await logAudit({ actorId: member.id, action: 'LOGIN_SUCCESS', metadata: { ip } });
 

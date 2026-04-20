@@ -6,7 +6,7 @@ import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { formatKST } from '@/lib/time';
 
-const Body = z.object({ id: z.string().min(1) });
+const Body = z.object({ id: z.coerce.number().int() });
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const requester = await prisma.$transaction(async (tx) => {
       await tx.leaveRequest.update({
         where: { id: target.id },
-        data: { status: 'APPROVED', approverId: admin.sub },
+        data: { status: 'APPROVED', approverId: admin.memberId },
       });
       await tx.leaveBalance.update({
         where: { memberId: target.memberId },
@@ -39,9 +39,9 @@ export async function POST(req: NextRequest) {
     });
 
     await logAudit({
-      actorId: admin.sub,
+      actorId: admin.memberId,
       action: 'LEAVE_APPROVE',
-      target: target.id,
+      target: String(target.id),
       metadata: { memberId: target.memberId },
     });
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} 연차가 승인되었습니다`,
       ).catch((err) =>
         logAudit({
-          actorId: admin.sub,
+          actorId: admin.memberId,
           action: 'SLACK_SEND_FAIL',
           metadata: { stage: 'leave_approve_notify', error: String(err) },
         }),

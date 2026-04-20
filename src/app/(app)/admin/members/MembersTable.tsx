@@ -4,9 +4,9 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 export type MemberRow = {
-  id: string;
+  id: number;
   name: string;
-  email: string;
+  email: string | null;
   slackId: string;
   position: string | null;
   role: 'EMPLOYEE' | 'ADMIN';
@@ -18,11 +18,11 @@ export type MemberRow = {
 export function MembersTable({ members }: { members: MemberRow[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [editing, setEditing] = useState<string | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<MemberRow>>({});
   const [err, setErr] = useState<string | null>(null);
 
-  const save = (id: string) =>
+  const save = (id: number) =>
     start(async () => {
       setErr(null);
       const res = await fetch('/api/admin/user', {
@@ -40,7 +40,7 @@ export function MembersTable({ members }: { members: MemberRow[] }) {
       router.refresh();
     });
 
-  const deactivate = (id: string) =>
+  const deactivate = (id: number) =>
     start(async () => {
       if (!confirm('해당 직원을 비활성화하시겠습니까?')) return;
       setErr(null);

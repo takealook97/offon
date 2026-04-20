@@ -36,14 +36,14 @@ export async function GET(req: NextRequest) {
     const [attendances, leaves] = await Promise.all([
       prisma.attendance.findMany({
         where: {
-          memberId: session.sub,
+          memberId: session.memberId,
           workDate: { gte: start, lte: end },
           deletedAt: null,
         },
       }),
       prisma.leaveRequest.findMany({
         where: {
-          memberId: session.sub,
+          memberId: session.memberId,
           status: { in: ['REQUESTED', 'APPROVED'] },
           startDate: { lte: end },
           endDate: { gte: start },

@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 
 export async function logAudit(params: {
-  actorId?: string | null;
+  actorId?: number | null;
   action: string;
   target?: string | null;
   metadata?: Prisma.InputJsonValue;

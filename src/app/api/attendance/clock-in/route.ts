@@ -10,9 +10,9 @@ export async function POST() {
     const now = new Date();
     const date = todayKST();
     const record = await prisma.attendance.upsert({
-      where: { memberId_workDate: { memberId: session.sub, workDate: date } },
+      where: { memberId_workDate: { memberId: session.memberId, workDate: date } },
       create: {
-        memberId: session.sub,
+        memberId: session.memberId,
         workDate: date,
         clockInAt: now,
         status: 'WORKING',
@@ -22,7 +22,7 @@ export async function POST() {
         status: 'WORKING',
       },
     });
-    await logAudit({ actorId: session.sub, action: 'CLOCK_IN', target: record.id });
+    await logAudit({ actorId: session.memberId, action: 'CLOCK_IN', target: String(record.id) });
     return NextResponse.json({ ok: true, attendance: record });
   } catch (e) {
     if (e instanceof Response) return e;

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     const record = await prisma.leaveRequest.create({
       data: {
-        memberId: session.sub,
+        memberId: session.memberId,
         type,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -50,13 +50,13 @@ export async function POST(req: NextRequest) {
     });
 
     await logAudit({
-      actorId: session.sub,
+      actorId: session.memberId,
       action: 'LEAVE_REQUEST',
-      target: record.id,
+      target: String(record.id),
       metadata: { type, startDate, endDate },
     });
 
-    const requester = await prisma.member.findUnique({ where: { id: session.sub } });
+    const requester = await prisma.member.findUnique({ where: { id: session.memberId } });
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', active: true, deletedAt: null },
     });
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
           `${requester?.name ?? '직원'}님이 ${startDate}~${endDate} ${type} 연차를 신청했습니다`,
         ).catch((err) =>
           logAudit({
-            actorId: session.sub,
+            actorId: session.memberId,
             action: 'SLACK_SEND_FAIL',
             metadata: { stage: 'leave_request_notify_admin', error: String(err) },
           }),

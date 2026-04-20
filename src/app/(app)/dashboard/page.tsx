@@ -18,17 +18,17 @@ export default async function DashboardPage() {
 
   const [todayAttendance, weekRows, monthRows, balance] = await Promise.all([
     prisma.attendance.findUnique({
-      where: { memberId_workDate: { memberId: session.sub, workDate: today } },
+      where: { memberId_workDate: { memberId: session.memberId, workDate: today } },
     }),
     prisma.attendance.findMany({
-      where: { memberId: session.sub, workDate: { gte: week.start, lte: week.end }, deletedAt: null },
+      where: { memberId: session.memberId, workDate: { gte: week.start, lte: week.end }, deletedAt: null },
       select: { workedMinutes: true, overtimeMinutes: true },
     }),
     prisma.attendance.findMany({
-      where: { memberId: session.sub, workDate: { gte: month.start, lte: month.end }, deletedAt: null },
+      where: { memberId: session.memberId, workDate: { gte: month.start, lte: month.end }, deletedAt: null },
       select: { workedMinutes: true, overtimeMinutes: true },
     }),
-    prisma.leaveBalance.findUnique({ where: { memberId: session.sub } }),
+    prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
   ]);
 
   const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0);
