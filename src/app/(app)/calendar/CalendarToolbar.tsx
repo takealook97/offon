@@ -18,7 +18,7 @@ export function CalendarToolbar({
   right?: ReactNode;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-3 sm:grid sm:grid-cols-[auto_1fr_auto]">
+    <div className="mb-3 flex flex-wrap items-center gap-3 sm:grid sm:grid-cols-3">
       <div className="flex items-center gap-1.5 sm:justify-self-start">
         <Button variant="ghost" size="icon" onClick={onPrev} aria-label="이전">
           <ChevronLeft className="size-4" />
