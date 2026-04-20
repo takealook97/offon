@@ -31,7 +31,7 @@ const localizer = dateFnsLocalizer({
   locales: { ko },
 });
 
-const VIEWS_ALLOWED: View[] = [Views.MONTH, Views.AGENDA];
+const VIEWS_ALLOWED: View[] = [Views.MONTH];
 
 const formats = {
   monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
@@ -197,20 +197,10 @@ export function CalendarView() {
   );
 }
 
-const VIEW_LABEL: Record<string, string> = {
-  month: 'Month',
-  week: 'Week',
-  day: 'Day',
-  agenda: 'Agenda',
-};
-
 function CustomToolbar(
   props: ToolbarProps<UiEvent> & { totalMinutes: number; totalLabel: string },
 ) {
-  const { label, onNavigate, onView, view, views, totalMinutes, totalLabel } = props;
-  const viewList = Array.isArray(views)
-    ? views
-    : (Object.keys(views).filter((v) => (views as Record<string, boolean>)[v]) as View[]);
+  const { label, onNavigate, totalMinutes, totalLabel } = props;
 
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -228,30 +218,11 @@ function CustomToolbar(
       <h2 className="order-first w-full text-center text-base font-semibold sm:order-none sm:w-auto sm:text-lg">
         {label}
       </h2>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
-          <Clock className="size-3 text-muted-foreground" aria-hidden />
-          <span className="text-muted-foreground">{totalLabel}</span>
-          <span className="font-mono tabular-nums">{formatMinutes(totalMinutes)}</span>
-        </span>
-        <div className="flex gap-1 rounded-md bg-muted p-0.5">
-          {viewList.map((v) => (
-            <button
-              key={v as string}
-              type="button"
-              onClick={() => onView(v as View)}
-              className={cn(
-                'rounded px-2.5 py-1 text-xs transition-colors',
-                view === v
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {VIEW_LABEL[v as string] ?? (v as string)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
+        <Clock className="size-3 text-muted-foreground" aria-hidden />
+        <span className="text-muted-foreground">{totalLabel}</span>
+        <span className="font-mono tabular-nums">{formatMinutes(totalMinutes)}</span>
+      </span>
     </div>
   );
 }
