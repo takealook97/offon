@@ -1,0 +1,146 @@
+'use client';
+
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import {
+  Calendar,
+  dateFnsLocalizer,
+  type View,
+  type ToolbarProps,
+  Views,
+} from 'react-big-calendar';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+
+const WEEK_OPTS = { weekStartsOn: 0 as const };
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: (d: Date) => startOfWeek(d, WEEK_OPTS),
+  getDay,
+  locales: { ko },
+});
+
+const formats = {
+  monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
+  weekdayFormat: (date: Date) => format(date, 'EEE', { locale: ko }),
+  dayFormat: (date: Date) => format(date, 'dDay (EEE)', { locale: ko }),
+};
+
+const VIEWS_ALLOWED: View[] = [Views.MONTH];
+
+type UiEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  allDay: boolean;
+  resource: CalendarEvent['resource'];
+};
+
+function eventStyle(ev: UiEvent): string {
+  if (ev.resource.leaveType === 'FULL_DAY') return 'rbc-event-leave';
+  return 'rbc-event-leave-half';
+}
+
+export function TeamCalendarView() {
+  const [events, setEvents] = useState<UiEvent[]>([]);
+  const [view, setView] = useState<View>(Views.MONTH);
+  const [date, setDate] = useState(new Date());
+
+  const range = useMemo(() => {
+    const start = new Date(date);
+    start.setDate(1);
+    start.setDate(start.getDate() - 7);
+    const end = new Date(date);
+    end.setMonth(end.getMonth() + 1);
+    end.setDate(0);
+    end.setDate(end.getDate() + 7);
+    return { start, end };
+  }, [date]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams({
+      start: range.start.toISOString(),
+      end: range.end.toISOString(),
+    });
+    fetch(`/api/team/leaves?${qs}`)
+      .then((r) => r.json())
+      .then((data: CalendarEventsResponse) => {
+        if (!data?.events) return;
+        setEvents(
+          data.events.map((e) => ({
+            id: e.id,
+            title: e.title,
+            start: new Date(e.start),
+            end: new Date(e.end),
+            allDay: e.allDay,
+            resource: e.resource,
+          })),
+        );
+      })
+      .catch(() => setEvents([]));
+  }, [range.start, range.end]);
+
+  const eventPropGetter = useCallback(
+    (event: UiEvent) => ({ className: eventStyle(event) }),
+    [],
+  );
+
+  return (
+    <div className="space-y-3 p-2 sm:p-4">
+      <div className="h-[calc(100svh-220px)] min-h-[520px]">
+        <Calendar
+          localizer={localizer}
+          culture="ko"
+          formats={formats}
+          events={events}
+          view={view}
+          onView={setView}
+          date={date}
+          onNavigate={setDate}
+          startAccessor="start"
+          endAccessor="end"
+          allDayAccessor="allDay"
+          eventPropGetter={eventPropGetter}
+          views={VIEWS_ALLOWED}
+          components={{ toolbar: CustomToolbar }}
+          messages={{
+            month: 'Month',
+            today: 'Today',
+            previous: 'Previous',
+            next: 'Next',
+            noEventsInRange: 'No leave in this range',
+          }}
+          style={{ height: '100%' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CustomToolbar(props: ToolbarProps<UiEvent>) {
+  const { label, onNavigate } = props;
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-1.5">
+        <Button variant="ghost" size="icon" onClick={() => onNavigate('PREV')} aria-label="Previous">
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => onNavigate('NEXT')} aria-label="Next">
+          <ChevronRight className="size-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onNavigate('TODAY')}>
+          Today
+        </Button>
+      </div>
+      <h2 className="order-first w-full text-center text-base font-semibold sm:order-none sm:w-auto sm:text-lg">
+        {label}
+      </h2>
+      <span />
+    </div>
+  );
+}
