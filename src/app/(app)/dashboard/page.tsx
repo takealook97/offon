@@ -13,7 +13,9 @@ type SessionLite = { startAt: Date; endAt: Date | null };
 function formatMinutes(m: number): string {
   const h = Math.floor(m / 60);
   const mm = m % 60;
-  return `${h}시간 ${mm}분`;
+  if (h > 0 && mm > 0) return `${h}시간 ${mm}분`;
+  if (h > 0) return `${h}시간`;
+  return `${mm}분`;
 }
 
 function progressOf(current: number, target: number): number {

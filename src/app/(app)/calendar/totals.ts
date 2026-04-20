@@ -47,5 +47,7 @@ export function weeksInMonth(date: Date): { start: Date; end: Date }[] {
 export function formatMinutes(m: number): string {
   const h = Math.floor(m / 60);
   const mm = m % 60;
-  return h > 0 ? `${h}시간 ${mm}분` : `${mm}분`;
+  if (h > 0 && mm > 0) return `${h}시간 ${mm}분`;
+  if (h > 0) return `${h}시간`;
+  return `${mm}분`;
 }
