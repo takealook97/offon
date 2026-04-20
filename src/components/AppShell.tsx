@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Calendar, CalendarDays, LayoutDashboard, Menu, Users, ClipboardList } from 'lucide-react';
+import { Calendar, LayoutDashboard, Menu, Users, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
@@ -22,7 +22,6 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
-  { href: '/team-calendar', label: 'Team calendar', icon: CalendarDays },
   { href: '/admin/members', label: 'Members', icon: Users, admin: true },
   { href: '/admin/leaves', label: 'Leave Approve', icon: ClipboardList, admin: true },
 ];
