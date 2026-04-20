@@ -151,10 +151,11 @@
   min-width: 0;
 }
 
-/* 월뷰 컬럼 정렬: 헤더/배경/날짜행만 grid로 (이벤트 segment 행은 rbc 기본 flex 유지) */
+/* 월뷰 컬럼 정렬:
+   - 헤더(.rbc-month-header)와 배경셀(.rbc-row-bg)만 grid로 강제해 세로 구분선을 정확히 1/7씩 배치
+   - 날짜 숫자/이벤트 행은 rbc 기본 flex 유지 (multi-day 이벤트가 여러 칸을 spanning하도록) */
 .rbc-month-view .rbc-month-header,
-.rbc-month-view .rbc-row-bg,
-.rbc-month-view .rbc-row-content > .rbc-row:first-child {
+.rbc-month-view .rbc-row-bg {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
