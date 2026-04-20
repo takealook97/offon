@@ -35,6 +35,14 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    const { todayKST } = await import('@/lib/time');
+    const today = todayKST();
+    if (new Date(startDate) < today) {
+      return NextResponse.json(
+        { ok: false, error: 'A date in the past cannot be requested' },
+        { status: 400 },
+      );
+    }
     const days = dayCount(startDate, endDate, type);
 
     const [balance, pending] = await Promise.all([

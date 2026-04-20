@@ -33,6 +33,14 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
 
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
   const requestedDays = useMemo(() => {
     if (type !== 'FULL_DAY') return 0.5;
     return daysBetween(startDate, endDate || startDate);
@@ -40,7 +48,8 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
-  const canSubmit = !!startDate && requestedDays > 0 && !exceeds && !invalidRange;
+  const isPast = !!startDate && startDate < todayStr;
+  const canSubmit = !!startDate && requestedDays > 0 && !exceeds && !invalidRange && !isPast;
 
   const submit = () =>
     start(async () => {
@@ -94,6 +103,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
             id="startDate"
             type="date"
             value={startDate}
+            min={todayStr}
             onChange={(e) => setStartDate(e.target.value)}
             className="h-11"
           />
@@ -105,6 +115,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
               id="endDate"
               type="date"
               value={endDate}
+              min={startDate || todayStr}
               onChange={(e) => setEndDate(e.target.value)}
               className="h-11"
             />
@@ -127,7 +138,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       <div
         className={cn(
           'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
-          exceeds || invalidRange
+          exceeds || invalidRange || isPast
             ? 'border-destructive/40 bg-destructive/5 text-destructive'
             : 'border-border/60 bg-muted/40 text-muted-foreground',
         )}
@@ -145,6 +156,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
           </p>
           {exceeds && <p className="text-destructive">That exceeds your available leave</p>}
           {invalidRange && <p className="text-destructive">The end date is before the start date</p>}
+          {isPast && <p className="text-destructive">A date in the past cannot be requested</p>}
         </div>
       </div>
 
