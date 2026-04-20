@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Calendar, LayoutDashboard, Menu, Users, ClipboardList } from 'lucide-react';
@@ -51,7 +52,10 @@ export function AppShell({
             <SheetContent side="left" className="w-72 p-0">
               <SheetHeader className="border-b border-border/60 px-6 py-4">
                 <SheetTitle className="text-left">
-                  <span className="text-lg font-semibold tracking-tight">offon</span>
+                  <span className="flex items-center gap-2">
+                    <Image src="/logo.png" alt="" width={28} height={28} className="rounded-md" priority />
+                    <span className="text-lg font-semibold tracking-tight">offon</span>
+                  </span>
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col p-3">
@@ -88,7 +92,8 @@ export function AppShell({
             </SheetContent>
           </Sheet>
 
-          <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
+          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <Image src="/logo.png" alt="" width={28} height={28} className="rounded-md" priority />
             offon
           </Link>
 
