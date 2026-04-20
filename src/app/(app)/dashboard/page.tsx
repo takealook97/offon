@@ -18,11 +18,6 @@ function formatMinutes(m: number): string {
   return `${mm}분`;
 }
 
-function progressOf(current: number, target: number): number {
-  if (target <= 0) return 0;
-  return Math.min(100, Math.round((current / target) * 100));
-}
-
 export default async function DashboardPage() {
   const session = await requireSession();
   const today = todayKST();
@@ -89,7 +84,6 @@ export default async function DashboardPage() {
   const remainingDays = totalDays - usedDays;
   const availableDays = remainingDays - pendingDays;
 
-  const weekProgress = progressOf(weekTotal, 40 * 60);
 
   return (
     <div className="space-y-6">
@@ -151,8 +145,7 @@ export default async function DashboardPage() {
           icon={Clock3}
           label="이번 주 근무"
           value={formatMinutes(weekTotal)}
-          sub={`주 40시간 기준 ${weekProgress}%`}
-          progress={weekProgress}
+          sub={weekRows.length > 0 ? `${weekRows.length}일 근무` : '기록 없음'}
         />
         <StatCard
           icon={Calendar}
@@ -201,13 +194,11 @@ function StatCard({
   label,
   value,
   sub,
-  progress,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   sub?: string;
-  progress?: number;
 }) {
   return (
     <Card>
@@ -218,14 +209,6 @@ function StatCard({
       <CardContent className="space-y-3">
         <p className="text-2xl font-semibold tracking-tight">{value}</p>
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-        {progress !== undefined && (
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-foreground/80 transition-[width]"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
       </CardContent>
     </Card>
   );
