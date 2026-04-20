@@ -5,7 +5,11 @@ import { MembersPanel, type MemberRow } from './MembersPanel';
 export default async function MembersPage() {
   await requireAdmin();
   const members = await prisma.member.findMany({
-    orderBy: [{ deletedAt: { sort: 'asc', nulls: 'first' } }, { name: 'asc' }],
+    orderBy: [
+      { deletedAt: { sort: 'asc', nulls: 'first' } },
+      { role: 'asc' },
+      { name: 'asc' },
+    ],
     include: { leaveBalance: true },
   });
 
