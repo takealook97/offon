@@ -7,7 +7,7 @@ export default async function MembersPage() {
   const members = await prisma.member.findMany({
     orderBy: [
       { deletedAt: { sort: 'asc', nulls: 'first' } },
-      { role: 'asc' },
+      { role: 'desc' },
       { name: 'asc' },
     ],
     include: { leaveBalance: true },
