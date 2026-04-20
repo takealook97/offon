@@ -152,10 +152,13 @@
 }
 
 /* 월뷰 컬럼 정렬:
-   - 헤더(.rbc-month-header)와 배경셀(.rbc-row-bg)만 grid로 강제해 세로 구분선을 정확히 1/7씩 배치
-   - 날짜 숫자/이벤트 행은 rbc 기본 flex 유지 (multi-day 이벤트가 여러 칸을 spanning하도록) */
+   - 헤더(.rbc-month-header), 배경셀(.rbc-row-bg), 날짜 숫자 row(.rbc-row-content > .rbc-row:first-child)를
+     모두 grid repeat(7, 1fr)로 강제 → 세로 구분선과 날짜/요일 글자 모두 같은 x축
+   - 이벤트 segment row(.rbc-row-content > .rbc-row:not(:first-child))는 rbc 기본 flex 유지
+     → multi-day 이벤트 pill의 day-span이 보존됨 */
 .rbc-month-view .rbc-month-header,
-.rbc-month-view .rbc-row-bg {
+.rbc-month-view .rbc-row-bg,
+.rbc-month-view .rbc-row-content > .rbc-row:first-child {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
