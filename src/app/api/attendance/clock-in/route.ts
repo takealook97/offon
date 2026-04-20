@@ -8,7 +8,7 @@ import { sendChannel } from '@/lib/slack';
 async function notifyChannel(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = `${formatKST(at, 'yyyyMMdd HH:mm')}\n${name} clocked in\u2600\ufe0f`;
+  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} clocked in\u2600\ufe0f`;
   try {
     await sendChannel(channel, text);
   } catch (err) {
