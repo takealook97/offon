@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { MembersPanel, type MemberRow } from './MembersPanel';
 
+export const revalidate = 60;
+
 export default async function MembersPage() {
   await requireAdmin();
   const members = await prisma.member.findMany({

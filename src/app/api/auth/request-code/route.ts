@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   const devBypass = process.env.NODE_ENV !== 'production' && !slackTokenReady;
 
   if (devBypass) {
-    console.log(`[DEV] OTP for ${member.email ?? member.slackId}: ${code}`);
+    // Development only: with no Slack token the code is verified by hand.
   } else {
     try {
       await sendDm(member.slackId, `Your offon sign-in code: ${code} (valid for 5 minutes)`);
