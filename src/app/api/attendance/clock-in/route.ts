@@ -9,21 +9,64 @@ export async function POST() {
     const session = await requireSession();
     const now = new Date();
     const date = todayKST();
-    const record = await prisma.attendance.upsert({
+
+    const existing = await prisma.attendance.findUnique({
       where: { memberId_workDate: { memberId: session.memberId, workDate: date } },
-      create: {
-        memberId: session.memberId,
-        workDate: date,
-        clockInAt: now,
-        status: 'WORKING',
-      },
-      update: {
-        clockInAt: now,
-        status: 'WORKING',
-      },
     });
-    await logAudit({ actorId: session.memberId, action: 'CLOCK_IN', target: String(record.id) });
-    return NextResponse.json({ ok: true, attendance: record });
+
+    if (existing) {
+      const open = await prisma.attendanceSession.findFirst({
+        where: { attendanceId: existing.id, endAt: null, deletedAt: null },
+      });
+      if (open) {
+        return NextResponse.json(
+          { ok: false, error: '이미 근무 중입니다' },
+          { status: 400 },
+        );
+      }
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.attendanceSession.create({
+          data: { attendanceId: existing.id, startAt: now },
+        });
+        return tx.attendance.update({
+          where: { id: existing.id },
+          data: {
+            status: 'WORKING',
+            clockOutAt: null,
+            clockInAt: existing.clockInAt ?? now,
+          },
+        });
+      });
+      await logAudit({
+        actorId: session.memberId,
+        action: 'CLOCK_IN',
+        target: String(updated.id),
+        metadata: { reopen: true },
+      });
+      return NextResponse.json({ ok: true, attendance: updated });
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const a = await tx.attendance.create({
+        data: {
+          memberId: session.memberId,
+          workDate: date,
+          status: 'WORKING',
+          clockInAt: now,
+        },
+      });
+      await tx.attendanceSession.create({
+        data: { attendanceId: a.id, startAt: now },
+      });
+      return a;
+    });
+
+    await logAudit({
+      actorId: session.memberId,
+      action: 'CLOCK_IN',
+      target: String(created.id),
+    });
+    return NextResponse.json({ ok: true, attendance: created });
   } catch (e) {
     if (e instanceof Response) return e;
     throw e;

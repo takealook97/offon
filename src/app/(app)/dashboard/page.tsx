@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { AttendanceActions } from './AttendanceActions';
 import { LeaveRequestForm } from './LeaveRequestForm';
 
+type SessionLite = { startAt: Date; endAt: Date | null };
+
 function formatMinutes(m: number): string {
   const h = Math.floor(m / 60);
   const mm = m % 60;
@@ -31,6 +33,13 @@ export default async function DashboardPage() {
     }),
     prisma.attendance.findUnique({
       where: { memberId_workDate: { memberId: session.memberId, workDate: today } },
+      include: {
+        sessions: {
+          where: { deletedAt: null },
+          orderBy: { startAt: 'asc' },
+          select: { startAt: true, endAt: true },
+        },
+      },
     }),
     prisma.attendance.findMany({
       where: {
@@ -38,7 +47,7 @@ export default async function DashboardPage() {
         workDate: { gte: week.start, lte: week.end },
         deletedAt: null,
       },
-      select: { workedMinutes: true, overtimeMinutes: true },
+      select: { workedMinutes: true },
     }),
     prisma.attendance.findMany({
       where: {
@@ -46,14 +55,27 @@ export default async function DashboardPage() {
         workDate: { gte: month.start, lte: month.end },
         deletedAt: null,
       },
-      select: { workedMinutes: true, overtimeMinutes: true },
+      select: { workedMinutes: true },
     }),
     prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
   ]);
 
-  const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0);
-  const weekOvertime = weekRows.reduce((s, r) => s + r.overtimeMinutes, 0);
-  const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0);
+  const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
+  const firstIn = sessions[0]?.startAt ?? todayAttendance?.clockInAt ?? null;
+  const closedEndAts = sessions.filter((s) => s.endAt).map((s) => s.endAt!);
+  const lastOut = closedEndAts.length
+    ? closedEndAts.reduce((a, b) => (a > b ? a : b))
+    : todayAttendance?.clockOutAt ?? null;
+  const openSession = sessions.find((s) => !s.endAt) ?? null;
+  const isWorking = todayAttendance?.status === 'WORKING' && !!openSession;
+  const storedWorked = todayAttendance?.workedMinutes ?? 0;
+  const liveDelta = openSession
+    ? Math.max(0, Math.floor((Date.now() - openSession.startAt.getTime()) / 60000))
+    : 0;
+  const todayWorked = storedWorked + liveDelta;
+
+  const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
+  const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
   const totalDays = balance ? Number(balance.totalDays) : 0;
   const usedDays = balance ? Number(balance.usedDays) : 0;
   const remainingDays = totalDays - usedDays;
@@ -90,38 +112,27 @@ export default async function DashboardPage() {
           <AttendanceStatusBadge status={todayAttendance?.status ?? 'NOT_STARTED'} />
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
             <ClockSlot
               label="출근"
-              value={
-                todayAttendance?.clockInAt ? formatKST(todayAttendance.clockInAt, 'HH:mm') : '—'
-              }
+              value={firstIn ? formatKST(firstIn, 'HH:mm') : '—'}
             />
             <ClockSlot
               label="퇴근"
               value={
-                todayAttendance?.clockOutAt ? formatKST(todayAttendance.clockOutAt, 'HH:mm') : '—'
+                isWorking
+                  ? '진행 중'
+                  : lastOut
+                  ? formatKST(lastOut, 'HH:mm')
+                  : '—'
               }
             />
             <ClockSlot
               label="근무 시간"
-              value={
-                todayAttendance?.clockOutAt ? formatMinutes(todayAttendance.workedMinutes) : '—'
-              }
-            />
-            <ClockSlot
-              label="초과 근무"
-              value={
-                todayAttendance?.clockOutAt
-                  ? formatMinutes(todayAttendance.overtimeMinutes)
-                  : '—'
-              }
+              value={firstIn ? formatMinutes(todayWorked) : '—'}
             />
           </div>
-          <AttendanceActions
-            hasClockIn={!!todayAttendance?.clockInAt}
-            hasClockOut={!!todayAttendance?.clockOutAt}
-          />
+          <AttendanceActions isWorking={isWorking} />
         </CardContent>
       </Card>
 
@@ -130,7 +141,7 @@ export default async function DashboardPage() {
           icon={Clock3}
           label="이번 주 근무"
           value={formatMinutes(weekTotal)}
-          sub={`초과 ${formatMinutes(weekOvertime)}`}
+          sub={`주 40시간 기준 ${weekProgress}%`}
           progress={weekProgress}
         />
         <StatCard
