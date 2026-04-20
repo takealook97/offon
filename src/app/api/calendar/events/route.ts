@@ -40,11 +40,17 @@ export async function GET(req: NextRequest) {
     if (!start || !end) {
       return NextResponse.json({ ok: false, error: 'start and end query parameters are required' }, { status: 400 });
     }
+    const memberIdRaw = req.nextUrl.searchParams.get('memberId');
+    const parsedMemberId = memberIdRaw ? Number(memberIdRaw) : null;
+    const targetMemberId =
+      parsedMemberId && Number.isInteger(parsedMemberId) && parsedMemberId > 0
+        ? parsedMemberId
+        : session.memberId;
 
     const [attendances, leaves] = await Promise.all([
       prisma.attendance.findMany({
         where: {
-          memberId: session.memberId,
+          memberId: targetMemberId,
           workDate: { gte: start, lte: end },
           deletedAt: null,
         },
@@ -54,7 +60,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.leaveRequest.findMany({
         where: {
-          memberId: session.memberId,
+          memberId: targetMemberId,
           status: 'APPROVED',
           startDate: { lte: end },
           endDate: { gte: start },
