@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
 
-const Body = z.object({ id: z.coerce.number().int() });
+const Body = z.object({
+  id: z.coerce.number().int(),
+  active: z.boolean(),
+});
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -13,11 +16,16 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
     }
+    const { id, active } = parsed.data;
     await prisma.member.update({
-      where: { id: parsed.data.id },
-      data: { active: false, deletedAt: new Date() },
+      where: { id },
+      data: { deletedAt: active ? null : new Date() },
     });
-    await logAudit({ actorId: admin.memberId, action: 'MEMBER_DEACTIVATE', target: String(parsed.data.id) });
+    await logAudit({
+      actorId: admin.memberId,
+      action: active ? 'MEMBER_REACTIVATE' : 'MEMBER_DEACTIVATE',
+      target: String(id),
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof Response) return e;

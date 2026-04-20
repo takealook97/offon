@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       clockInAt: { not: null },
       clockOutAt: null,
       deletedAt: null,
-      member: { active: true, deletedAt: null },
+      member: { deletedAt: null },
     },
     include: { member: true },
   });

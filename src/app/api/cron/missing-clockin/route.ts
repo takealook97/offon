@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const date = todayKST();
   const members = await prisma.member.findMany({
-    where: { active: true, deletedAt: null },
+    where: { deletedAt: null },
   });
 
   let flagged = 0;

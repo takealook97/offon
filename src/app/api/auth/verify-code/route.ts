@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   const member = await prisma.member.findFirst({
-    where: { email, active: true, deletedAt: null },
+    where: { email, deletedAt: null },
   });
   if (!member) {
     return NextResponse.json({ ok: false, error: 'That code is not correct' }, { status: 401 });
