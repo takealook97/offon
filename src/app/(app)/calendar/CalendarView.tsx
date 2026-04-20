@@ -10,10 +10,10 @@ import {
 } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, isSameWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Clock } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import { CalendarToolbar } from './CalendarToolbar';
 import { ShowMoreDialog } from './ShowMoreDialog';
 import {
   attendanceMinutesIn,
@@ -213,29 +213,20 @@ function CustomToolbar(
   props: ToolbarProps<UiEvent> & { totalMinutes: number; totalLabel: string },
 ) {
   const { label, onNavigate, totalMinutes, totalLabel } = props;
-
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-1.5">
-        <Button variant="ghost" size="icon" onClick={() => onNavigate('PREV')} aria-label="이전">
-          <ChevronLeft className="size-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => onNavigate('NEXT')} aria-label="다음">
-          <ChevronRight className="size-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onNavigate('TODAY')}>
-          오늘
-        </Button>
-      </div>
-      <h2 className="order-first w-full text-center text-base font-semibold sm:order-none sm:w-auto sm:text-lg">
-        {label}
-      </h2>
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
-        <Clock className="size-3 text-muted-foreground" aria-hidden />
-        <span className="text-muted-foreground">{totalLabel}</span>
-        <span className="font-mono tabular-nums">{formatMinutes(totalMinutes)}</span>
-      </span>
-    </div>
+    <CalendarToolbar
+      label={label as string}
+      onPrev={() => onNavigate('PREV')}
+      onNext={() => onNavigate('NEXT')}
+      onToday={() => onNavigate('TODAY')}
+      right={
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
+          <Clock className="size-3 text-muted-foreground" aria-hidden />
+          <span className="text-muted-foreground">{totalLabel}</span>
+          <span className="font-mono tabular-nums">{formatMinutes(totalMinutes)}</span>
+        </span>
+      }
+    />
   );
 }
 
