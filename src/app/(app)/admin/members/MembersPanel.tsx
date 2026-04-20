@@ -49,9 +49,14 @@ export type MemberRow = {
   position: string | null;
   role: 'EMPLOYEE' | 'ADMIN';
   active: boolean;
-  totalDays: number;
+  baseDays: number;
+  bonusDays: number;
   usedDays: number;
 };
+
+function remaining(m: MemberRow): number {
+  return m.baseDays + m.bonusDays - m.usedDays;
+}
 
 export function MembersPanel({ rows }: { rows: MemberRow[] }) {
   return (
@@ -70,7 +75,8 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead>Slack ID</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead className="text-right">Leave (granted/used)</TableHead>
+              <TableHead className="text-right">Remaining</TableHead>
+              <TableHead className="text-right">Base · Bonus · Used</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
@@ -90,8 +96,11 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 <TableCell>
                   <RoleBadge role={m.role} />
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  {m.totalDays} / {m.usedDays}
+                <TableCell className="text-right font-mono text-sm font-medium tabular-nums">
+                  {remaining(m)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs text-muted-foreground tabular-nums">
+                  {m.baseDays} · {m.bonusDays >= 0 ? '+' : ''}{m.bonusDays} · {m.usedDays}
                 </TableCell>
                 <TableCell>
                   <StatusBadge active={m.active} />
@@ -129,10 +138,15 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               </div>
               <RowActions member={m} />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                Leave <span className="font-mono tabular-nums">{m.totalDays} / {m.usedDays}</span>
+            <div className="mt-3 flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                Base <span className="font-mono tabular-nums">{m.baseDays}</span>
+                <span className="mx-1.5">·</span>
+                Add <span className="font-mono tabular-nums">{m.bonusDays >= 0 ? '+' : ''}{m.bonusDays}</span>
+                <span className="mx-1.5">·</span>
+                Used <span className="font-mono tabular-nums">{m.usedDays}</span>
               </span>
+              <span className="font-mono font-medium tabular-nums">Remaining {remaining(m)}Day</span>
             </div>
           </div>
         ))}
@@ -226,7 +240,7 @@ function CreateDialog() {
     slackId: '',
     position: '',
     role: 'EMPLOYEE' as 'EMPLOYEE' | 'ADMIN',
-    totalDays: 15,
+    baseDays: 15,
   });
 
   const submit = () =>
@@ -247,7 +261,7 @@ function CreateDialog() {
         return;
       }
       toast.success(`${form.name} was added`);
-      setForm({ name: '', email: '', slackId: '', position: '', role: 'EMPLOYEE', totalDays: 15 });
+      setForm({ name: '', email: '', slackId: '', position: '', role: 'EMPLOYEE', baseDays: 15 });
       setOpen(false);
       router.refresh();
     });
@@ -311,13 +325,13 @@ function CreateDialog() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Leave (Day)">
+            <Field label="Base leave (days)">
               <Input
                 type="number"
                 min={0}
                 max={365}
-                value={form.totalDays}
-                onChange={(e) => setForm((f) => ({ ...f, totalDays: Number(e.target.value) }))}
+                value={form.baseDays}
+                onChange={(e) => setForm((f) => ({ ...f, baseDays: Number(e.target.value) }))}
               />
             </Field>
           </div>
@@ -352,8 +366,11 @@ function EditDialog({
     slackId: member.slackId,
     position: member.position ?? '',
     role: member.role,
-    totalDays: member.totalDays,
+    baseDays: member.baseDays,
+    bonusDays: member.bonusDays,
   });
+
+  const remainingPreview = form.baseDays + form.bonusDays - member.usedDays;
 
   const save = () =>
     start(async () => {
@@ -364,7 +381,8 @@ function EditDialog({
         slackId: form.slackId,
         position: form.position || undefined,
         role: form.role,
-        totalDays: form.totalDays,
+        baseDays: form.baseDays,
+        bonusDays: form.bonusDays,
       };
       const res = await fetch('/api/admin/user', {
         method: 'PATCH',
@@ -383,10 +401,10 @@ function EditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{member.name} Edit</DialogTitle>
-          <DialogDescription>Edit this person's details.</DialogDescription>
+          <DialogDescription>Edit this person's details and leave.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <Field label="Name" required>
@@ -411,7 +429,7 @@ function EditDialog({
               />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Title">
               <Input
                 value={form.position}
@@ -432,15 +450,49 @@ function EditDialog({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Leave (Day)">
-              <Input
-                type="number"
-                min={0}
-                max={365}
-                value={form.totalDays}
-                onChange={(e) => setForm((f) => ({ ...f, totalDays: Number(e.target.value) }))}
-              />
-            </Field>
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+            <Label className="text-xs text-muted-foreground">Leave</Label>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <Field label="Base (days)">
+                <Input
+                  type="number"
+                  min={0}
+                  max={365}
+                  step={0.5}
+                  value={form.baseDays}
+                  onChange={(e) => setForm((f) => ({ ...f, baseDays: Number(e.target.value) }))}
+                />
+              </Field>
+              <Field label="Bonus (days)">
+                <Input
+                  type="number"
+                  min={-365}
+                  max={365}
+                  step={0.5}
+                  value={form.bonusDays}
+                  onChange={(e) => setForm((f) => ({ ...f, bonusDays: Number(e.target.value) }))}
+                />
+              </Field>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Used (days)</Label>
+                <Input
+                  type="number"
+                  value={member.usedDays}
+                  disabled
+                  className="bg-muted font-mono tabular-nums"
+                />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Remaining ={' '}
+              <span className="font-mono font-medium tabular-nums text-foreground">
+                {remainingPreview}
+              </span>
+              Day (Base {form.baseDays} {form.bonusDays >= 0 ? '+' : ''}
+              {form.bonusDays} − used {member.usedDays})
+            </p>
           </div>
         </div>
         <DialogFooter>

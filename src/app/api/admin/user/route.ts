@@ -11,7 +11,7 @@ const CreateBody = z.object({
   slackId: z.string().min(1),
   position: z.string().optional(),
   role: z.enum(['EMPLOYEE', 'ADMIN']).default('EMPLOYEE'),
-  totalDays: z.number().min(0).max(365).default(0),
+  baseDays: z.number().min(0).max(365).default(0),
 });
 
 const UpdateBody = z.object({
@@ -21,7 +21,8 @@ const UpdateBody = z.object({
   slackId: z.string().min(1).optional(),
   position: z.string().optional(),
   role: z.enum(['EMPLOYEE', 'ADMIN']).optional(),
-  totalDays: z.number().min(0).max(365).optional(),
+  baseDays: z.number().min(0).max(365).optional(),
+  bonusDays: z.number().min(-365).max(365).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
         },
       });
       await tx.leaveBalance.create({
-        data: { memberId: member.id, totalDays: new Prisma.Decimal(d.totalDays) },
+        data: { memberId: member.id, baseDays: new Prisma.Decimal(d.baseDays) },
       });
       return member;
     });
@@ -67,14 +68,21 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
     }
-    const { id, totalDays, ...rest } = parsed.data;
+    const { id, baseDays, bonusDays, ...rest } = parsed.data;
     await prisma.$transaction(async (tx) => {
       await tx.member.update({ where: { id }, data: rest });
-      if (totalDays !== undefined) {
+      if (baseDays !== undefined || bonusDays !== undefined) {
         await tx.leaveBalance.upsert({
           where: { memberId: id },
-          create: { memberId: id, totalDays: new Prisma.Decimal(totalDays) },
-          update: { totalDays: new Prisma.Decimal(totalDays) },
+          create: {
+            memberId: id,
+            baseDays: new Prisma.Decimal(baseDays ?? 0),
+            bonusDays: new Prisma.Decimal(bonusDays ?? 0),
+          },
+          update: {
+            ...(baseDays !== undefined && { baseDays: new Prisma.Decimal(baseDays) }),
+            ...(bonusDays !== undefined && { bonusDays: new Prisma.Decimal(bonusDays) }),
+          },
         });
       }
     });

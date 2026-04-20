@@ -21,7 +21,8 @@ export default async function MembersPage() {
     position: m.position,
     role: m.role,
     active: m.deletedAt === null,
-    totalDays: m.leaveBalance ? Number(m.leaveBalance.totalDays) : 0,
+    baseDays: m.leaveBalance ? Number(m.leaveBalance.baseDays) : 0,
+    bonusDays: m.leaveBalance ? Number(m.leaveBalance.bonusDays) : 0,
     usedDays: m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0,
   }));
 

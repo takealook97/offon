@@ -78,8 +78,10 @@ export default async function DashboardPage() {
 
   const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
   const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
-  const totalDays = balance ? Number(balance.totalDays) : 0;
+  const baseDays = balance ? Number(balance.baseDays) : 0;
+  const bonusDays = balance ? Number(balance.bonusDays) : 0;
   const usedDays = balance ? Number(balance.usedDays) : 0;
+  const totalDays = baseDays + bonusDays;
   const pendingDays = pending._sum.days ? Number(pending._sum.days) : 0;
   const remainingDays = totalDays - usedDays;
   const availableDays = remainingDays - pendingDays;
@@ -158,9 +160,11 @@ export default async function DashboardPage() {
           label="Leave remaining"
           value={`${remainingDays}Day`}
           sub={
-            pendingDays > 0
-              ? `${totalDays} granted · ${usedDays} used · ${pendingDays} pending`
-              : `${totalDays} granted · ${usedDays} used`
+            (bonusDays > 0
+              ? `Base ${baseDays} + Add ${bonusDays}`
+              : `Base ${baseDays}`) +
+            ` · ${usedDays} used` +
+            (pendingDays > 0 ? ` · ${pendingDays} pending` : '')
           }
         />
       </div>
