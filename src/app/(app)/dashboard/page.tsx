@@ -161,9 +161,7 @@ export default async function DashboardPage() {
           label="연차 잔여"
           value={`${remainingDays}일`}
           sub={
-            `기본 ${baseDays}` +
-            ` · 추가 ${bonusDays >= 0 ? '+' : ''}${bonusDays}` +
-            ` · 사용 ${usedDays}` +
+            `기본 ${baseDays} · 추가 ${bonusDays} · 사용 ${usedDays}` +
             (pendingDays > 0 ? ` · 대기 ${pendingDays}` : '')
           }
         />

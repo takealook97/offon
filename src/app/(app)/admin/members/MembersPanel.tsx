@@ -79,7 +79,10 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead>Slack ID</TableHead>
               <TableHead>직책</TableHead>
               <TableHead>권한</TableHead>
-              <TableHead className="text-right">기본 · 추가 · 사용 · 잔여</TableHead>
+              <TableHead className="text-right">기본</TableHead>
+              <TableHead className="text-right">추가</TableHead>
+              <TableHead className="text-right">사용</TableHead>
+              <TableHead className="text-right">잔여</TableHead>
               <TableHead>상태</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
@@ -99,13 +102,17 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 <TableCell>
                   <RoleBadge role={m.role} />
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  <span className="text-muted-foreground">
-                    {safe(m.baseDays)} · {safe(m.bonusDays) >= 0 ? '+' : ''}
-                    {safe(m.bonusDays)} · {safe(m.usedDays)}
-                  </span>
-                  <span className="mx-1.5 text-border">·</span>
-                  <span className="text-sm font-medium text-foreground">{remaining(m)}</span>
+                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                  {safe(m.baseDays)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                  {safe(m.bonusDays)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
+                  {safe(m.usedDays)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-sm font-medium tabular-nums">
+                  {remaining(m)}
                 </TableCell>
                 <TableCell>
                   <StatusBadge active={m.active} />
@@ -147,7 +154,7 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <span className="text-muted-foreground">
                 기본 <span className="font-mono tabular-nums">{safe(m.baseDays)}</span>
                 <span className="mx-1.5">·</span>
-                추가 <span className="font-mono tabular-nums">{safe(m.bonusDays) >= 0 ? '+' : ''}{safe(m.bonusDays)}</span>
+                추가 <span className="font-mono tabular-nums">{safe(m.bonusDays)}</span>
                 <span className="mx-1.5">·</span>
                 사용 <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
               </span>
