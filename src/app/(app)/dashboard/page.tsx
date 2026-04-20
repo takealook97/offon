@@ -66,13 +66,13 @@ export default async function DashboardPage() {
   ]);
 
   const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
-  const firstIn = sessions[0]?.startAt ?? todayAttendance?.clockInAt ?? null;
-  const closedEndAts = sessions.filter((s) => s.endAt).map((s) => s.endAt!);
-  const lastOut = closedEndAts.length
-    ? closedEndAts.reduce((a, b) => (a > b ? a : b))
-    : todayAttendance?.clockOutAt ?? null;
-  const openSession = sessions.find((s) => !s.endAt) ?? null;
+  const latestSession = sessions.at(-1) ?? null;
+  const openSession = latestSession && !latestSession.endAt ? latestSession : null;
   const isWorking = todayAttendance?.status === 'WORKING' && !!openSession;
+  const latestStart = latestSession?.startAt ?? todayAttendance?.clockInAt ?? null;
+  const latestEnd = openSession
+    ? null
+    : latestSession?.endAt ?? todayAttendance?.clockOutAt ?? null;
   const storedWorked = todayAttendance?.workedMinutes ?? 0;
   const liveDelta = openSession
     ? Math.max(0, Math.floor((Date.now() - openSession.startAt.getTime()) / 60000))
@@ -122,21 +122,21 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
             <ClockSlot
               label="출근"
-              value={firstIn ? formatKST(firstIn, 'HH:mm') : '—'}
+              value={latestStart ? formatKST(latestStart, 'HH:mm') : '—'}
             />
             <ClockSlot
               label="퇴근"
               value={
                 isWorking
                   ? '진행 중'
-                  : lastOut
-                  ? formatKST(lastOut, 'HH:mm')
+                  : latestEnd
+                  ? formatKST(latestEnd, 'HH:mm')
                   : '—'
               }
             />
             <ClockSlot
               label="근무 시간"
-              value={firstIn ? formatMinutes(todayWorked) : '—'}
+              value={latestStart ? formatMinutes(todayWorked) : '—'}
             />
           </div>
           <AttendanceActions isWorking={isWorking} />
