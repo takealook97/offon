@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'offon',
+  title: 'offon · 근태관리',
   description: 'offon · 오프온 · 근태관리',
   keywords: ['offon', '오프온', '근태관리'],
 };

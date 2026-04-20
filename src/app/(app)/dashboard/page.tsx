@@ -175,7 +175,7 @@ export default async function DashboardPage() {
           <CardDescription className="flex items-center gap-1.5">
             <CalendarPlus className="size-3.5" /> 연차 신청
           </CardDescription>
-          <CardTitle className="text-lg">새 연차 신청</CardTitle>
+          <CardTitle className="text-lg">연차 신청</CardTitle>
         </CardHeader>
         <CardContent>
           <LeaveRequestForm availableDays={availableDays} />
