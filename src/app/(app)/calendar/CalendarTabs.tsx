@@ -57,8 +57,6 @@ function PersonalLegend() {
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <Dot cls="bg-emerald-500" label="출근" />
       <Dot cls="bg-blue-500" label="연차" />
-      <Dot cls="bg-amber-500" label="연차 대기" />
-      <Dot cls="bg-red-500" label="누락" />
     </div>
   );
 }
