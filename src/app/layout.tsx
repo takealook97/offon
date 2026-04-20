@@ -4,8 +4,9 @@ import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'offon — 근태/연차 관리',
-  description: '루쿠쿠 근태·연차 관리 시스템',
+  title: 'offon',
+  description: 'offon · 오프온 · 근태관리',
+  keywords: ['offon', '오프온', '근태관리'],
 };
 
 export default function RootLayout({

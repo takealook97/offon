@@ -92,12 +92,7 @@ export function AppShell({
             </SheetContent>
           </Sheet>
 
-          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <Image src="/logo.png" alt="" width={28} height={28} className="rounded-md" priority />
-            offon
-          </Link>
-
-          <nav className="ml-6 hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 md:flex">
             {items.map(({ href, label }) => (
               <Link
                 key={href}
