@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,9 @@ export function MemberSearch() {
   const [members, setMembers] = useState<Member[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Member | null>(null);
-  const [focus, setFocus] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     fetch('/api/members')
@@ -39,6 +41,42 @@ export function MemberSearch() {
       .slice(0, 8);
   }, [members, query]);
 
+  useEffect(() => {
+    setHighlight(0);
+  }, [query, open]);
+
+  useEffect(() => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${highlight}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [highlight]);
+
+  const choose = (m: Member) => {
+    setSelected(m);
+    setQuery(m.name);
+    setOpen(false);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) setOpen(true);
+      setHighlight((i) => Math.min(matches.length - 1, i + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) setOpen(true);
+      setHighlight((i) => Math.max(0, i - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = matches[highlight] ?? matches[0];
+      if (target) choose(target);
+    } else if (e.key === 'Escape') {
+      if (open) {
+        e.preventDefault();
+        setOpen(false);
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="relative">
@@ -47,16 +85,32 @@ export function MemberSearch() {
           <Input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setFocus(true)}
-            onBlur={() => setTimeout(() => setFocus(false), 120)}
-            placeholder="Search by name or position"
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 120)}
+            onKeyDown={onKeyDown}
+            placeholder="Search by name or position · ↑↓ to move · Enter to choose"
             className="h-11 pl-9 pr-9"
+            role="combobox"
+            aria-expanded={open}
+            aria-autocomplete="list"
+            aria-controls="member-search-listbox"
+            aria-activedescendant={
+              open && matches[highlight] ? `member-opt-${matches[highlight].id}` : undefined
+            }
           />
           {query && (
             <button
               type="button"
-              onClick={() => setQuery('')}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setQuery('');
+                setSelected(null);
+                setOpen(true);
+              }}
               aria-label="Clear"
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
@@ -64,21 +118,27 @@ export function MemberSearch() {
             </button>
           )}
         </div>
-        {focus && matches.length > 0 && (
-          <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
-            {matches.map((m) => (
+        {open && matches.length > 0 && (
+          <ul
+            ref={listRef}
+            id="member-search-listbox"
+            role="listbox"
+            className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg"
+          >
+            {matches.map((m, idx) => (
               <li key={m.id}>
                 <button
                   type="button"
+                  role="option"
+                  id={`member-opt-${m.id}`}
+                  data-idx={idx}
+                  aria-selected={idx === highlight}
+                  onMouseEnter={() => setHighlight(idx)}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setSelected(m);
-                    setQuery(m.name);
-                    setFocus(false);
-                  }}
+                  onClick={() => choose(m)}
                   className={cn(
-                    'flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-                    selected?.id === m.id && 'bg-accent',
+                    'flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors',
+                    idx === highlight ? 'bg-accent text-foreground' : 'hover:bg-accent/60',
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -127,6 +187,7 @@ export function MemberSearch() {
         <div className="flex h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
           <Search className="mb-2 size-5" />
           <p>Search for a teammate by name or title</p>
+          <p className="mt-1 text-xs">↑↓ to move · Enter to choose · Esc to close</p>
         </div>
       )}
     </div>
