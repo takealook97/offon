@@ -21,7 +21,6 @@ const UpdateBody = z.object({
   slackId: z.string().min(1).optional(),
   position: z.string().optional(),
   role: z.enum(['EMPLOYEE', 'ADMIN']).optional(),
-  active: z.boolean().optional(),
   totalDays: z.number().min(0).max(365).optional(),
 });
 

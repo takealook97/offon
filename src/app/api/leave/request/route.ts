@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     const requester = await prisma.member.findUnique({ where: { id: session.memberId } });
     const admins = await prisma.member.findMany({
-      where: { role: 'ADMIN', active: true, deletedAt: null },
+      where: { role: 'ADMIN', deletedAt: null },
     });
     await Promise.all(
       admins.map((a) =>

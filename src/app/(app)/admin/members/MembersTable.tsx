@@ -40,18 +40,18 @@ export function MembersTable({ members }: { members: MemberRow[] }) {
       router.refresh();
     });
 
-  const deactivate = (id: number) =>
+  const toggleActive = (id: number, next: boolean) =>
     start(async () => {
-      if (!confirm('해당 직원을 비활성화하시겠습니까?')) return;
+      if (!next && !confirm('해당 직원을 비활성화하시겠습니까?')) return;
       setErr(null);
       const res = await fetch('/api/admin/user/deactivate', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, active: next }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
-        setErr(data.error ?? '비활성화 실패');
+        setErr(data.error ?? (next ? '활성화 실패' : '비활성화 실패'));
         return;
       }
       router.refresh();
@@ -142,7 +142,11 @@ export function MembersTable({ members }: { members: MemberRow[] }) {
                       `${m.totalDays} / ${m.usedDays}`
                     )}
                   </td>
-                  <td className="px-2 py-2">{m.active ? '활성' : '비활성'}</td>
+                  <td className="px-2 py-2">
+                    <span className={m.active ? 'text-emerald-600' : 'text-zinc-400'}>
+                      {m.active ? '활성' : '비활성'}
+                    </span>
+                  </td>
                   <td className="px-2 py-2 text-right">
                     {isEditing ? (
                       <div className="flex justify-end gap-2">
@@ -183,14 +187,23 @@ export function MembersTable({ members }: { members: MemberRow[] }) {
                         >
                           수정
                         </button>
-                        {m.active && (
+                        {m.active ? (
                           <button
                             type="button"
                             disabled={pending}
-                            onClick={() => deactivate(m.id)}
+                            onClick={() => toggleActive(m.id, false)}
                             className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-40"
                           >
                             비활성화
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => toggleActive(m.id, true)}
+                            className="rounded border border-emerald-300 px-2 py-1 text-xs text-emerald-700 disabled:opacity-40"
+                          >
+                            활성화
                           </button>
                         )}
                       </div>

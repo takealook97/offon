@@ -25,12 +25,15 @@ export async function POST(req: NextRequest) {
   }
 
   const member = await prisma.member.findFirst({
-    where: { email, active: true, deletedAt: null },
+    where: { email, deletedAt: null },
   });
 
   if (!member) {
     await logAudit({ action: 'LOGIN_UNKNOWN_EMAIL', metadata: { email, ip } });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      { ok: false, error: '등록되지 않은 이메일입니다' },
+      { status: 404 },
+    );
   }
 
   const code = generateCode();
@@ -40,18 +43,26 @@ export async function POST(req: NextRequest) {
     data: { memberId: member.id, codeHash, expiresAt },
   });
 
-  try {
-    await sendDm(member.slackId, `offon 로그인 코드: ${code} (5분 유효)`);
-  } catch (err) {
-    await logAudit({
-      actorId: member.id,
-      action: 'SLACK_SEND_FAIL',
-      metadata: { stage: 'login_otp', error: String(err) },
-    });
-    return NextResponse.json(
-      { ok: false, error: 'Slack DM 전송 실패. 관리자에게 문의해 주세요' },
-      { status: 500 },
-    );
+  const slackTokenReady =
+    !!process.env.SLACK_BOT_TOKEN && !process.env.SLACK_BOT_TOKEN.includes('replace-me');
+  const devBypass = process.env.NODE_ENV !== 'production' && !slackTokenReady;
+
+  if (devBypass) {
+    console.log(`[DEV] OTP for ${member.email ?? member.slackId}: ${code}`);
+  } else {
+    try {
+      await sendDm(member.slackId, `offon 로그인 코드: ${code} (5분 유효)`);
+    } catch (err) {
+      await logAudit({
+        actorId: member.id,
+        action: 'SLACK_SEND_FAIL',
+        metadata: { stage: 'login_otp', error: String(err) },
+      });
+      return NextResponse.json(
+        { ok: false, error: 'Slack DM 전송 실패. 관리자에게 문의해 주세요' },
+        { status: 500 },
+      );
+    }
   }
 
   await logAudit({ actorId: member.id, action: 'LOGIN_REQUEST', metadata: { ip } });

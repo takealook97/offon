@@ -2,7 +2,16 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { requestCodeAction, verifyCodeAction } from './actions';
+
+async function postJson(path: string, body: unknown) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  return { status: res.status, ok: !!data.ok, error: data.error };
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -22,9 +31,9 @@ export function LoginForm() {
   const onRequest = () => {
     setError(null);
     start(async () => {
-      const res = await requestCodeAction(email);
+      const res = await postJson('/api/auth/request-code', { email });
       if (!res.ok) {
-        setError(res.error);
+        setError(res.error ?? '요청 실패');
         return;
       }
       setStep('code');
@@ -36,9 +45,9 @@ export function LoginForm() {
     if (cooldown > 0) return;
     setError(null);
     start(async () => {
-      const res = await requestCodeAction(email);
+      const res = await postJson('/api/auth/request-code', { email });
       if (!res.ok) {
-        setError(res.error);
+        setError(res.error ?? '요청 실패');
         return;
       }
       setCooldown(30);
@@ -48,9 +57,9 @@ export function LoginForm() {
   const onVerify = () => {
     setError(null);
     start(async () => {
-      const res = await verifyCodeAction(email, code);
+      const res = await postJson('/api/auth/verify-code', { email, code });
       if (!res.ok) {
-        setError(res.error);
+        setError(res.error ?? '로그인 실패');
         return;
       }
       router.replace('/dashboard');

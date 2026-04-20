@@ -6,8 +6,7 @@ import { CreateMemberForm } from './CreateMemberForm';
 export default async function MembersPage() {
   await requireAdmin();
   const members = await prisma.member.findMany({
-    where: { deletedAt: null },
-    orderBy: [{ active: 'desc' }, { name: 'asc' }],
+    orderBy: [{ deletedAt: { sort: 'asc', nulls: 'first' } }, { name: 'asc' }],
     include: { leaveBalance: true },
   });
 
@@ -27,7 +26,7 @@ export default async function MembersPage() {
             slackId: m.slackId,
             position: m.position,
             role: m.role,
-            active: m.active,
+            active: m.deletedAt === null,
             totalDays: m.leaveBalance ? Number(m.leaveBalance.totalDays) : 0,
             usedDays: m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0,
           }))}

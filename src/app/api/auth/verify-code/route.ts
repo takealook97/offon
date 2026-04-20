@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   const member = await prisma.member.findFirst({
-    where: { email, active: true, deletedAt: null },
+    where: { email, deletedAt: null },
   });
   if (!member) {
     return NextResponse.json({ ok: false, error: '코드가 올바르지 않습니다' }, { status: 401 });
