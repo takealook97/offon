@@ -151,10 +151,10 @@
   min-width: 0;
 }
 
-/* 월뷰 컬럼 정렬: flex 대신 grid로 강제해 1/7씩 픽셀 오차 없이 */
+/* 월뷰 컬럼 정렬: 헤더/배경/날짜행만 grid로 (이벤트 segment 행은 rbc 기본 flex 유지) */
 .rbc-month-view .rbc-month-header,
 .rbc-month-view .rbc-row-bg,
-.rbc-month-view .rbc-row-content > .rbc-row {
+.rbc-month-view .rbc-row-content > .rbc-row:first-child {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
