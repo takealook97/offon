@@ -55,8 +55,9 @@ function TabButton({
 function PersonalLegend() {
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-      <Dot cls="bg-emerald-500" label="Clock in" />
+      <Dot cls="bg-emerald-500" label="Working" />
       <Dot cls="bg-blue-500" label="Leave" />
+      <Dot cls="bg-sky-400" label="Half day" />
     </div>
   );
 }
@@ -64,7 +65,7 @@ function PersonalLegend() {
 function TeamLegend() {
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-      <Dot cls="bg-blue-500" label="Full day Leave" />
+      <Dot cls="bg-blue-500" label="Leave" />
       <Dot cls="bg-sky-400" label="Half day" />
     </div>
   );

@@ -64,9 +64,9 @@ function eventStyle(ev: UiEvent): string {
     return 'rbc-event-attendance';
   }
   if (ev.resource.kind === 'LEAVE') {
-    return ev.resource.leaveStatus === 'REQUESTED'
-      ? 'rbc-event-leave-pending'
-      : 'rbc-event-leave';
+    return ev.resource.leaveType === 'FULL_DAY'
+      ? 'rbc-event-leave'
+      : 'rbc-event-leave-half';
   }
   return 'rbc-event-missing';
 }
