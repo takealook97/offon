@@ -77,7 +77,7 @@ export async function POST() {
         select: { name: true },
       });
       if (m) {
-        const text = `${formatKST(clockOut, 'yyyyMMdd HH:mm')}\n${m.name}님이 퇴근하셨습니다🌙`;
+        const text = `${formatKST(clockOut, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${m.name}님이 퇴근하셨습니다🌙`;
         try {
           await sendChannel(channel, text);
         } catch (err) {
