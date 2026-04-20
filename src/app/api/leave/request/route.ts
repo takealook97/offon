@@ -37,6 +37,24 @@ export async function POST(req: NextRequest) {
     }
     const days = dayCount(startDate, endDate, type);
 
+    const [balance, pending] = await Promise.all([
+      prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
+      prisma.leaveRequest.aggregate({
+        where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
+        _sum: { days: true },
+      }),
+    ]);
+    const total = balance ? Number(balance.totalDays) : 0;
+    const used = balance ? Number(balance.usedDays) : 0;
+    const pendingDays = pending._sum.days ? Number(pending._sum.days) : 0;
+    const available = total - used - pendingDays;
+    if (Number(days) > available) {
+      return NextResponse.json(
+        { ok: false, error: `사용 가능 연차(${available}일)를 초과합니다` },
+        { status: 400 },
+      );
+    }
+
     const record = await prisma.leaveRequest.create({
       data: {
         memberId: session.memberId,
