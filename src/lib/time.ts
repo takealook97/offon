@@ -18,8 +18,8 @@ export function formatKST(d: Date, fmt = 'yyyy-MM-dd HH:mm'): string {
 
 export function weekRangeKST(ref: Date = nowKST()): { start: Date; end: Date } {
   return {
-    start: startOfWeek(ref, { weekStartsOn: 1 }),
-    end: endOfWeek(ref, { weekStartsOn: 1 }),
+    start: startOfWeek(ref, { weekStartsOn: 0 }),
+    end: endOfWeek(ref, { weekStartsOn: 0 }),
   };
 }
 
