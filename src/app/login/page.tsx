@@ -1,18 +1,39 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from './LoginForm';
 
 export default async function LoginPage() {
   const session = await getSession();
   if (session) redirect('/dashboard');
+
+  const isDev = process.env.NODE_ENV !== 'production';
+  const slackReady =
+    !!process.env.SLACK_BOT_TOKEN && !process.env.SLACK_BOT_TOKEN.includes('replace-me');
+
   return (
-    <main className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-6 rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">offon Sign in</h1>
-          <p className="text-sm text-zinc-500">Enter the six-digit code sent to you on Slack</p>
-        </header>
-        <LoginForm />
+    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-[420px]">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-semibold tracking-tight">offon</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in with Slack</p>
+        </div>
+        <Card className="shadow-sm">
+          <CardHeader className="space-y-1.5">
+            <CardTitle className="text-lg">Sign in</CardTitle>
+            <CardDescription>
+              Enter your email and a six-digit code is sent to you on Slack.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LoginForm />
+          </CardContent>
+        </Card>
+        {isDev && !slackReady && (
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Development: no Slack token, so the code is printed to the server console
+          </p>
+        )}
       </div>
     </main>
   );

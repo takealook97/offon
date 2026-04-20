@@ -1,14 +1,22 @@
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { formatKST } from '@/lib/time';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { LeaveActions } from './LeaveActions';
+
+const TYPE_LABEL: Record<string, string> = {
+  FULL_DAY: 'Full day',
+  HALF_DAY_AM: 'Morning half day',
+  HALF_DAY_PM: 'Afternoon half day',
+};
 
 export default async function AdminLeavesPage() {
   await requireAdmin();
   const pending = await prisma.leaveRequest.findMany({
     where: { status: 'REQUESTED', deletedAt: null },
     orderBy: { createdAt: 'asc' },
-    include: { member: { select: { name: true, email: true } } },
+    include: { member: { select: { name: true, position: true } } },
   });
   const recent = await prisma.leaveRequest.findMany({
     where: { status: { in: ['APPROVED', 'REJECTED'] }, deletedAt: null },
@@ -21,46 +29,121 @@ export default async function AdminLeavesPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-500">Waiting ({pending.length})</h2>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Leave Approve</h1>
+        <p className="text-sm text-muted-foreground">
+          {pending.length} waiting · {recent.length} recently handled
+        </p>
+      </header>
+
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-muted-foreground">Waiting</h2>
+          {pending.length > 0 && <Badge variant="secondary">{pending.length}</Badge>}
+        </div>
         {pending.length === 0 ? (
-          <p className="text-sm text-zinc-500">No leave requests are waiting</p>
+          <Card>
+            <CardContent className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+              No leave requests are waiting
+            </CardContent>
+          </Card>
         ) : (
-          <ul className="space-y-3">
+          <div className="grid gap-3">
             {pending.map((l) => (
-              <li key={l.id} className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-                <div className="text-sm">
-                  <div className="font-medium">
-                    {l.member.name} — {l.type} · {Number(l.days)}d
+              <Card key={l.id}>
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 gap-3">
+                    <Avatar name={l.member.name} />
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{l.member.name}</span>
+                        {l.member.position && (
+                          <span className="text-xs text-muted-foreground">{l.member.position}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-mono tabular-nums">
+                          {formatKST(l.startDate, 'yyyy-MM-dd')} ~ {formatKST(l.endDate, 'yyyy-MM-dd')}
+                        </span>
+                        <span className="mx-1.5 text-border">·</span>
+                        {TYPE_LABEL[l.type]} · {Number(l.days)}d
+                      </p>
+                      {l.reason && (
+                        <p className="truncate text-sm text-muted-foreground">Reason: {l.reason}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-zinc-500">
-                    {formatKST(l.startDate, 'yyyy-MM-dd')} ~ {formatKST(l.endDate, 'yyyy-MM-dd')}
-                    {l.reason && ` · ${l.reason}`}
-                  </div>
-                </div>
-                <LeaveActions id={l.id} />
-              </li>
+                  <LeaveActions id={l.id} />
+                </CardContent>
+              </Card>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-500">Recently handled</h2>
-        <ul className="space-y-2 text-sm">
-          {recent.map((l) => (
-            <li key={l.id} className="flex items-center justify-between">
-              <span>
-                {l.member.name} · {formatKST(l.startDate, 'yyyy-MM-dd')}~{formatKST(l.endDate, 'yyyy-MM-dd')} ({Number(l.days)}d)
-              </span>
-              <span className={l.status === 'APPROVED' ? 'text-blue-600' : 'text-red-600'}>
-                {l.status === 'APPROVED' ? 'Approved' : 'Rejected'} · {l.approver?.name ?? '—'}
-              </span>
-            </li>
-          ))}
-        </ul>
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">Recently handled</h2>
+        <Card>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border/60">
+              {recent.map((l) => (
+                <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={l.member.name} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate">
+                        <span className="font-medium">{l.member.name}</span>
+                        <span className="mx-1.5 text-border">·</span>
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          {formatKST(l.startDate, 'MM-dd')} ~ {formatKST(l.endDate, 'MM-dd')}
+                        </span>
+                        <span className="ml-1.5 text-muted-foreground">({Number(l.days)}Day)</span>
+                      </p>
+                      {l.approver && (
+                        <p className="text-xs text-muted-foreground">Handled by: {l.approver.name}</p>
+                      )}
+                    </div>
+                  </div>
+                  {l.status === 'APPROVED' ? (
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                    >
+                      Approve
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="border-red-500/40 text-red-700 dark:text-red-300"
+                    >
+                      Reject
+                    </Badge>
+                  )}
+                </li>
+              ))}
+              {recent.length === 0 && (
+                <li className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  Nothing handled yet
+                </li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
       </section>
     </div>
+  );
+}
+
+function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+  const initial = name.slice(0, 1);
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground ${
+        size === 'sm' ? 'size-7 text-xs' : 'size-10 text-sm'
+      }`}
+    >
+      {initial}
+    </span>
   );
 }

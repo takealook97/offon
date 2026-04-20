@@ -1,6 +1,9 @@
+import { Calendar, CalendarClock, Clock3, CalendarCheck, CalendarPlus } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
-import { formatKST, monthRangeKST, todayKST, weekRangeKST } from '@/lib/time';
+import { formatKST, monthRangeKST, nowKST, todayKST, weekRangeKST } from '@/lib/time';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { AttendanceActions } from './AttendanceActions';
 import { LeaveRequestForm } from './LeaveRequestForm';
 
@@ -10,22 +13,39 @@ function formatMinutes(m: number): string {
   return `${h}h ${mm}m`;
 }
 
+function progressOf(current: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.min(100, Math.round((current / target) * 100));
+}
+
 export default async function DashboardPage() {
   const session = await requireSession();
   const today = todayKST();
   const week = weekRangeKST();
   const month = monthRangeKST();
 
-  const [todayAttendance, weekRows, monthRows, balance] = await Promise.all([
+  const [me, todayAttendance, weekRows, monthRows, balance] = await Promise.all([
+    prisma.member.findUnique({
+      where: { id: session.memberId },
+      select: { name: true },
+    }),
     prisma.attendance.findUnique({
       where: { memberId_workDate: { memberId: session.memberId, workDate: today } },
     }),
     prisma.attendance.findMany({
-      where: { memberId: session.memberId, workDate: { gte: week.start, lte: week.end }, deletedAt: null },
+      where: {
+        memberId: session.memberId,
+        workDate: { gte: week.start, lte: week.end },
+        deletedAt: null,
+      },
       select: { workedMinutes: true, overtimeMinutes: true },
     }),
     prisma.attendance.findMany({
-      where: { memberId: session.memberId, workDate: { gte: month.start, lte: month.end }, deletedAt: null },
+      where: {
+        memberId: session.memberId,
+        workDate: { gte: month.start, lte: month.end },
+        deletedAt: null,
+      },
       select: { workedMinutes: true, overtimeMinutes: true },
     }),
     prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
@@ -34,60 +54,181 @@ export default async function DashboardPage() {
   const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0);
   const weekOvertime = weekRows.reduce((s, r) => s + r.overtimeMinutes, 0);
   const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0);
-  const remaining = balance
-    ? Number(balance.totalDays) - Number(balance.usedDays)
-    : 0;
+  const totalDays = balance ? Number(balance.totalDays) : 0;
+  const usedDays = balance ? Number(balance.usedDays) : 0;
+  const remainingDays = totalDays - usedDays;
+
+  const weekProgress = progressOf(weekTotal, 40 * 60);
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-4 md:grid-cols-2">
-      <Card title="Today">
-        <div className="space-y-2 text-sm">
-          <div>In: {todayAttendance?.clockInAt ? formatKST(todayAttendance.clockInAt, 'HH:mm') : '—'}</div>
-          <div>Out: {todayAttendance?.clockOutAt ? formatKST(todayAttendance.clockOutAt, 'HH:mm') : '—'}</div>
-          <div>Status: {todayAttendance?.status ?? 'NOT_STARTED'}</div>
-          {todayAttendance?.clockOutAt && (
-            <div>Worked: {formatMinutes(todayAttendance.workedMinutes)} (overtime {formatMinutes(todayAttendance.overtimeMinutes)})</div>
-          )}
-        </div>
-        <AttendanceActions
-          hasClockIn={!!todayAttendance?.clockInAt}
-          hasClockOut={!!todayAttendance?.clockOutAt}
+    <div className="space-y-6">
+      <header>
+        <p className="text-sm text-muted-foreground">
+          {formatKST(nowKST(), 'EEEE, d MMMM yyyy')}
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          Hello, {me?.name ?? ''}
+        </h1>
+      </header>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+          <div className="space-y-1">
+            <CardDescription className="flex items-center gap-1.5">
+              <CalendarClock className="size-3.5" /> Today
+            </CardDescription>
+            <CardTitle className="text-xl">
+              {todayAttendance?.status === 'DONE'
+                ? 'Clocked out'
+                : todayAttendance?.status === 'WORKING'
+                ? 'Working'
+                : todayAttendance?.status === 'MISSING'
+                ? 'Missing'
+                : 'Not started'}
+            </CardTitle>
+          </div>
+          <AttendanceStatusBadge status={todayAttendance?.status ?? 'NOT_STARTED'} />
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid grid-cols-2 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4 sm:grid-cols-4">
+            <ClockSlot
+              label="Clock in"
+              value={
+                todayAttendance?.clockInAt ? formatKST(todayAttendance.clockInAt, 'HH:mm') : '—'
+              }
+            />
+            <ClockSlot
+              label="Clock out"
+              value={
+                todayAttendance?.clockOutAt ? formatKST(todayAttendance.clockOutAt, 'HH:mm') : '—'
+              }
+            />
+            <ClockSlot
+              label="Worked"
+              value={
+                todayAttendance?.clockOutAt ? formatMinutes(todayAttendance.workedMinutes) : '—'
+              }
+            />
+            <ClockSlot
+              label="Overtime"
+              value={
+                todayAttendance?.clockOutAt
+                  ? formatMinutes(todayAttendance.overtimeMinutes)
+                  : '—'
+              }
+            />
+          </div>
+          <AttendanceActions
+            hasClockIn={!!todayAttendance?.clockInAt}
+            hasClockOut={!!todayAttendance?.clockOutAt}
+          />
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          icon={Clock3}
+          label="This week"
+          value={formatMinutes(weekTotal)}
+          sub={`overtime ${formatMinutes(weekOvertime)}`}
+          progress={weekProgress}
         />
-      </Card>
-
-      <Card title="This week">
-        <div className="space-y-1 text-sm">
-          <div>Total: {formatMinutes(weekTotal)}</div>
-          <div>Overtime: {formatMinutes(weekOvertime)}</div>
-        </div>
-      </Card>
-
-      <Card title="This month">
-        <div className="text-sm">Total {formatMinutes(monthTotal)}</div>
-      </Card>
-
-      <Card title="Leave">
-        <div className="space-y-1 text-sm">
-          <div>Granted: {balance?.totalDays?.toString() ?? '0'}</div>
-          <div>Used: {balance?.usedDays?.toString() ?? '0'}Day</div>
-          <div className="font-medium">Remaining: {remaining}Day</div>
-        </div>
-      </Card>
-
-      <div className="md:col-span-2">
-        <Card title="Request leave">
-          <LeaveRequestForm />
-        </Card>
+        <StatCard
+          icon={Calendar}
+          label="This month"
+          value={formatMinutes(monthTotal)}
+          sub={`${monthRows.length}Day Working`}
+        />
+        <StatCard
+          icon={CalendarCheck}
+          label="Leave remaining"
+          value={`${remainingDays}Day`}
+          sub={`${totalDays} granted · ${usedDays} used`}
+        />
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardDescription className="flex items-center gap-1.5">
+            <CalendarPlus className="size-3.5" /> Request leave
+          </CardDescription>
+          <CardTitle className="text-lg">Request leave</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LeaveRequestForm />
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function ClockSlot({ label, value }: { label: string; value: string }) {
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h2 className="mb-3 text-sm font-semibold text-zinc-500">{title}</h2>
-      <div className="space-y-3">{children}</div>
-    </section>
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-mono text-lg font-semibold tabular-nums">{value}</p>
+    </div>
   );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  progress,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  sub?: string;
+  progress?: number;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardDescription>{label}</CardDescription>
+        <Icon className="size-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-2xl font-semibold tracking-tight">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+        {progress !== undefined && (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-foreground/80 transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AttendanceStatusBadge({
+  status,
+}: {
+  status: 'NOT_STARTED' | 'WORKING' | 'DONE' | 'MISSING';
+}) {
+  if (status === 'WORKING')
+    return (
+      <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
+        <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
+        Working
+      </Badge>
+    );
+  if (status === 'DONE')
+    return (
+      <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+        Done
+      </Badge>
+    );
+  if (status === 'MISSING')
+    return (
+      <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-300">
+        Missing
+      </Badge>
+    );
+  return <Badge variant="secondary">pending</Badge>;
 }

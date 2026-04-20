@@ -1,9 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Calendar, dateFnsLocalizer, type View } from 'react-big-calendar';
+import {
+  Calendar,
+  dateFnsLocalizer,
+  type View,
+  type ToolbarProps,
+  Views,
+} from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
 
 const localizer = dateFnsLocalizer({
@@ -23,20 +32,21 @@ type UiEvent = {
   resource: CalendarEvent['resource'];
 };
 
-function colorFor(ev: UiEvent): string {
-  switch (ev.resource.kind) {
-    case 'ATTENDANCE':
-      return '#10b981';
-    case 'LEAVE':
-      return ev.resource.leaveStatus === 'REQUESTED' ? '#f59e0b' : '#3b82f6';
-    case 'MISSING':
-      return '#ef4444';
+function eventStyle(ev: UiEvent): string {
+  if (ev.resource.kind === 'ATTENDANCE') {
+    return 'rbc-event-attendance';
   }
+  if (ev.resource.kind === 'LEAVE') {
+    return ev.resource.leaveStatus === 'REQUESTED'
+      ? 'rbc-event-leave-pending'
+      : 'rbc-event-leave';
+  }
+  return 'rbc-event-missing';
 }
 
 export function CalendarView() {
   const [events, setEvents] = useState<UiEvent[]>([]);
-  const [view, setView] = useState<View>('month');
+  const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
 
   const range = useMemo(() => {
@@ -73,46 +83,102 @@ export function CalendarView() {
       .catch(() => setEvents([]));
   }, [range.start, range.end]);
 
-  const eventStyleGetter = useCallback(
-    (event: UiEvent) => ({
-      style: {
-        backgroundColor: colorFor(event),
-        borderColor: colorFor(event),
-        color: 'white',
-      },
-    }),
-    [],
-  );
+  const eventPropGetter = useCallback((event: UiEvent) => {
+    return { className: eventStyle(event) };
+  }, []);
 
   return (
-    <div className="h-[75vh] rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-      <Calendar
-        localizer={localizer}
-        culture="ko"
-        events={events}
-        view={view}
-        onView={setView}
-        date={date}
-        onNavigate={setDate}
-        startAccessor="start"
-        endAccessor="end"
-        allDayAccessor="allDay"
-        eventPropGetter={eventStyleGetter}
-        messages={{
-          month: 'Month',
-          week: 'Week',
-          day: 'Day',
-          today: 'Today',
-          previous: 'Previous',
-          next: 'Next',
-          agenda: 'Agenda',
-          date: 'Date',
-          time: 'Time',
-          event: 'Event',
-          noEventsInRange: 'Nothing in this range',
-        }}
-        style={{ height: '100%' }}
-      />
+    <div className="p-2 sm:p-4">
+      <div className="h-[calc(100svh-220px)] min-h-[520px]">
+        <Calendar
+          localizer={localizer}
+          culture="ko"
+          events={events}
+          view={view}
+          onView={setView}
+          date={date}
+          onNavigate={setDate}
+          startAccessor="start"
+          endAccessor="end"
+          allDayAccessor="allDay"
+          eventPropGetter={eventPropGetter}
+          components={{ toolbar: CustomToolbar }}
+          messages={{
+            month: 'Month',
+            week: 'Week',
+            day: 'Day',
+            today: 'Today',
+            previous: 'Previous',
+            next: 'Next',
+            agenda: 'Agenda',
+            date: 'Date',
+            time: 'Time',
+            event: 'Event',
+            noEventsInRange: 'Nothing in this range',
+          }}
+          style={{ height: '100%' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const VIEW_LABEL: Record<string, string> = {
+  month: 'Month',
+  week: 'Week',
+  day: 'Day',
+  agenda: 'Agenda',
+};
+
+function CustomToolbar(props: ToolbarProps<UiEvent>) {
+  const { label, onNavigate, onView, view, views } = props;
+  const viewList = Array.isArray(views)
+    ? views
+    : (Object.keys(views).filter((v) => (views as Record<string, boolean>)[v]) as View[]);
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onNavigate('PREV')}
+          aria-label="Previous"
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onNavigate('NEXT')}
+          aria-label="Next"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onNavigate('TODAY')}>
+          Today
+        </Button>
+      </div>
+      <h2 className="order-first w-full text-center text-base font-semibold sm:order-none sm:w-auto sm:text-lg">
+        {label}
+      </h2>
+      <div className="flex gap-1 rounded-md bg-muted p-0.5">
+        {viewList.map((v) => (
+          <button
+            key={v as string}
+            type="button"
+            onClick={() => onView(v as View)}
+            className={cn(
+              'rounded px-2.5 py-1 text-xs transition-colors',
+              view === v
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {VIEW_LABEL[v as string] ?? (v as string)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

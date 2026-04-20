@@ -1,14 +1,18 @@
 'use client';
 
+import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/cn';
 
-export function LogoutButton() {
+export function LogoutButton({ className }: { className?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       disabled={pending}
       onClick={() =>
         start(async () => {
@@ -17,9 +21,10 @@ export function LogoutButton() {
           router.refresh();
         })
       }
-      className="rounded-md border border-zinc-300 px-3 py-1 text-xs hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+      className={cn('gap-2', className)}
     >
+      <LogOut className="size-4" />
       Sign out
-    </button>
+    </Button>
   );
 }

@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
-import { MembersTable } from './MembersTable';
-import { CreateMemberForm } from './CreateMemberForm';
+import { MembersPanel, type MemberRow } from './MembersPanel';
 
 export default async function MembersPage() {
   await requireAdmin();
@@ -10,28 +9,29 @@ export default async function MembersPage() {
     include: { leaveBalance: true },
   });
 
+  const rows: MemberRow[] = members.map((m) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    slackId: m.slackId,
+    position: m.position,
+    role: m.role,
+    active: m.deletedAt === null,
+    totalDays: m.leaveBalance ? Number(m.leaveBalance.totalDays) : 0,
+    usedDays: m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0,
+  }));
+
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-500">Add member</h2>
-        <CreateMemberForm />
-      </section>
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-500">An employee Agenda</h2>
-        <MembersTable
-          members={members.map((m) => ({
-            id: m.id,
-            name: m.name,
-            email: m.email,
-            slackId: m.slackId,
-            position: m.position,
-            role: m.role,
-            active: m.deletedAt === null,
-            totalDays: m.leaveBalance ? Number(m.leaveBalance.totalDays) : 0,
-            usedDays: m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0,
-          }))}
-        />
-      </section>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+          <p className="text-sm text-muted-foreground">
+            {rows.length} people · {rows.filter((r) => r.active).length} active
+          </p>
+        </div>
+      </header>
+      <MembersPanel rows={rows} />
     </div>
   );
 }

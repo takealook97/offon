@@ -2,6 +2,11 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { ArrowRight, Loader2, Mail, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 async function postJson(path: string, body: unknown) {
   const res = await fetch(path, {
@@ -18,7 +23,6 @@ export function LoginForm() {
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, start] = useTransition();
 
@@ -28,107 +32,116 @@ export function LoginForm() {
     return () => clearInterval(t);
   }, [cooldown]);
 
-  const onRequest = () => {
-    setError(null);
+  const request = (resend = false) =>
     start(async () => {
       const res = await postJson('/api/auth/request-code', { email });
       if (!res.ok) {
-        setError(res.error ?? 'Request failed');
+        toast.error(res.error ?? 'Request failed');
         return;
       }
-      setStep('code');
+      if (!resend) setStep('code');
       setCooldown(30);
+      toast.success('Code sent to your Slack DM');
     });
-  };
 
-  const onResend = () => {
-    if (cooldown > 0) return;
-    setError(null);
-    start(async () => {
-      const res = await postJson('/api/auth/request-code', { email });
-      if (!res.ok) {
-        setError(res.error ?? 'Request failed');
-        return;
-      }
-      setCooldown(30);
-    });
-  };
-
-  const onVerify = () => {
-    setError(null);
+  const verify = () =>
     start(async () => {
       const res = await postJson('/api/auth/verify-code', { email, code });
       if (!res.ok) {
-        setError(res.error ?? 'Could not sign in');
+        toast.error(res.error ?? 'Could not sign in');
         return;
       }
       router.replace('/dashboard');
       router.refresh();
     });
-  };
+
+  if (step === 'email') {
+    return (
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (email) request(false);
+        }}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@company.com"
+              className="h-11 pl-9"
+            />
+          </div>
+        </div>
+        <Button type="submit" disabled={pending || !email} className="h-11 w-full">
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <>Send me a code <ArrowRight className="size-4" /></>}
+        </Button>
+      </form>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <label className="block space-y-2">
-        <span className="text-sm font-medium">Email</span>
-        <input
-          type="email"
-          value={email}
-          autoComplete="email"
-          disabled={step === 'code'}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:disabled:bg-zinc-900"
-          placeholder="you@company.com"
-        />
-      </label>
-
-      {step === 'code' && (
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">Code (six digits)</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="\d{6}"
-            maxLength={6}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-center font-mono text-lg tracking-widest dark:border-zinc-700 dark:bg-zinc-800"
-            placeholder="000000"
-          />
-        </label>
-      )}
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      {step === 'email' ? (
-        <button
-          type="button"
-          disabled={pending || !email}
-          onClick={onRequest}
-          className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {pending ? 'Sending…' : 'Send me a code'}
-        </button>
-      ) : (
-        <div className="space-y-2">
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (code.length === 6) verify();
+      }}
+    >
+      <div className="rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm">
+        <span className="text-muted-foreground">Sent to</span>
+        <div className="mt-0.5 flex items-center justify-between gap-3">
+          <span className="truncate font-medium">{email}</span>
           <button
             type="button"
-            disabled={pending || code.length !== 6}
-            onClick={onVerify}
-            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+            onClick={() => {
+              setStep('email');
+              setCode('');
+            }}
+            className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
-            {pending ? 'Checking…' : 'Sign in'}
-          </button>
-          <button
-            type="button"
-            disabled={pending || cooldown > 0}
-            onClick={onResend}
-            className="w-full text-sm text-zinc-500 underline underline-offset-2 disabled:opacity-40"
-          >
-            {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend the code'}
+            Now
           </button>
         </div>
-      )}
-    </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="code">Verification code</Label>
+        <Input
+          id="code"
+          inputMode="numeric"
+          pattern="\d{6}"
+          maxLength={6}
+          autoComplete="one-time-code"
+          autoFocus
+          required
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          placeholder="000000"
+          className="h-14 text-center font-mono text-2xl tracking-[0.6em]"
+        />
+      </div>
+      <Button type="submit" disabled={pending || code.length !== 6} className="h-11 w-full">
+        {pending ? <Loader2 className="size-4 animate-spin" /> : 'Sign in'}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={pending || cooldown > 0}
+        onClick={() => request(true)}
+        className="w-full gap-2 text-muted-foreground"
+      >
+        <RotateCcw className="size-3.5" />
+        {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend the code'}
+      </Button>
+    </form>
   );
 }
