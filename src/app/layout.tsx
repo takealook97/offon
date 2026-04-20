@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'offon',
+  title: 'offon - attendance and leave',
   description: 'offon - attendance and leave',
   keywords: ['offon', 'attendance', 'leave'],
 };
