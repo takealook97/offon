@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       prisma.leaveRequest.findMany({
         where: {
           memberId: session.memberId,
-          status: { in: ['REQUESTED', 'APPROVED'] },
+          status: 'APPROVED',
           startDate: { lte: end },
           endDate: { gte: start },
           deletedAt: null,
@@ -65,17 +65,7 @@ export async function GET(req: NextRequest) {
     const now = new Date();
 
     for (const a of attendances) {
-      if (a.status === 'MISSING' && a.sessions.length === 0) {
-        events.push({
-          id: `missing-${a.id}`,
-          title: 'Missing',
-          start: a.workDate.toISOString(),
-          end: a.workDate.toISOString(),
-          allDay: true,
-          resource: { kind: 'MISSING' },
-        });
-        continue;
-      }
+      if (a.sessions.length === 0) continue;
       for (const s of a.sessions) {
         const endAt = s.endAt ?? now;
         const minutes = Math.max(
@@ -106,14 +96,14 @@ export async function GET(req: NextRequest) {
         endExclusive.setDate(endExclusive.getDate() + 1);
         events.push({
           id: `leave-${l.id}`,
-          title: l.status === 'REQUESTED' ? '[pending] Leave (full day)' : 'Leave (full day)',
+          title: 'Leave (full day)',
           start: l.startDate.toISOString(),
           end: endExclusive.toISOString(),
           allDay: true,
           resource: {
             kind: 'LEAVE',
             leaveType: 'FULL_DAY',
-            leaveStatus: l.status === 'REQUESTED' ? 'REQUESTED' : 'APPROVED',
+            leaveStatus: 'APPROVED',
           },
         });
       } else {
@@ -124,14 +114,14 @@ export async function GET(req: NextRequest) {
         const suffix = l.type === 'HALF_DAY_AM' ? '(morning)' : '(afternoon)';
         events.push({
           id: `leave-${l.id}`,
-          title: l.status === 'REQUESTED' ? `[pending] Leave${suffix}` : `Leave${suffix}`,
+          title: `Leave${suffix}`,
           start: s.toISOString(),
           end: e.toISOString(),
           allDay: false,
           resource: {
             kind: 'LEAVE',
             leaveType: l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
-            leaveStatus: l.status === 'REQUESTED' ? 'REQUESTED' : 'APPROVED',
+            leaveStatus: 'APPROVED',
           },
         });
       }
