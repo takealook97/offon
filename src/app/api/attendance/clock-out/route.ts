@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
+import { sendChannel } from '@/lib/slack';
 
 const STANDARD_MINUTES = 480;
 
@@ -68,6 +69,24 @@ export async function POST() {
       target: String(updated.id),
       metadata: { worked: updated.workedMinutes, overtime: updated.overtimeMinutes },
     });
+    const channel = process.env.SLACK_OFFON_CHANNEL;
+    if (channel) {
+      const m = await prisma.member.findUnique({
+        where: { id: session.memberId },
+        select: { name: true },
+      });
+      if (m) {
+        try {
+          await sendChannel(channel, `${m.name} 퇴근`);
+        } catch (err) {
+          await logAudit({
+            actorId: session.memberId,
+            action: 'SLACK_SEND_FAIL',
+            metadata: { stage: 'channel_퇴근', error: String(err) },
+          });
+        }
+      }
+    }
     return NextResponse.json({ ok: true, attendance: updated });
   } catch (e) {
     if (e instanceof Response) return e;
