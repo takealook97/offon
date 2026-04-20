@@ -13,8 +13,8 @@ type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
 const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'FULL_DAY', label: 'Full day' },
-  { value: 'HALF_DAY_AM', label: 'Morning half day' },
-  { value: 'HALF_DAY_PM', label: 'Afternoon half day' },
+  { value: 'HALF_DAY_AM', label: 'Morning' },
+  { value: 'HALF_DAY_PM', label: 'Afternoon' },
 ];
 
 function daysBetween(a: string, b: string): number {
@@ -124,13 +124,15 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="reason">Reason (optional)</Label>
+        <Label htmlFor="reason">
+          {type === 'FULL_DAY' ? 'Reason for leave' : 'Reason for the half day'}
+        </Label>
         <Input
           id="reason"
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason (optional)"
+          placeholder="(optional)"
           className="h-11"
         />
       </div>
@@ -166,7 +168,13 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
         onClick={submit}
         className="h-11 w-full sm:w-auto"
       >
-        {pending ? <Loader2 className="size-4 animate-spin" /> : 'Request leave'}
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : type === 'FULL_DAY' ? (
+          'Request leave'
+        ) : (
+          'Request half day'
+        )}
       </Button>
     </div>
   );

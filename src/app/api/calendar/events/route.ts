@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
         const suffix = l.type === 'HALF_DAY_AM' ? '(morning)' : '(afternoon)';
         events.push({
           id: `leave-${l.id}`,
-          title: `Leave${suffix}`,
+          title: `Half day${suffix}`,
           start: s,
           end: e,
           allDay: false,

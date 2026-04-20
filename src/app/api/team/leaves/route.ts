@@ -32,8 +32,8 @@ function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
 }
 
 function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
-  if (type === 'HALF_DAY_AM') return 'Morning half day';
-  if (type === 'HALF_DAY_PM') return 'Afternoon half day';
+  if (type === 'HALF_DAY_AM') return 'Half day (morning)';
+  if (type === 'HALF_DAY_PM') return 'Half day (afternoon)';
   return 'Leave';
 }
 
