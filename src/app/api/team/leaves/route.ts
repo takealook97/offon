@@ -32,8 +32,8 @@ function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
 }
 
 function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
-  if (type === 'HALF_DAY_AM') return '오전 반차';
-  if (type === 'HALF_DAY_PM') return '오후 반차';
+  if (type === 'HALF_DAY_AM') return '반차(오전)';
+  if (type === 'HALF_DAY_PM') return '반차(오후)';
   return '연차';
 }
 

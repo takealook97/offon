@@ -13,8 +13,8 @@ type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
 const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'FULL_DAY', label: '종일' },
-  { value: 'HALF_DAY_AM', label: '오전 반차' },
-  { value: 'HALF_DAY_PM', label: '오후 반차' },
+  { value: 'HALF_DAY_AM', label: '오전' },
+  { value: 'HALF_DAY_PM', label: '오후' },
 ];
 
 function daysBetween(a: string, b: string): number {
@@ -124,13 +124,15 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="reason">사유 (선택)</Label>
+        <Label htmlFor="reason">
+          {type === 'FULL_DAY' ? '연차 사유' : '반차 사유'}
+        </Label>
         <Input
           id="reason"
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="연차 사유 (선택)"
+          placeholder="(선택)"
           className="h-11"
         />
       </div>
@@ -166,7 +168,13 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
         onClick={submit}
         className="h-11 w-full sm:w-auto"
       >
-        {pending ? <Loader2 className="size-4 animate-spin" /> : '연차 신청'}
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : type === 'FULL_DAY' ? (
+          '연차 신청'
+        ) : (
+          '반차 신청'
+        )}
       </Button>
     </div>
   );

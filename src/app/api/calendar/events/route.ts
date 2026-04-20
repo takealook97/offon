@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
         const suffix = l.type === 'HALF_DAY_AM' ? '(오전)' : '(오후)';
         events.push({
           id: `leave-${l.id}`,
-          title: `연차${suffix}`,
+          title: `반차${suffix}`,
           start: s,
           end: e,
           allDay: false,
