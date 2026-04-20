@@ -151,14 +151,17 @@
   min-width: 0;
 }
 
-.rbc-month-header {
-  display: flex;
+/* 월뷰 컬럼 정렬: flex 대신 grid로 강제해 1/7씩 픽셀 오차 없이 */
+.rbc-month-view .rbc-month-header,
+.rbc-month-view .rbc-row-bg,
+.rbc-month-view .rbc-row-content > .rbc-row {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
 
-.rbc-month-header .rbc-header,
-.rbc-month-view .rbc-row-bg .rbc-day-bg,
-.rbc-month-row .rbc-row-content .rbc-row > * {
-  flex: 1 0 0;
+.rbc-month-view .rbc-header,
+.rbc-month-view .rbc-day-bg,
+.rbc-month-view .rbc-date-cell {
   min-width: 0;
   box-sizing: border-box;
 }
@@ -167,14 +170,6 @@
 .rbc-day-bg + .rbc-day-bg,
 .rbc-month-row + .rbc-month-row {
   border-color: var(--border);
-}
-
-/* 월뷰 컬럼 정렬 보장: header / row-bg / row-content의 경계가 정확히 같은 x좌표에 놓이도록 */
-.rbc-month-view .rbc-row {
-  display: flex;
-}
-.rbc-month-view .rbc-row-bg {
-  display: flex;
 }
 
 .rbc-month-row {
