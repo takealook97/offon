@@ -151,10 +151,11 @@
   min-width: 0;
 }
 
-/* Month view alignment: the header, background and date rows use a grid; the event rows keep the library default */
+/* Month view column alignment:
+   - only the header and the background cells use a grid, placing each divider at exactly one seventh
+   - the date and event rows keep the library default, so a multi-day event can span cells */
 .rbc-month-view .rbc-month-header,
-.rbc-month-view .rbc-row-bg,
-.rbc-month-view .rbc-row-content > .rbc-row:first-child {
+.rbc-month-view .rbc-row-bg {
   display: grid !important;
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
 }
