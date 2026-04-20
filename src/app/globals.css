@@ -270,9 +270,52 @@
   padding: 0.5rem 0.75rem;
 }
 
+.rbc-time-view {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+}
+
 .rbc-time-view .rbc-time-gutter,
 .rbc-time-view .rbc-time-content {
   background: var(--card);
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.rbc-time-header-content,
+.rbc-time-content > * + * > * {
+  border-left: 1px solid var(--border);
+}
+
+.rbc-time-content {
+  border-top: 1px solid var(--border);
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid var(--border);
+  min-height: 72px;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+}
+
+.rbc-day-slot .rbc-time-slot:first-child {
+  border-top: none;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom-color: transparent;
+}
+
+.rbc-time-gutter .rbc-label {
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+  padding: 0 0.5rem;
 }
 
 .rbc-time-slot {
@@ -283,4 +326,20 @@
 .rbc-current-time-indicator {
   background: var(--primary);
   height: 2px;
+}
+
+.rbc-today .rbc-time-header-cell-single-day,
+.rbc-time-header-cell .rbc-today {
+  background: color-mix(in oklab, var(--primary) 8%, var(--card));
+}
+
+.rbc-day-slot .rbc-events-container {
+  margin-right: 4px;
+}
+
+.rbc-day-slot .rbc-event {
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  margin: 0;
 }
