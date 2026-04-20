@@ -51,6 +51,11 @@ export function TeamCalendarView() {
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
+  const ToolbarWithJump = useMemo(
+    () => (props: ToolbarProps<UiEvent>) =>
+      <CustomToolbar {...props} date={date} onJump={setDate} />,
+    [date],
+  );
 
   const range = useMemo(() => {
     const start = new Date(date);
@@ -108,7 +113,7 @@ export function TeamCalendarView() {
           allDayAccessor="allDay"
           eventPropGetter={eventPropGetter}
           views={VIEWS_ALLOWED}
-          components={{ toolbar: CustomToolbar }}
+          components={{ toolbar: ToolbarWithJump }}
           onShowMore={(evts, d) =>
             setShowMore({ date: d, events: evts as UiEvent[] })
           }
@@ -133,14 +138,18 @@ export function TeamCalendarView() {
   );
 }
 
-function CustomToolbar(props: ToolbarProps<UiEvent>) {
-  const { label, onNavigate } = props;
+function CustomToolbar(
+  props: ToolbarProps<UiEvent> & { date: Date; onJump: (d: Date) => void },
+) {
+  const { label, onNavigate, date, onJump } = props;
   return (
     <CalendarToolbar
       label={label as string}
+      date={date}
       onPrev={() => onNavigate('PREV')}
       onNext={() => onNavigate('NEXT')}
       onToday={() => onNavigate('TODAY')}
+      onJump={onJump}
     />
   );
 }

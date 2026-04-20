@@ -154,9 +154,11 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           {...props}
           totalMinutes={totalMinutes}
           totalLabel={totalLabel}
+          date={date}
+          onJump={setDate}
         />
       ),
-    [totalMinutes, totalLabel],
+    [totalMinutes, totalLabel, date],
   );
 
   return (
@@ -211,15 +213,22 @@ export function CalendarView({ memberId }: { memberId?: number }) {
 }
 
 function CustomToolbar(
-  props: ToolbarProps<UiEvent> & { totalMinutes: number; totalLabel: string },
+  props: ToolbarProps<UiEvent> & {
+    totalMinutes: number;
+    totalLabel: string;
+    date: Date;
+    onJump: (d: Date) => void;
+  },
 ) {
-  const { label, onNavigate, totalMinutes, totalLabel } = props;
+  const { label, onNavigate, totalMinutes, totalLabel, date, onJump } = props;
   return (
     <CalendarToolbar
       label={label as string}
+      date={date}
       onPrev={() => onNavigate('PREV')}
       onNext={() => onNavigate('NEXT')}
       onToday={() => onNavigate('TODAY')}
+      onJump={onJump}
       right={
         <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
           <Clock className="size-3 text-muted-foreground" aria-hidden />
