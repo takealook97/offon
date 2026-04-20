@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   const devBypass = process.env.NODE_ENV !== 'production' && !slackTokenReady;
 
   if (devBypass) {
-    console.log(`[DEV] OTP for ${member.email ?? member.slackId}: ${code}`);
+    // dev only: Slack 토큰 미설정 시 OTP는 수동 입력으로 검증한다.
   } else {
     try {
       await sendDm(member.slackId, `offon 로그인 코드: ${code} (5분 유효)`);
