@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,8 +15,9 @@ export default async function LoginPage() {
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-[420px]">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight">offon</h1>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Image src="/logo.png" alt="offon" width={72} height={72} className="rounded-2xl" priority />
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight">offon</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sign in with Slack</p>
         </div>
         <Card className="shadow-sm">
