@@ -71,9 +71,13 @@ export async function GET(req: NextRequest) {
       const endIso = a.clockOutAt?.toISOString() ?? a.clockInAt.toISOString();
       const inLabel = formatKST(a.clockInAt, 'HH:mm');
       const outLabel = a.clockOutAt ? formatKST(a.clockOutAt, 'HH:mm') : '진행 중';
+      const hours = Math.floor(a.workedMinutes / 60);
+      const mins = a.workedMinutes % 60;
+      const durationLabel =
+        hours > 0 ? `${hours}시간 ${mins}분` : `${mins}분`;
       events.push({
         id: `att-${a.id}`,
-        title: `${inLabel} ~ ${outLabel} (${a.workedMinutes}분)`,
+        title: `${inLabel} ~ ${outLabel} · ${durationLabel}`,
         start: startIso,
         end: endIso,
         allDay: false,
