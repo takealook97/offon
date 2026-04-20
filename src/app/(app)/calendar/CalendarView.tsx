@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import { ShowMoreDialog } from './ShowMoreDialog';
 import {
   attendanceMinutesIn,
   formatMinutes,
@@ -74,6 +75,7 @@ export function CalendarView() {
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
+  const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
 
   const range = useMemo(() => {
     const start = new Date(date);
@@ -174,6 +176,10 @@ export function CalendarView() {
           eventPropGetter={eventPropGetter}
           views={VIEWS_ALLOWED}
           components={{ toolbar: Toolbar }}
+          onShowMore={(evts, d) =>
+            setShowMore({ date: d, events: evts as UiEvent[] })
+          }
+          doShowMoreDrillDown={false}
           messages={{
             month: '월',
             week: '주',
@@ -193,6 +199,12 @@ export function CalendarView() {
       {viewMode === 'month' && (
         <WeeklySummary apiEvents={apiEvents} date={date} />
       )}
+      <ShowMoreDialog
+        open={!!showMore}
+        onOpenChange={(v) => !v && setShowMore(null)}
+        date={showMore?.date ?? null}
+        events={showMore?.events ?? []}
+      />
     </div>
   );
 }

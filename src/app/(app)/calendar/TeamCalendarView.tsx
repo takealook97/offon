@@ -13,6 +13,7 @@ import { ko } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import { ShowMoreDialog } from './ShowMoreDialog';
 
 const WEEK_OPTS = { weekStartsOn: 0 as const };
 
@@ -50,6 +51,7 @@ export function TeamCalendarView() {
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
+  const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
 
   const range = useMemo(() => {
     const start = new Date(date);
@@ -108,6 +110,10 @@ export function TeamCalendarView() {
           eventPropGetter={eventPropGetter}
           views={VIEWS_ALLOWED}
           components={{ toolbar: CustomToolbar }}
+          onShowMore={(evts, d) =>
+            setShowMore({ date: d, events: evts as UiEvent[] })
+          }
+          doShowMoreDrillDown={false}
           messages={{
             month: '월',
             today: '오늘',
@@ -118,6 +124,12 @@ export function TeamCalendarView() {
           style={{ height: '100%' }}
         />
       </div>
+      <ShowMoreDialog
+        open={!!showMore}
+        onOpenChange={(v) => !v && setShowMore(null)}
+        date={showMore?.date ?? null}
+        events={showMore?.events ?? []}
+      />
     </div>
   );
 }
