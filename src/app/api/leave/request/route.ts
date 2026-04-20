@@ -35,6 +35,14 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    const { todayKST } = await import('@/lib/time');
+    const today = todayKST();
+    if (new Date(startDate) < today) {
+      return NextResponse.json(
+        { ok: false, error: '과거 날짜는 신청할 수 없습니다' },
+        { status: 400 },
+      );
+    }
     const days = dayCount(startDate, endDate, type);
 
     const [balance, pending] = await Promise.all([
