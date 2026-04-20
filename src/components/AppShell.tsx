@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Calendar, LayoutDashboard, Menu, Users, ClipboardList } from 'lucide-react';
+import { Calendar, CalendarDays, LayoutDashboard, Menu, Users, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
@@ -22,6 +22,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/calendar', label: '캘린더', icon: Calendar },
+  { href: '/team-calendar', label: '팀 캘린더', icon: CalendarDays },
   { href: '/admin/members', label: '직원 관리', icon: Users, admin: true },
   { href: '/admin/leaves', label: '연차 승인', icon: ClipboardList, admin: true },
 ];
