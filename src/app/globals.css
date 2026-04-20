@@ -151,23 +151,30 @@
   min-width: 0;
 }
 
-/* Month view column alignment:
-   - the header, the background cells and the date row
-     all use a seven-column grid, so the dividers and the date and weekday text share an axis
-   - the event rows keep the library default
-     so a multi-day event still spans its days */
-.rbc-month-view .rbc-month-header,
-.rbc-month-view .rbc-row-bg,
-.rbc-month-view .rbc-row-content > .rbc-row:first-child {
-  display: grid !important;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+/* The vertical dividers are one gradient across the whole month view, so the header and body cannot disagree */
+.rbc-month-view {
+  position: relative;
 }
 
-.rbc-month-view .rbc-header,
-.rbc-month-view .rbc-day-bg,
-.rbc-month-view .rbc-date-cell {
-  min-width: 0;
-  box-sizing: border-box;
+.rbc-month-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(100% / 7 - 1px),
+    var(--border) calc(100% / 7 - 1px),
+    var(--border) calc(100% / 7)
+  );
+}
+
+/* The library's own borders between cells are removed; drawn alongside the overlay they doubled up and misaligned. */
+.rbc-month-view .rbc-header + .rbc-header,
+.rbc-month-view .rbc-day-bg + .rbc-day-bg {
+  border-left: 0 !important;
 }
 
 .rbc-header + .rbc-header,
