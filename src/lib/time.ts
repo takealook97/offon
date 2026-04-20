@@ -1,5 +1,6 @@
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 export const TZ = 'Asia/Seoul';
 
@@ -12,7 +13,7 @@ export function todayKST(): Date {
 }
 
 export function formatKST(d: Date, fmt = 'yyyy-MM-dd HH:mm'): string {
-  return formatInTimeZone(d, TZ, fmt);
+  return formatInTimeZone(d, TZ, fmt, { locale: ko });
 }
 
 export function weekRangeKST(ref: Date = nowKST()): { start: Date; end: Date } {

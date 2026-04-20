@@ -66,11 +66,27 @@ model Attendance {
   updatedAt       DateTime         @updatedAt       @map("updated_at")
   deletedAt       DateTime?                         @map("deleted_at")
 
-  member Member @relation(fields: [memberId], references: [id])
+  member   Member              @relation(fields: [memberId], references: [id])
+  sessions AttendanceSession[]
 
   @@unique([memberId, workDate])
   @@index([workDate])
   @@map("attendances")
+}
+
+model AttendanceSession {
+  id           Int       @id @default(autoincrement())
+  attendanceId Int       @map("attendance_id")
+  startAt      DateTime  @map("start_at")
+  endAt        DateTime? @map("end_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt      @map("updated_at")
+  deletedAt    DateTime?                  @map("deleted_at")
+
+  attendance Attendance @relation(fields: [attendanceId], references: [id])
+
+  @@index([attendanceId])
+  @@map("attendance_sessions")
 }
 
 model LeaveRequest {
