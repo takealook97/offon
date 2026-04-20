@@ -4,8 +4,9 @@ import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'offon - attendance and leave',
+  title: 'offon',
   description: 'offon - attendance and leave',
+  keywords: ['offon', 'attendance', 'leave'],
 };
 
 export default function RootLayout({
