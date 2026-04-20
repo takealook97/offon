@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,13 +17,30 @@ const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'HALF_DAY_PM', label: 'Afternoon half day' },
 ];
 
-export function LeaveRequestForm() {
+function daysBetween(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const d1 = new Date(a);
+  const d2 = new Date(b);
+  if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return 0;
+  return Math.max(0, Math.floor((d2.getTime() - d1.getTime()) / 86400000) + 1);
+}
+
+export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [type, setType] = useState<LeaveType>('FULL_DAY');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+
+  const requestedDays = useMemo(() => {
+    if (type !== 'FULL_DAY') return 0.5;
+    return daysBetween(startDate, endDate || startDate);
+  }, [type, startDate, endDate]);
+
+  const exceeds = requestedDays > availableDays;
+  const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
+  const canSubmit = !!startDate && requestedDays > 0 && !exceeds && !invalidRange;
 
   const submit = () =>
     start(async () => {
@@ -107,9 +124,33 @@ export function LeaveRequestForm() {
         />
       </div>
 
+      <div
+        className={cn(
+          'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
+          exceeds || invalidRange
+            ? 'border-destructive/40 bg-destructive/5 text-destructive'
+            : 'border-border/60 bg-muted/40 text-muted-foreground',
+        )}
+      >
+        <Info className="mt-0.5 size-3.5 shrink-0" />
+        <div className="space-y-0.5">
+          <p>
+            Available <span className="font-mono tabular-nums">{availableDays}</span>Day
+            {startDate && (
+              <>
+                {' '}
+                · requested <span className="font-mono tabular-nums">{requestedDays}</span>d
+              </>
+            )}
+          </p>
+          {exceeds && <p className="text-destructive">That exceeds your available leave</p>}
+          {invalidRange && <p className="text-destructive">The end date is before the start date</p>}
+        </div>
+      </div>
+
       <Button
         type="button"
-        disabled={pending || !startDate}
+        disabled={pending || !canSubmit}
         onClick={submit}
         className="h-11 w-full sm:w-auto"
       >

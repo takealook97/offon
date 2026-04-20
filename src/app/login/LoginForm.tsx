@@ -125,7 +125,7 @@ export function LoginForm() {
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
           placeholder="000000"
-          className="h-14 text-center font-mono text-2xl tracking-[0.6em]"
+          className="h-14 text-center font-mono text-2xl tracking-[0.6em] caret-transparent"
         />
       </div>
       <Button type="submit" disabled={pending || code.length !== 6} className="h-11 w-full">

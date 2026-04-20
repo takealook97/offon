@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   const week = weekRangeKST();
   const month = monthRangeKST();
 
-  const [me, todayAttendance, weekRows, monthRows, balance] = await Promise.all([
+  const [me, todayAttendance, weekRows, monthRows, balance, pending] = await Promise.all([
     prisma.member.findUnique({
       where: { id: session.memberId },
       select: { name: true },
@@ -58,6 +58,10 @@ export default async function DashboardPage() {
       select: { workedMinutes: true },
     }),
     prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
+    prisma.leaveRequest.aggregate({
+      where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
+      _sum: { days: true },
+    }),
   ]);
 
   const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
@@ -78,7 +82,9 @@ export default async function DashboardPage() {
   const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
   const totalDays = balance ? Number(balance.totalDays) : 0;
   const usedDays = balance ? Number(balance.usedDays) : 0;
+  const pendingDays = pending._sum.days ? Number(pending._sum.days) : 0;
   const remainingDays = totalDays - usedDays;
+  const availableDays = remainingDays - pendingDays;
 
   const weekProgress = progressOf(weekTotal, 40 * 60);
 
@@ -154,7 +160,11 @@ export default async function DashboardPage() {
           icon={CalendarCheck}
           label="Leave remaining"
           value={`${remainingDays}Day`}
-          sub={`${totalDays} granted · ${usedDays} used`}
+          sub={
+            pendingDays > 0
+              ? `${totalDays} granted · ${usedDays} used · ${pendingDays} pending`
+              : `${totalDays} granted · ${usedDays} used`
+          }
         />
       </div>
 
@@ -166,7 +176,7 @@ export default async function DashboardPage() {
           <CardTitle className="text-lg">Request leave</CardTitle>
         </CardHeader>
         <CardContent>
-          <LeaveRequestForm />
+          <LeaveRequestForm availableDays={availableDays} />
         </CardContent>
       </Card>
     </div>
