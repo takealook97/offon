@@ -73,6 +73,7 @@ function eventStyle(ev: UiEvent): string {
 
 export function CalendarView({ memberId }: { memberId?: number }) {
   const [events, setEvents] = useState<UiEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
@@ -89,15 +90,17 @@ export function CalendarView({ memberId }: { memberId?: number }) {
   }, [date]);
 
   useEffect(() => {
+    let cancelled = false;
     const qs = new URLSearchParams({
       start: range.start.toISOString(),
       end: range.end.toISOString(),
     });
     if (memberId) qs.set('memberId', String(memberId));
+    setLoading(true);
     fetch(`/api/calendar/events?${qs}`)
       .then((r) => r.json())
       .then((data: CalendarEventsResponse) => {
-        if (!data?.events) return;
+        if (cancelled || !data?.events) return;
         setEvents(
           data.events.map((e) => ({
             id: e.id,
@@ -109,7 +112,15 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           })),
         );
       })
-      .catch(() => setEvents([]));
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [range.start, range.end, memberId]);
 
   const eventPropGetter = useCallback((event: UiEvent) => {
@@ -163,7 +174,12 @@ export function CalendarView({ memberId }: { memberId?: number }) {
 
   return (
     <div className="space-y-3 p-2 sm:p-4">
-      <div className="h-[calc(100svh-220px)] min-h-[520px]">
+      <div
+        className={cn(
+          'h-[calc(100svh-220px)] min-h-[520px] transition-opacity',
+          loading && 'opacity-70',
+        )}
+      >
         <Calendar
           localizer={localizer}
           culture="ko"

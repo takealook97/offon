@@ -48,6 +48,7 @@ function eventStyle(ev: UiEvent): string {
 
 export function TeamCalendarView() {
   const [events, setEvents] = useState<UiEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
@@ -69,14 +70,16 @@ export function TeamCalendarView() {
   }, [date]);
 
   useEffect(() => {
+    let cancelled = false;
     const qs = new URLSearchParams({
       start: range.start.toISOString(),
       end: range.end.toISOString(),
     });
+    setLoading(true);
     fetch(`/api/team/leaves?${qs}`)
       .then((r) => r.json())
       .then((data: CalendarEventsResponse) => {
-        if (!data?.events) return;
+        if (cancelled || !data?.events) return;
         setEvents(
           data.events.map((e) => ({
             id: e.id,
@@ -88,7 +91,15 @@ export function TeamCalendarView() {
           })),
         );
       })
-      .catch(() => setEvents([]));
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [range.start, range.end]);
 
   const eventPropGetter = useCallback(
@@ -98,7 +109,11 @@ export function TeamCalendarView() {
 
   return (
     <div className="space-y-3 p-2 sm:p-4">
-      <div className="h-[calc(100svh-220px)] min-h-[520px]">
+      <div
+        className={`h-[calc(100svh-220px)] min-h-[520px] transition-opacity ${
+          loading ? 'opacity-70' : ''
+        }`}
+      >
         <Calendar
           localizer={localizer}
           culture="ko"
