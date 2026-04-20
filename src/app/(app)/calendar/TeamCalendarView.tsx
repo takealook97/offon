@@ -10,9 +10,8 @@ import {
 } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import { CalendarToolbar } from './CalendarToolbar';
 import { ShowMoreDialog } from './ShowMoreDialog';
 
 const WEEK_OPTS = { weekStartsOn: 0 as const };
@@ -137,22 +136,11 @@ export function TeamCalendarView() {
 function CustomToolbar(props: ToolbarProps<UiEvent>) {
   const { label, onNavigate } = props;
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-1.5">
-        <Button variant="ghost" size="icon" onClick={() => onNavigate('PREV')} aria-label="Previous">
-          <ChevronLeft className="size-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => onNavigate('NEXT')} aria-label="Next">
-          <ChevronRight className="size-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onNavigate('TODAY')}>
-          Today
-        </Button>
-      </div>
-      <h2 className="order-first w-full text-center text-base font-semibold sm:order-none sm:w-auto sm:text-lg">
-        {label}
-      </h2>
-      <span />
-    </div>
+    <CalendarToolbar
+      label={label as string}
+      onPrev={() => onNavigate('PREV')}
+      onNext={() => onNavigate('NEXT')}
+      onToday={() => onNavigate('TODAY')}
+    />
   );
 }
