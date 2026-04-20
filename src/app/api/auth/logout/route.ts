@@ -6,6 +6,6 @@ import { logAudit } from '@/lib/audit';
 export async function POST() {
   const session = await getSession();
   await clearSessionCookie();
-  if (session) await logAudit({ actorId: session.sub, action: 'LOGOUT' });
+  if (session) await logAudit({ actorId: session.memberId, action: 'LOGOUT' });
   return NextResponse.json({ ok: true });
 }

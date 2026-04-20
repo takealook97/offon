@@ -6,7 +6,7 @@ import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { formatKST } from '@/lib/time';
 
-const Body = z.object({ id: z.string().min(1), reason: z.string().max(500).optional() });
+const Body = z.object({ id: z.coerce.number().int(), reason: z.string().max(500).optional() });
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,13 +28,13 @@ export async function POST(req: NextRequest) {
 
     await prisma.leaveRequest.update({
       where: { id: target.id },
-      data: { status: 'REJECTED', approverId: admin.sub },
+      data: { status: 'REJECTED', approverId: admin.memberId },
     });
 
     await logAudit({
-      actorId: admin.sub,
+      actorId: admin.memberId,
       action: 'LEAVE_REJECT',
-      target: target.id,
+      target: String(target.id),
       metadata: { memberId: target.memberId, reason: parsed.data.reason },
     });
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}`,
       ).catch((err) =>
         logAudit({
-          actorId: admin.sub,
+          actorId: admin.memberId,
           action: 'SLACK_SEND_FAIL',
           metadata: { stage: 'leave_reject_notify', error: String(err) },
         }),

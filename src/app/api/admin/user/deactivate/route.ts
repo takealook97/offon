@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
 
-const Body = z.object({ id: z.string().min(1) });
+const Body = z.object({ id: z.coerce.number().int() });
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest) {
       where: { id: parsed.data.id },
       data: { active: false, deletedAt: new Date() },
     });
-    await logAudit({ actorId: admin.sub, action: 'MEMBER_DEACTIVATE', target: parsed.data.id });
+    await logAudit({ actorId: admin.memberId, action: 'MEMBER_DEACTIVATE', target: String(parsed.data.id) });
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof Response) return e;

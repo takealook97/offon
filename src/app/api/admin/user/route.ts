@@ -7,7 +7,7 @@ import { logAudit } from '@/lib/audit';
 
 const CreateBody = z.object({
   name: z.string().min(1),
-  email: z.string().email(),
+  email: z.string().email().optional(),
   slackId: z.string().min(1),
   position: z.string().optional(),
   role: z.enum(['EMPLOYEE', 'ADMIN']).default('EMPLOYEE'),
@@ -15,8 +15,9 @@ const CreateBody = z.object({
 });
 
 const UpdateBody = z.object({
-  id: z.string().min(1),
+  id: z.coerce.number().int(),
   name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
   slackId: z.string().min(1).optional(),
   position: z.string().optional(),
   role: z.enum(['EMPLOYEE', 'ADMIN']).optional(),
@@ -48,10 +49,10 @@ export async function POST(req: NextRequest) {
       return member;
     });
     await logAudit({
-      actorId: admin.sub,
+      actorId: admin.memberId,
       action: 'MEMBER_CREATE',
-      target: created.id,
-      metadata: { email: d.email },
+      target: String(created.id),
+      metadata: { email: d.email ?? null },
     });
     return NextResponse.json({ ok: true, member: created });
   } catch (e) {
@@ -71,16 +72,17 @@ export async function PATCH(req: NextRequest) {
     await prisma.$transaction(async (tx) => {
       await tx.member.update({ where: { id }, data: rest });
       if (totalDays !== undefined) {
-        await tx.leaveBalance.update({
+        await tx.leaveBalance.upsert({
           where: { memberId: id },
-          data: { totalDays: new Prisma.Decimal(totalDays) },
+          create: { memberId: id, totalDays: new Prisma.Decimal(totalDays) },
+          update: { totalDays: new Prisma.Decimal(totalDays) },
         });
       }
     });
     await logAudit({
-      actorId: admin.sub,
+      actorId: admin.memberId,
       action: 'MEMBER_UPDATE',
-      target: id,
+      target: String(id),
       metadata: { fields: Object.keys(parsed.data) },
     });
     return NextResponse.json({ ok: true });
