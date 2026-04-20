@@ -44,10 +44,11 @@ export async function POST(req: NextRequest) {
         _sum: { days: true },
       }),
     ]);
-    const total = balance ? Number(balance.totalDays) : 0;
+    const base = balance ? Number(balance.baseDays) : 0;
+    const bonus = balance ? Number(balance.bonusDays) : 0;
     const used = balance ? Number(balance.usedDays) : 0;
     const pendingDays = pending._sum.days ? Number(pending._sum.days) : 0;
-    const available = total - used - pendingDays;
+    const available = base + bonus - used - pendingDays;
     if (Number(days) > available) {
       return NextResponse.json(
         { ok: false, error: `사용 가능 연차(${available}일)를 초과합니다` },

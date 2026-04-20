@@ -27,7 +27,7 @@ async function main() {
       data: { name, email, slackId, role: 'ADMIN' },
     });
     await tx.leaveBalance.create({
-      data: { memberId: m.id, totalDays: new Prisma.Decimal(totalDays) },
+      data: { memberId: m.id, baseDays: new Prisma.Decimal(totalDays) },
     });
     return m;
   });

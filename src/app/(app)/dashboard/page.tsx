@@ -78,8 +78,10 @@ export default async function DashboardPage() {
 
   const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
   const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
-  const totalDays = balance ? Number(balance.totalDays) : 0;
+  const baseDays = balance ? Number(balance.baseDays) : 0;
+  const bonusDays = balance ? Number(balance.bonusDays) : 0;
   const usedDays = balance ? Number(balance.usedDays) : 0;
+  const totalDays = baseDays + bonusDays;
   const pendingDays = pending._sum.days ? Number(pending._sum.days) : 0;
   const remainingDays = totalDays - usedDays;
   const availableDays = remainingDays - pendingDays;
@@ -158,9 +160,11 @@ export default async function DashboardPage() {
           label="연차 잔여"
           value={`${remainingDays}일`}
           sub={
-            pendingDays > 0
-              ? `부여 ${totalDays} · 사용 ${usedDays} · 대기 ${pendingDays}`
-              : `부여 ${totalDays}일 · 사용 ${usedDays}일`
+            (bonusDays > 0
+              ? `기본 ${baseDays} + 추가 ${bonusDays}`
+              : `기본 ${baseDays}`) +
+            ` · 사용 ${usedDays}` +
+            (pendingDays > 0 ? ` · 대기 ${pendingDays}` : '')
           }
         />
       </div>

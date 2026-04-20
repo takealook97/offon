@@ -49,9 +49,14 @@ export type MemberRow = {
   position: string | null;
   role: 'EMPLOYEE' | 'ADMIN';
   active: boolean;
-  totalDays: number;
+  baseDays: number;
+  bonusDays: number;
   usedDays: number;
 };
+
+function remaining(m: MemberRow): number {
+  return m.baseDays + m.bonusDays - m.usedDays;
+}
 
 export function MembersPanel({ rows }: { rows: MemberRow[] }) {
   return (
@@ -70,7 +75,8 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead>Slack ID</TableHead>
               <TableHead>직책</TableHead>
               <TableHead>권한</TableHead>
-              <TableHead className="text-right">연차 (부여/사용)</TableHead>
+              <TableHead className="text-right">잔여</TableHead>
+              <TableHead className="text-right">기본 · 추가 · 사용</TableHead>
               <TableHead>상태</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
@@ -90,8 +96,11 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 <TableCell>
                   <RoleBadge role={m.role} />
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular-nums">
-                  {m.totalDays} / {m.usedDays}
+                <TableCell className="text-right font-mono text-sm font-medium tabular-nums">
+                  {remaining(m)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-xs text-muted-foreground tabular-nums">
+                  {m.baseDays} · {m.bonusDays >= 0 ? '+' : ''}{m.bonusDays} · {m.usedDays}
                 </TableCell>
                 <TableCell>
                   <StatusBadge active={m.active} />
@@ -129,10 +138,15 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               </div>
               <RowActions member={m} />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                연차 <span className="font-mono tabular-nums">{m.totalDays} / {m.usedDays}</span>
+            <div className="mt-3 flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                기본 <span className="font-mono tabular-nums">{m.baseDays}</span>
+                <span className="mx-1.5">·</span>
+                추가 <span className="font-mono tabular-nums">{m.bonusDays >= 0 ? '+' : ''}{m.bonusDays}</span>
+                <span className="mx-1.5">·</span>
+                사용 <span className="font-mono tabular-nums">{m.usedDays}</span>
               </span>
+              <span className="font-mono font-medium tabular-nums">잔여 {remaining(m)}일</span>
             </div>
           </div>
         ))}
@@ -226,7 +240,7 @@ function CreateDialog() {
     slackId: '',
     position: '',
     role: 'EMPLOYEE' as 'EMPLOYEE' | 'ADMIN',
-    totalDays: 15,
+    baseDays: 15,
   });
 
   const submit = () =>
@@ -247,7 +261,7 @@ function CreateDialog() {
         return;
       }
       toast.success(`${form.name} 직원이 추가되었습니다`);
-      setForm({ name: '', email: '', slackId: '', position: '', role: 'EMPLOYEE', totalDays: 15 });
+      setForm({ name: '', email: '', slackId: '', position: '', role: 'EMPLOYEE', baseDays: 15 });
       setOpen(false);
       router.refresh();
     });
@@ -311,13 +325,13 @@ function CreateDialog() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="연차 (일)">
+            <Field label="기본 연차 (일)">
               <Input
                 type="number"
                 min={0}
                 max={365}
-                value={form.totalDays}
-                onChange={(e) => setForm((f) => ({ ...f, totalDays: Number(e.target.value) }))}
+                value={form.baseDays}
+                onChange={(e) => setForm((f) => ({ ...f, baseDays: Number(e.target.value) }))}
               />
             </Field>
           </div>
@@ -352,8 +366,11 @@ function EditDialog({
     slackId: member.slackId,
     position: member.position ?? '',
     role: member.role,
-    totalDays: member.totalDays,
+    baseDays: member.baseDays,
+    bonusDays: member.bonusDays,
   });
+
+  const remainingPreview = form.baseDays + form.bonusDays - member.usedDays;
 
   const save = () =>
     start(async () => {
@@ -364,7 +381,8 @@ function EditDialog({
         slackId: form.slackId,
         position: form.position || undefined,
         role: form.role,
-        totalDays: form.totalDays,
+        baseDays: form.baseDays,
+        bonusDays: form.bonusDays,
       };
       const res = await fetch('/api/admin/user', {
         method: 'PATCH',
@@ -383,10 +401,10 @@ function EditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{member.name} 수정</DialogTitle>
-          <DialogDescription>직원 정보를 수정합니다.</DialogDescription>
+          <DialogDescription>직원 정보와 연차를 수정합니다.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <Field label="이름" required>
@@ -411,7 +429,7 @@ function EditDialog({
               />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="직책">
               <Input
                 value={form.position}
@@ -432,15 +450,49 @@ function EditDialog({
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="연차 (일)">
-              <Input
-                type="number"
-                min={0}
-                max={365}
-                value={form.totalDays}
-                onChange={(e) => setForm((f) => ({ ...f, totalDays: Number(e.target.value) }))}
-              />
-            </Field>
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+            <Label className="text-xs text-muted-foreground">연차</Label>
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+              <Field label="기본 (일)">
+                <Input
+                  type="number"
+                  min={0}
+                  max={365}
+                  step={0.5}
+                  value={form.baseDays}
+                  onChange={(e) => setForm((f) => ({ ...f, baseDays: Number(e.target.value) }))}
+                />
+              </Field>
+              <Field label="추가 (일)">
+                <Input
+                  type="number"
+                  min={-365}
+                  max={365}
+                  step={0.5}
+                  value={form.bonusDays}
+                  onChange={(e) => setForm((f) => ({ ...f, bonusDays: Number(e.target.value) }))}
+                />
+              </Field>
+              <div className="space-y-1.5">
+                <Label className="text-xs">사용 (일)</Label>
+                <Input
+                  type="number"
+                  value={member.usedDays}
+                  disabled
+                  className="bg-muted font-mono tabular-nums"
+                />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              잔여 ={' '}
+              <span className="font-mono font-medium tabular-nums text-foreground">
+                {remainingPreview}
+              </span>
+              일 (기본 {form.baseDays} {form.bonusDays >= 0 ? '+' : ''}
+              {form.bonusDays} − 사용 {member.usedDays})
+            </p>
           </div>
         </div>
         <DialogFooter>
