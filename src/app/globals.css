@@ -205,9 +205,11 @@
   font-size: 0.6875rem;
   font-weight: 500;
   box-shadow: none;
-  margin: 1px 4px;
+  margin: 1px 0;
   background: var(--muted);
   color: var(--foreground);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .rbc-event:focus {
@@ -271,8 +273,9 @@
 
 /* Month-view pill containment — prevent overflow into neighboring cells */
 .rbc-row-segment {
-  padding: 0 2px;
+  padding: 0 3px 1px;
   overflow: hidden;
+  min-width: 0;
 }
 
 .rbc-month-view .rbc-event {
@@ -281,6 +284,11 @@
   white-space: nowrap;
   max-width: 100%;
   min-height: 0;
+  display: block;
+}
+
+.rbc-row-content {
+  min-width: 0;
 }
 
 /* Popup when clicking '+N more' */
