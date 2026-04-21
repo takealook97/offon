@@ -6,6 +6,7 @@ import { logAudit } from '@/lib/audit';
 
 const PatchBody = z.object({
   missingClockInNotifyEnabled: z.boolean().optional(),
+  missingClockOutNotifyEnabled: z.boolean().optional(),
 });
 
 export async function GET() {

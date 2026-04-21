@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { todayKST, isWeekdayKST } from '@/lib/time';
+import { todayKST, isWeekdayKST, formatKST } from '@/lib/time';
+import { getHolidaySet } from '@/lib/holidays';
+import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-
-const THRESHOLD_MINUTES = 540;
 
 function authorized(req: NextRequest) {
   const header = req.headers.get('authorization');
@@ -19,9 +19,28 @@ export async function GET(req: NextRequest) {
   if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
   const date = todayKST();
-  const now = Date.now();
+  const dateStr = formatKST(date, 'yyyy-MM-dd');
+  const holidays = await getHolidaySet(dateStr, dateStr);
+  if (holidays.has(dateStr)) {
+    return NextResponse.json({ ok: true, skipped: 'holiday' });
+  }
 
-  // 열린 세션이 있는 오늘자 attendance 조회
+  const settings = await getAppSettings();
+
+  // 오늘 오후 근무 면제 연차(종일/오후 반차) — 이들은 퇴근 알림 대상에서 제외
+  const afternoonOffLeaves = await prisma.leaveRequest.findMany({
+    where: {
+      status: 'APPROVED',
+      type: { in: ['FULL_DAY', 'HALF_DAY_PM'] },
+      startDate: { lte: date },
+      endDate: { gte: date },
+      deletedAt: null,
+    },
+    select: { memberId: true },
+  });
+  const exemptMemberIds = new Set(afternoonOffLeaves.map((l) => l.memberId));
+
+  // 오늘 출근했고 아직 퇴근하지 않은(열린 세션이 있는) 멤버
   const pending = await prisma.attendance.findMany({
     where: {
       workDate: date,
@@ -29,38 +48,26 @@ export async function GET(req: NextRequest) {
       member: { deletedAt: null },
       sessions: { some: { endAt: null, deletedAt: null } },
     },
-    include: {
-      member: true,
-      sessions: {
-        where: { endAt: null, deletedAt: null },
-        orderBy: { startAt: 'asc' },
-        take: 1,
-      },
-    },
+    include: { member: true },
   });
-
-  // 9시간 초과 진행 중인 것만 추출
-  // TODO: 주/월 누적 초과근무 기준 DM은 별도 정책 필요
-  const longRunning = pending.filter((a) => {
-    const open = a.sessions[0];
-    if (!open) return false;
-    return now - open.startAt.getTime() >= THRESHOLD_MINUTES * 60 * 1000;
-  });
+  const targets = pending.filter((a) => !exemptMemberIds.has(a.memberId));
 
   let notified = 0;
-  for (const a of longRunning) {
-    try {
-      await sendDm(
-        a.member.slackId,
-        '9시간 이상 근무가 진행 중입니다. 퇴근 처리를 확인해 주세요',
-      );
-      notified++;
-    } catch (err) {
-      await logAudit({
-        actorId: a.memberId,
-        action: 'SLACK_SEND_FAIL',
-        metadata: { stage: 'missing_clockout', error: String(err) },
-      });
+  if (settings.missingClockOutNotifyEnabled) {
+    for (const a of targets) {
+      try {
+        await sendDm(
+          a.member.slackId,
+          '오후 7시 기준 퇴근 기록이 없습니다. 퇴근 처리 부탁드립니다',
+        );
+        notified++;
+      } catch (err) {
+        await logAudit({
+          actorId: a.memberId,
+          action: 'SLACK_SEND_FAIL',
+          metadata: { stage: 'missing_clockout', error: String(err) },
+        });
+      }
     }
   }
 
@@ -68,15 +75,17 @@ export async function GET(req: NextRequest) {
     action: 'CRON_MISSING_CLOCKOUT',
     metadata: {
       notified,
-      longRunning: longRunning.length,
+      targets: targets.length,
       totalOpen: pending.length,
-      thresholdMinutes: THRESHOLD_MINUTES,
+      exempted: exemptMemberIds.size,
+      notifyEnabled: settings.missingClockOutNotifyEnabled,
     },
   });
   return NextResponse.json({
     ok: true,
     notified,
-    longRunning: longRunning.length,
+    targets: targets.length,
     totalOpen: pending.length,
+    notifyEnabled: settings.missingClockOutNotifyEnabled,
   });
 }

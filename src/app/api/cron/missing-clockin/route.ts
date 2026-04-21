@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { todayKST, isWeekdayKST } from '@/lib/time';
+import { todayKST, isWeekdayKST, formatKST } from '@/lib/time';
+import { getHolidaySet } from '@/lib/holidays';
 import { logAudit } from '@/lib/audit';
 import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
@@ -18,6 +19,12 @@ export async function GET(req: NextRequest) {
   if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
   const date = todayKST();
+  const dateStr = formatKST(date, 'yyyy-MM-dd');
+  const holidays = await getHolidaySet(dateStr, dateStr);
+  if (holidays.has(dateStr)) {
+    return NextResponse.json({ ok: true, skipped: 'holiday' });
+  }
+
   const settings = await getAppSettings();
   const members = await prisma.member.findMany({
     where: { deletedAt: null },
@@ -31,16 +38,18 @@ export async function GET(req: NextRequest) {
     });
     if (att?.clockInAt) continue;
 
-    const approvedLeave = await prisma.leaveRequest.findFirst({
+    // 오전 근무 면제 연차(종일/오전 반차)만 제외. 오후 반차는 오전에 출근해야 한다.
+    const morningOffLeave = await prisma.leaveRequest.findFirst({
       where: {
         memberId: m.id,
         status: 'APPROVED',
+        type: { in: ['FULL_DAY', 'HALF_DAY_AM'] },
         startDate: { lte: date },
         endDate: { gte: date },
         deletedAt: null,
       },
     });
-    if (approvedLeave) continue;
+    if (morningOffLeave) continue;
 
     await prisma.attendance.upsert({
       where: { memberId_workDate: { memberId: m.id, workDate: date } },
