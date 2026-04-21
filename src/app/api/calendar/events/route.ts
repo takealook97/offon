@@ -32,6 +32,9 @@ function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
   return { start: kstIsoFromDate(workDate, 13), end: kstIsoFromDate(workDate, 18) };
 }
 
+const LUNCH_DEDUCTION_THRESHOLD_MINUTES = 300;
+const LUNCH_DEDUCTION_MINUTES = 60;
+
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -82,12 +85,22 @@ export async function GET(req: NextRequest) {
 
     for (const a of attendances) {
       if (a.sessions.length === 0) continue;
-      for (const s of a.sessions) {
+      const rawMinutesPerSession = a.sessions.map((s) => {
         const endAt = s.endAt ?? now;
-        const minutes = Math.max(
+        return Math.max(
           0,
           Math.floor((endAt.getTime() - s.startAt.getTime()) / 60000),
         );
+      });
+      const dayRawTotal = rawMinutesPerSession.reduce((sum, m) => sum + m, 0);
+      const dayDeduction =
+        dayRawTotal >= LUNCH_DEDUCTION_THRESHOLD_MINUTES ? LUNCH_DEDUCTION_MINUTES : 0;
+      const lastIdx = a.sessions.length - 1;
+      a.sessions.forEach((s, idx) => {
+        const endAt = s.endAt ?? now;
+        const minutes = rawMinutesPerSession[idx];
+        const workedMinutes =
+          idx === lastIdx ? Math.max(0, minutes - dayDeduction) : minutes;
         const inLabel = formatKST(s.startAt, 'HH:mm');
         const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : 'In progress';
         events.push({
@@ -98,12 +111,12 @@ export async function GET(req: NextRequest) {
           allDay: false,
           resource: {
             kind: 'ATTENDANCE',
-            workedMinutes: minutes,
+            workedMinutes,
             overtimeMinutes: 0,
             attendanceStatus: s.endAt ? 'DONE' : 'WORKING',
           },
         });
-      }
+      });
     }
 
     for (const l of leaves) {
