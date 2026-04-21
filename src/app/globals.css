@@ -151,7 +151,9 @@
   min-width: 0;
 }
 
-/* 세로 구분선은 월뷰 전체에 gradient 한 장으로 — header/body가 다른 DOM이어도 같은 overlay가 덮으니 어긋날 수 없음 */
+/* 세로 구분선은 월뷰 전체에 overlay 한 장으로 — header/body가 다른 DOM이어도 같은 overlay가 덮으니 어긋날 수 없음.
+   6개 divider를 개별 linear-gradient 레이어로 배치해 각각 독립 라운딩되게 한다.
+   (repeating-linear-gradient는 fractional 스텝에서 서브픽셀 누적 오차로 일부 열이 사라지는 회귀 발생해 교체) */
 .rbc-month-view {
   position: relative;
 }
@@ -162,13 +164,22 @@
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background: repeating-linear-gradient(
-    to right,
-    transparent 0,
-    transparent calc(100% / 7 - 1px),
-    var(--border) calc(100% / 7 - 1px),
-    var(--border) calc(100% / 7)
-  );
+  background-image:
+    linear-gradient(to right, var(--border), var(--border)),
+    linear-gradient(to right, var(--border), var(--border)),
+    linear-gradient(to right, var(--border), var(--border)),
+    linear-gradient(to right, var(--border), var(--border)),
+    linear-gradient(to right, var(--border), var(--border)),
+    linear-gradient(to right, var(--border), var(--border));
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+  background-position:
+    calc(100% * 1 / 7) 0,
+    calc(100% * 2 / 7) 0,
+    calc(100% * 3 / 7) 0,
+    calc(100% * 4 / 7) 0,
+    calc(100% * 5 / 7) 0,
+    calc(100% * 6 / 7) 0;
 }
 
 /* rbc가 cell 사이에 직접 그리는 border는 제거 (overlay와 이중으로 그려져 어긋남 유발) */
