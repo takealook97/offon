@@ -14,6 +14,7 @@ import { Clock } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
 import { CalendarToolbar } from './CalendarToolbar';
+import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
 import {
   attendanceMinutesIn,
@@ -80,6 +81,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 
 export function CalendarView({ memberId }: { memberId?: number }) {
   const [events, setEvents] = useState<UiEvent[]>([]);
+  const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
@@ -104,23 +106,35 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     });
     if (memberId) qs.set('memberId', String(memberId));
     setLoading(true);
-    fetch(`/api/calendar/events?${qs}`)
-      .then((r) => r.json())
-      .then((data: CalendarEventsResponse) => {
-        if (cancelled || !data?.events) return;
-        setEvents(
-          data.events.map((e) => ({
-            id: e.id,
-            title: e.title,
-            start: new Date(e.start),
-            end: new Date(e.end),
-            allDay: e.allDay,
-            resource: e.resource,
-          })),
-        );
+    const fromStr = format(range.start, 'yyyy-MM-dd');
+    const toStr = format(range.end, 'yyyy-MM-dd');
+    Promise.all([
+      fetch(`/api/calendar/events?${qs}`).then((r) => r.json()),
+      fetch(`/api/holidays?from=${fromStr}&to=${toStr}`)
+        .then((r) => r.json())
+        .catch(() => ({ holidays: [] })),
+    ])
+      .then(([data, hData]: [CalendarEventsResponse, { holidays?: { date: string }[] }]) => {
+        if (cancelled) return;
+        if (data?.events) {
+          setEvents(
+            data.events.map((e) => ({
+              id: e.id,
+              title: e.title,
+              start: new Date(e.start),
+              end: new Date(e.end),
+              allDay: e.allDay,
+              resource: e.resource,
+            })),
+          );
+        }
+        setHolidays(new Set((hData?.holidays ?? []).map((h) => h.date)));
       })
       .catch(() => {
-        if (!cancelled) setEvents([]);
+        if (!cancelled) {
+          setEvents([]);
+          setHolidays(new Set());
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -133,6 +147,19 @@ export function CalendarView({ memberId }: { memberId?: number }) {
   const eventPropGetter = useCallback((event: UiEvent) => {
     return { className: eventStyle(event) };
   }, []);
+
+  const dayPropGetter = useCallback(
+    (d: Date) => {
+      const key = format(d, 'yyyy-MM-dd');
+      const dow = getDay(d);
+      const classes: string[] = [];
+      if (dow === 0) classes.push('rbc-day-sun');
+      else if (dow === 6) classes.push('rbc-day-sat');
+      if (holidays.has(key)) classes.push('rbc-day-holiday');
+      return classes.length ? { className: classes.join(' ') } : {};
+    },
+    [holidays],
+  );
 
   const openDayModal = useCallback(
     (d: Date) => {
@@ -238,8 +265,16 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           endAccessor="end"
           allDayAccessor="allDay"
           eventPropGetter={eventPropGetter}
+          dayPropGetter={dayPropGetter}
           views={VIEWS_ALLOWED}
-          components={{ toolbar: Toolbar }}
+          components={{
+            toolbar: Toolbar,
+            month: {
+              dateHeader: (props) => (
+                <DateHeader {...props} holidays={holidays} />
+              ),
+            },
+          }}
           onSelectEvent={(ev) => openDayModal((ev as UiEvent).start)}
           onDrillDown={(d) => openDayModal(d)}
           onShowMore={(evts, d) =>

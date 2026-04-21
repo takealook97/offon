@@ -248,6 +248,35 @@
   font-weight: 700;
 }
 
+/* Weekday and holiday colours: Sundays and holidays red, Saturdays blue. Days outside the month keep the muted default. */
+.rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sun {
+  color: #ef4444;
+}
+.dark .rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sun {
+  color: #f87171;
+}
+.rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sat {
+  color: #3b82f6;
+}
+.dark .rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sat {
+  color: #60a5fa;
+}
+
+/* The weekday header. Weeks start on Sunday, so the first is red and the last is blue. */
+.rbc-month-header > .rbc-header:first-child {
+  color: #ef4444;
+}
+.dark .rbc-month-header > .rbc-header:first-child {
+  color: #f87171;
+}
+.rbc-month-header > .rbc-header:last-child {
+  color: #3b82f6;
+}
+.dark .rbc-month-header > .rbc-header:last-child {
+  color: #60a5fa;
+}
+
+
 .rbc-event,
 .rbc-day-slot .rbc-background-event {
   border: none;
