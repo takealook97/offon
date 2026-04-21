@@ -2,7 +2,14 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { CalendarDays, Plus, Trash2, Loader2 } from 'lucide-react';
+import {
+  CalendarDays,
+  Plus,
+  Trash2,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -33,15 +40,15 @@ export function HolidaysPanel({ initial }: Props) {
   const [name, setName] = useState('');
   const [adding, startAdd] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [viewYear, setViewYear] = useState<number>(() => new Date().getFullYear());
 
-  const groups = useMemo(() => {
-    const m = new Map<string, Holiday[]>();
-    for (const h of holidays) {
-      const y = h.date.slice(0, 4);
-      (m.get(y) ?? m.set(y, []).get(y))!.push(h);
-    }
-    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [holidays]);
+  const yearItems = useMemo(
+    () =>
+      holidays
+        .filter((h) => h.date.startsWith(`${viewYear}-`))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [holidays, viewYear],
+  );
 
   const canAdd = !!date && !!name.trim();
 
@@ -62,9 +69,11 @@ export function HolidaysPanel({ initial }: Props) {
         toast.error(data.error ?? 'Could not add that holiday');
         return;
       }
+      const added = data.holiday!;
       setHolidays((prev) =>
-        [...prev, data.holiday!].sort((a, b) => a.date.localeCompare(b.date)),
+        [...prev, added].sort((a, b) => a.date.localeCompare(b.date)),
       );
+      setViewYear(Number(added.date.slice(0, 4)));
       setDate('');
       setName('');
       toast.success('Holiday added');
@@ -145,50 +154,69 @@ export function HolidaysPanel({ initial }: Props) {
           </div>
         </div>
 
-        {groups.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-            No holidays have been added
-          </p>
-        ) : (
-          <div className="space-y-5">
-            {groups.map(([year, items]) => (
-              <div key={year} className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                  {year} · {items.length}
-                </h3>
-                <ul className="divide-y divide-border/60 rounded-md border border-border/60">
-                  {items.map((h) => (
-                    <li
-                      key={h.id}
-                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="font-mono tabular-nums">{h.date}</span>
-                        <span className="text-muted-foreground">
-                          ({weekdayOf(h.date)})
-                        </span>
-                        <span className="truncate">{h.name}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => remove(h)}
-                        disabled={deletingId === h.id}
-                        aria-label={`${h.name} Remove`}
-                        className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                      >
-                        {deletingId === h.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-4" />
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setViewYear((y) => y - 1)}
+                aria-label="Previous year"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <h3 className="min-w-[4.5rem] text-center text-sm font-semibold">
+                {viewYear}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setViewYear((y) => y + 1)}
+                aria-label="Next year"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {yearItems.length}
+            </span>
           </div>
-        )}
+          {yearItems.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
+              No holidays have been added for {viewYear}
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/60 rounded-md border border-border/60">
+              {yearItems.map((h) => (
+                <li
+                  key={h.id}
+                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="font-mono tabular-nums">{h.date}</span>
+                    <span className="text-muted-foreground">
+                      ({weekdayOf(h.date)})
+                    </span>
+                    <span className="truncate">{h.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(h)}
+                    disabled={deletingId === h.id}
+                    aria-label={`${h.name} Remove`}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  >
+                    {deletingId === h.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
