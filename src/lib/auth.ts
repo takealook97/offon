@@ -10,7 +10,7 @@ export async function signSession(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg })
     .setSubject(String(payload.memberId))
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime('30d')
     .sign(secret);
 }
 
