@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { todayKST, isWeekdayKST } from '@/lib/time';
-import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 
 function authorized(req: NextRequest) {
@@ -45,15 +44,16 @@ export async function GET(req: NextRequest) {
       update: { status: 'MISSING' },
     });
 
-    try {
-      await sendDm(m.slackId, '오전 10시 기준 출근 기록이 없습니다. 확인 부탁드립니다');
-    } catch (err) {
-      await logAudit({
-        actorId: m.id,
-        action: 'SLACK_SEND_FAIL',
-        metadata: { stage: 'missing_clockin', error: String(err) },
-      });
-    }
+    // 출근 누락 Slack DM 임시 비활성화 (2026-04-21). 상태 표기는 유지.
+    // try {
+    //   await sendDm(m.slackId, '오전 10시 기준 출근 기록이 없습니다. 확인 부탁드립니다');
+    // } catch (err) {
+    //   await logAudit({
+    //     actorId: m.id,
+    //     action: 'SLACK_SEND_FAIL',
+    //     metadata: { stage: 'missing_clockin', error: String(err) },
+    //   });
+    // }
     flagged++;
   }
 
