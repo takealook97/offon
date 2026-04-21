@@ -51,3 +51,38 @@ export function isWeekdayKST(d: Date = nowKST()): boolean {
   const dow = kstShifted(d).getDay();
   return dow >= 1 && dow <= 5;
 }
+
+/**
+ * Whether a `YYYY-MM-DD` string falls on a weekend in the org timezone.
+ *
+ * The weekday of a calendar date does not depend on a timezone: 2026-04-25 is a
+ * Saturday everywhere. So we parse at midnight UTC and read `getUTCDay()`.
+ * (Parsing as `+09:00` used to pull the epoch back to 15:00Z the previous day, so
+ *  `getUTCDay()` returned the **previous** weekday, a one-day shift bug.)
+ * 0 = Sunday, 6 = Saturday.
+ */
+export function isWeekendKSTDateStr(s: string): boolean {
+  const dow = new Date(`${s}T00:00:00Z`).getUTCDay();
+  return dow === 0 || dow === 6;
+}
+
+/**
+ * Weekdays between start and end inclusive, in the org timezone.
+ * Both arguments are `YYYY-MM-DD` strings; returns 0 when end < start.
+ *
+ * Weekdays are timezone-independent, so we step forward from midnight UTC.
+ * Starting there leaves no room for DST or a leap second inside a 24h step.
+ */
+export function countWeekdaysKST(start: string, end: string): number {
+  const s = new Date(`${start}T00:00:00Z`);
+  const e = new Date(`${end}T00:00:00Z`);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+  if (e.getTime() < s.getTime()) return 0;
+  const dayMs = 24 * 60 * 60 * 1000;
+  let count = 0;
+  for (let t = s.getTime(); t <= e.getTime(); t += dayMs) {
+    const dow = new Date(t).getUTCDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return count;
+}

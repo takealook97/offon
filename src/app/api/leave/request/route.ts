@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
+import { countWeekdaysKST, isWeekendKSTDateStr, todayKST } from '@/lib/time';
 
 const Body = z.object({
   type: z.enum(['FULL_DAY', 'HALF_DAY_AM', 'HALF_DAY_PM']),
@@ -13,12 +14,12 @@ const Body = z.object({
   reason: z.string().max(500).optional(),
 });
 
+const WEEKEND_REJECT_MESSAGE = 'Leave cannot be requested on a weekend';
+
 function dayCount(start: string, end: string, type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM') {
   if (type !== 'FULL_DAY') return new Prisma.Decimal(0.5);
-  const s = new Date(start);
-  const e = new Date(end);
-  const days = Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  return new Prisma.Decimal(days);
+  // A full day counts weekdays only; weekends are excluded.
+  return new Prisma.Decimal(countWeekdaysKST(start, end));
 }
 
 export async function POST(req: NextRequest) {
@@ -35,7 +36,6 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const { todayKST } = await import('@/lib/time');
     const today = todayKST();
     if (new Date(startDate) < today) {
       return NextResponse.json(
@@ -43,7 +43,21 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    // A half day is refused when its date falls on a weekend.
+    if (type !== 'FULL_DAY' && isWeekendKSTDateStr(startDate)) {
+      return NextResponse.json(
+        { ok: false, error: WEEKEND_REJECT_MESSAGE },
+        { status: 400 },
+      );
+    }
     const days = dayCount(startDate, endDate, type);
+    // A full day made up entirely of weekend is refused.
+    if (type === 'FULL_DAY' && Number(days) === 0) {
+      return NextResponse.json(
+        { ok: false, error: WEEKEND_REJECT_MESSAGE },
+        { status: 400 },
+      );
+    }
 
     const [balance, pending] = await Promise.all([
       prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
