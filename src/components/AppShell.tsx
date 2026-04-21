@@ -1,5 +1,11 @@
 import Link from 'next/link';
-import { Calendar, LayoutDashboard, Users, ClipboardList } from 'lucide-react';
+import {
+  Calendar,
+  LayoutDashboard,
+  Users,
+  ClipboardList,
+  Settings,
+} from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { MobileNav } from '@/components/MobileNav';
@@ -8,7 +14,7 @@ import { DesktopNav } from '@/components/DesktopNav';
 export type NavItem = {
   href: string;
   label: string;
-  iconName: 'dashboard' | 'calendar' | 'users' | 'clipboard';
+  iconName: 'dashboard' | 'calendar' | 'users' | 'clipboard' | 'settings';
   admin?: boolean;
 };
 
@@ -17,6 +23,7 @@ const NAV: NavItem[] = [
   { href: '/calendar', label: '캘린더', iconName: 'calendar' },
   { href: '/admin/members', label: '직원 관리', iconName: 'users', admin: true },
   { href: '/admin/leaves', label: '연차 승인', iconName: 'clipboard', admin: true },
+  { href: '/admin/settings', label: '설정', iconName: 'settings', admin: true },
 ];
 
 export function iconFor(name: NavItem['iconName']) {
@@ -29,6 +36,8 @@ export function iconFor(name: NavItem['iconName']) {
       return Users;
     case 'clipboard':
       return ClipboardList;
+    case 'settings':
+      return Settings;
   }
 }
 

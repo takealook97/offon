@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { todayKST, isWeekdayKST } from '@/lib/time';
 import { logAudit } from '@/lib/audit';
+import { getAppSettings } from '@/lib/settings';
+import { sendDm } from '@/lib/slack';
 
 function authorized(req: NextRequest) {
   const header = req.headers.get('authorization');
@@ -16,11 +18,13 @@ export async function GET(req: NextRequest) {
   if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
   const date = todayKST();
+  const settings = await getAppSettings();
   const members = await prisma.member.findMany({
     where: { deletedAt: null },
   });
 
   let flagged = 0;
+  let notified = 0;
   for (const m of members) {
     const att = await prisma.attendance.findUnique({
       where: { memberId_workDate: { memberId: m.id, workDate: date } },
@@ -44,22 +48,38 @@ export async function GET(req: NextRequest) {
       update: { status: 'MISSING' },
     });
 
-    // 출근 누락 Slack DM 임시 비활성화 (2026-04-21). 상태 표기는 유지.
-    // try {
-    //   await sendDm(m.slackId, '오전 10시 기준 출근 기록이 없습니다. 확인 부탁드립니다');
-    // } catch (err) {
-    //   await logAudit({
-    //     actorId: m.id,
-    //     action: 'SLACK_SEND_FAIL',
-    //     metadata: { stage: 'missing_clockin', error: String(err) },
-    //   });
-    // }
     flagged++;
+
+    if (settings.missingClockInNotifyEnabled) {
+      try {
+        await sendDm(
+          m.slackId,
+          '오전 10시 기준 출근 기록이 없습니다. 확인 부탁드립니다',
+        );
+        notified++;
+      } catch (err) {
+        await logAudit({
+          actorId: m.id,
+          action: 'SLACK_SEND_FAIL',
+          metadata: { stage: 'missing_clockin', error: String(err) },
+        });
+      }
+    }
   }
 
   await logAudit({
     action: 'CRON_MISSING_CLOCKIN',
-    metadata: { flagged, totalActive: members.length },
+    metadata: {
+      flagged,
+      notified,
+      notifyEnabled: settings.missingClockInNotifyEnabled,
+      totalActive: members.length,
+    },
   });
-  return NextResponse.json({ ok: true, flagged });
+  return NextResponse.json({
+    ok: true,
+    flagged,
+    notified,
+    notifyEnabled: settings.missingClockInNotifyEnabled,
+  });
 }
