@@ -96,20 +96,20 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="startDate">{type === 'FULL_DAY' ? 'Start date' : 'Date'}</Label>
-          <Input
-            id="startDate"
-            type="date"
-            value={startDate}
-            min={todayStr}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="h-11"
-          />
-        </div>
-        {type === 'FULL_DAY' && (
-          <div className="space-y-1.5">
+      {type === 'FULL_DAY' ? (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="min-w-0 space-y-1.5">
+            <Label htmlFor="startDate">Start date</Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={startDate}
+              min={todayStr}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-11 w-full"
+            />
+          </div>
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="endDate">End date</Label>
             <Input
               id="endDate"
@@ -117,11 +117,23 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
               value={endDate}
               min={startDate || todayStr}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-11"
+              className="h-11 w-full"
             />
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-1.5 sm:max-w-[16rem]">
+          <Label htmlFor="startDate">Date</Label>
+          <Input
+            id="startDate"
+            type="date"
+            value={startDate}
+            min={todayStr}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-11 w-full"
+          />
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="reason">
