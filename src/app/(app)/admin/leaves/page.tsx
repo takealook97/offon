@@ -23,7 +23,7 @@ export default async function AdminLeavesPage() {
   const recent = await prisma.leaveRequest.findMany({
     where: { status: { in: ['APPROVED', 'REJECTED', 'CANCELLED'] }, deletedAt: null },
     orderBy: { updatedAt: 'desc' },
-    take: 30,
+    take: 10,
     include: {
       member: { select: { name: true } },
       approver: { select: { name: true } },
