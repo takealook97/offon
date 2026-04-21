@@ -87,11 +87,18 @@ export async function POST(req: NextRequest) {
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', deletedAt: null },
     });
+    const dateRange = startDate === endDate ? startDate : `${startDate}~${endDate}`;
+    const action =
+      type === 'FULL_DAY'
+        ? '연차를 신청했습니다'
+        : type === 'HALF_DAY_AM'
+        ? '오전 반차를 신청했습니다'
+        : '오후 반차를 신청했습니다';
     await Promise.all(
       admins.map((a) =>
         sendDm(
           a.slackId,
-          `${requester?.name ?? '직원'}님이 ${startDate}~${endDate} ${type} 연차를 신청했습니다`,
+          `${requester?.name ?? '직원'}님이 ${dateRange} ${action}.`,
         ).catch((err) =>
           logAudit({
             actorId: session.memberId,
