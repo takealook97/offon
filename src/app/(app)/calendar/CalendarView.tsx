@@ -71,6 +71,13 @@ function eventStyle(ev: UiEvent): string {
   return 'rbc-event-missing';
 }
 
+function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
+  const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  return all.filter((e) => e.start < dayEnd && e.end > dayStart);
+}
+
 export function CalendarView({ memberId }: { memberId?: number }) {
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +133,15 @@ export function CalendarView({ memberId }: { memberId?: number }) {
   const eventPropGetter = useCallback((event: UiEvent) => {
     return { className: eventStyle(event) };
   }, []);
+
+  const openDayModal = useCallback(
+    (d: Date) => {
+      const evts = eventsOnDate(events, d);
+      if (evts.length === 0) return;
+      setShowMore({ date: d, events: evts });
+    },
+    [events],
+  );
 
   // The agenda view maps onto the month aggregation too, for the badge and the weekly summary
   const viewMode: 'month' | 'week' | 'day' =
@@ -195,6 +211,10 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           eventPropGetter={eventPropGetter}
           views={VIEWS_ALLOWED}
           components={{ toolbar: Toolbar }}
+          selectable
+          onSelectSlot={(slot) => openDayModal(slot.start as Date)}
+          onSelectEvent={(ev) => openDayModal((ev as UiEvent).start)}
+          onDrillDown={(d) => openDayModal(d)}
           onShowMore={(evts, d) =>
             setShowMore({ date: d, events: evts as UiEvent[] })
           }
