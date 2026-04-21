@@ -155,9 +155,10 @@ model Holiday {
 }
 
 model AppSetting {
-  id                          Int      @id @default(1)
-  missingClockInNotifyEnabled Boolean  @default(false) @map("missing_clockin_notify_enabled")
-  updatedAt                   DateTime @updatedAt       @map("updated_at")
+  id                            Int      @id @default(1)
+  missingClockInNotifyEnabled   Boolean  @default(false) @map("missing_clockin_notify_enabled")
+  missingClockOutNotifyEnabled  Boolean  @default(false) @map("missing_clockout_notify_enabled")
+  updatedAt                     DateTime @updatedAt       @map("updated_at")
 
   @@map("app_settings")
 }
