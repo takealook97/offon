@@ -143,6 +143,14 @@ model LoginCode {
   @@map("login_codes")
 }
 
+model AppSetting {
+  id                          Int      @id @default(1)
+  missingClockInNotifyEnabled Boolean  @default(false) @map("missing_clockin_notify_enabled")
+  updatedAt                   DateTime @updatedAt       @map("updated_at")
+
+  @@map("app_settings")
+}
+
 model AuditLog {
   id        Int       @id @default(autoincrement())
   actorId   Int?      @map("actor_id")
