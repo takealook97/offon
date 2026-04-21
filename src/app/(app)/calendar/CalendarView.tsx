@@ -176,7 +176,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     <div className="space-y-3 p-2 sm:p-4">
       <div
         className={cn(
-          'h-[calc(100svh-220px)] min-h-[520px] transition-opacity',
+          'h-[calc(100svh-220px)] min-h-[680px] transition-opacity sm:min-h-[520px]',
           loading && 'opacity-70',
         )}
       >
