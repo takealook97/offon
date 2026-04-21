@@ -120,6 +120,18 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /* iOS Safari: <input type="date"> ignores explicit height and renders the
+     native picker chrome inline, producing an oversized empty box on mobile.
+     Neutralize the UA appearance and force a sane inner min-height. */
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 0;
+  }
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.5em;
+  }
 }
 
 /* ============ react-big-calendar theme overrides ============ */
