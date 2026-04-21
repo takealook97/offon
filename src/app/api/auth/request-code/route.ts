@@ -39,8 +39,10 @@ export async function POST(req: NextRequest) {
   const code = generateCode();
   const codeHash = await hashCode(code);
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-  await prisma.loginCode.create({
-    data: { memberId: member.id, codeHash, expiresAt },
+  await prisma.loginCode.upsert({
+    where: { memberId: member.id },
+    create: { memberId: member.id, codeHash, expiresAt },
+    update: { codeHash, expiresAt, usedAt: null, attempts: 0 },
   });
 
   const slackTokenReady =
