@@ -123,12 +123,41 @@ export function TeamCalendarView() {
     [events],
   );
 
+  const handleCellClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.rbc-event')) return;
+      if (target.closest('.rbc-show-more')) return;
+      const row = target.closest('.rbc-month-row') as HTMLElement | null;
+      if (!row) return;
+      const monthView = row.closest('.rbc-month-view') as HTMLElement | null;
+      if (!monthView) return;
+      const rows = Array.from(
+        monthView.querySelectorAll('.rbc-month-row'),
+      ) as HTMLElement[];
+      const rowIdx = rows.indexOf(row);
+      if (rowIdx < 0) return;
+      const rect = row.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const colIdx = Math.min(6, Math.max(0, Math.floor((x / rect.width) * 7)));
+      const firstDay = startOfWeek(
+        new Date(date.getFullYear(), date.getMonth(), 1),
+        WEEK_OPTS,
+      );
+      const clicked = new Date(firstDay);
+      clicked.setDate(firstDay.getDate() + rowIdx * 7 + colIdx);
+      openDayModal(clicked);
+    },
+    [date, openDayModal],
+  );
+
   return (
     <div className="space-y-3 p-2 sm:p-4">
       <div
         className={`h-[calc(100svh-220px)] min-h-[680px] transition-opacity sm:min-h-[520px] ${
           loading ? 'opacity-70' : ''
         }`}
+        onClick={handleCellClick}
       >
         <Calendar
           localizer={localizer}
@@ -145,8 +174,6 @@ export function TeamCalendarView() {
           eventPropGetter={eventPropGetter}
           views={VIEWS_ALLOWED}
           components={{ toolbar: ToolbarWithJump }}
-          selectable
-          onSelectSlot={(slot) => openDayModal(slot.start as Date)}
           onSelectEvent={(ev) => openDayModal((ev as UiEvent).start)}
           onDrillDown={(d) => openDayModal(d)}
           onShowMore={(evts, d) =>
