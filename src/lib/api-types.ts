@@ -12,7 +12,7 @@ export type CalendarEvent = {
     overtimeMinutes?: number;
     attendanceStatus?: 'WORKING' | 'DONE';
     leaveType?: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
-    leaveStatus?: 'REQUESTED' | 'APPROVED' | 'REJECTED';
+    leaveStatus?: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
     reason?: 'CLOCK_IN' | 'CLOCK_OUT';
     memberName?: string;
   };

@@ -29,6 +29,7 @@ enum LeaveStatus {
   REQUESTED
   APPROVED
   REJECTED
+  CANCELLED
 }
 
 model Member {

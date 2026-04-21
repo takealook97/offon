@@ -21,7 +21,7 @@ export default async function AdminLeavesPage() {
     include: { member: { select: { name: true, position: true } } },
   });
   const recent = await prisma.leaveRequest.findMany({
-    where: { status: { in: ['APPROVED', 'REJECTED'] }, deletedAt: null },
+    where: { status: { in: ['APPROVED', 'REJECTED', 'CANCELLED'] }, deletedAt: null },
     orderBy: { updatedAt: 'desc' },
     take: 30,
     include: {
@@ -114,12 +114,16 @@ export default async function AdminLeavesPage() {
                     >
                       승인
                     </Badge>
-                  ) : (
+                  ) : l.status === 'REJECTED' ? (
                     <Badge
                       variant="outline"
                       className="border-red-500/40 text-red-700 dark:text-red-300"
                     >
                       반려
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      취소
                     </Badge>
                   )}
                 </li>
