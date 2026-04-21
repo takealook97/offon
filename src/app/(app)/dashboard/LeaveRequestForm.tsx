@@ -97,7 +97,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       </div>
 
       {type === 'FULL_DAY' ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="startDate">Start date</Label>
             <Input
