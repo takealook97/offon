@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { todayKST, isWeekdayKST } from '@/lib/time';
-import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 
 function authorized(req: NextRequest) {
@@ -45,15 +44,16 @@ export async function GET(req: NextRequest) {
       update: { status: 'MISSING' },
     });
 
-    try {
-      await sendDm(m.slackId, 'There is no clock-in recorded yet. Please take a look');
-    } catch (err) {
-      await logAudit({
-        actorId: m.id,
-        action: 'SLACK_SEND_FAIL',
-        metadata: { stage: 'missing_clockin', error: String(err) },
-      });
-    }
+    // The missing clock-in DM is switched off for now. The record is still flagged.
+    // try {
+    //   await sendDm(m.slackId, t('dm.missingClockIn'));
+    // } catch (err) {
+    //   await logAudit({
+    //     actorId: m.id,
+    //     action: 'SLACK_SEND_FAIL',
+    //     metadata: { stage: 'missing_clockin', error: String(err) },
+    //   });
+    // }
     flagged++;
   }
 
