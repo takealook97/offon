@@ -12,6 +12,7 @@ import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
 import { CalendarToolbar } from './CalendarToolbar';
+import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
 
 const WEEK_OPTS = { weekStartsOn: 0 as const };
@@ -55,6 +56,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 
 export function TeamCalendarView() {
   const [events, setEvents] = useState<UiEvent[]>([]);
+  const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
@@ -83,23 +85,35 @@ export function TeamCalendarView() {
       end: range.end.toISOString(),
     });
     setLoading(true);
-    fetch(`/api/team/leaves?${qs}`)
-      .then((r) => r.json())
-      .then((data: CalendarEventsResponse) => {
-        if (cancelled || !data?.events) return;
-        setEvents(
-          data.events.map((e) => ({
-            id: e.id,
-            title: e.title,
-            start: new Date(e.start),
-            end: new Date(e.end),
-            allDay: e.allDay,
-            resource: e.resource,
-          })),
-        );
+    const fromStr = format(range.start, 'yyyy-MM-dd');
+    const toStr = format(range.end, 'yyyy-MM-dd');
+    Promise.all([
+      fetch(`/api/team/leaves?${qs}`).then((r) => r.json()),
+      fetch(`/api/holidays?from=${fromStr}&to=${toStr}`)
+        .then((r) => r.json())
+        .catch(() => ({ holidays: [] })),
+    ])
+      .then(([data, hData]: [CalendarEventsResponse, { holidays?: { date: string }[] }]) => {
+        if (cancelled) return;
+        if (data?.events) {
+          setEvents(
+            data.events.map((e) => ({
+              id: e.id,
+              title: e.title,
+              start: new Date(e.start),
+              end: new Date(e.end),
+              allDay: e.allDay,
+              resource: e.resource,
+            })),
+          );
+        }
+        setHolidays(new Set((hData?.holidays ?? []).map((h) => h.date)));
       })
       .catch(() => {
-        if (!cancelled) setEvents([]);
+        if (!cancelled) {
+          setEvents([]);
+          setHolidays(new Set());
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -112,6 +126,19 @@ export function TeamCalendarView() {
   const eventPropGetter = useCallback(
     (event: UiEvent) => ({ className: eventStyle(event) }),
     [],
+  );
+
+  const dayPropGetter = useCallback(
+    (d: Date) => {
+      const key = format(d, 'yyyy-MM-dd');
+      const dow = getDay(d);
+      const classes: string[] = [];
+      if (dow === 0) classes.push('rbc-day-sun');
+      else if (dow === 6) classes.push('rbc-day-sat');
+      if (holidays.has(key)) classes.push('rbc-day-holiday');
+      return classes.length ? { className: classes.join(' ') } : {};
+    },
+    [holidays],
   );
 
   const openDayModal = useCallback(
@@ -172,8 +199,16 @@ export function TeamCalendarView() {
           endAccessor="end"
           allDayAccessor="allDay"
           eventPropGetter={eventPropGetter}
+          dayPropGetter={dayPropGetter}
           views={VIEWS_ALLOWED}
-          components={{ toolbar: ToolbarWithJump }}
+          components={{
+            toolbar: ToolbarWithJump,
+            month: {
+              dateHeader: (props) => (
+                <DateHeader {...props} holidays={holidays} />
+              ),
+            },
+          }}
           onSelectEvent={(ev) => openDayModal((ev as UiEvent).start)}
           onDrillDown={(d) => openDayModal(d)}
           onShowMore={(evts, d) =>

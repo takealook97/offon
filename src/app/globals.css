@@ -248,6 +248,35 @@
   font-weight: 700;
 }
 
+/* 요일/공휴일 색상. 일·공휴일=빨강, 토=파랑. off-range는 기본 규칙(muted) 유지. */
+.rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sun {
+  color: #ef4444;
+}
+.dark .rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sun {
+  color: #f87171;
+}
+.rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sat {
+  color: #3b82f6;
+}
+.dark .rbc-date-cell:not(.rbc-off-range) .rbc-button-link.rbc-date-sat {
+  color: #60a5fa;
+}
+
+/* 주별 헤더(요일 라벨). 주는 일요일 시작이므로 first=일(빨), last=토(파). */
+.rbc-month-header > .rbc-header:first-child {
+  color: #ef4444;
+}
+.dark .rbc-month-header > .rbc-header:first-child {
+  color: #f87171;
+}
+.rbc-month-header > .rbc-header:last-child {
+  color: #3b82f6;
+}
+.dark .rbc-month-header > .rbc-header:last-child {
+  color: #60a5fa;
+}
+
+
 .rbc-event,
 .rbc-day-slot .rbc-background-event {
   border: none;
