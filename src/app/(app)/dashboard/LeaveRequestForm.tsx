@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/cn';
+// BE(`src/app/api/leave/request/route.ts`)와 FE가 **동일한 KST 주말 판정 규칙**을
+// 공유하도록 `@/lib/time`의 공용 헬퍼를 사용한다. `time.ts`는 date-fns만 쓰고
+// server-only 의존성이 없어 'use client' 경계에서도 안전하게 import 가능하다.
+// 서버와 클라 계산이 달라지면 "폼은 N일인데 서버는 거부" 같은 회귀가 발생하므로
+// 로컬 복제 대신 원본을 공유한다.
+import { countWeekdaysKST, isWeekendKSTDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
@@ -16,14 +22,6 @@ const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'HALF_DAY_AM', label: '오전' },
   { value: 'HALF_DAY_PM', label: '오후' },
 ];
-
-function daysBetween(a: string, b: string): number {
-  if (!a || !b) return 0;
-  const d1 = new Date(a);
-  const d2 = new Date(b);
-  if (Number.isNaN(d1.getTime()) || Number.isNaN(d2.getTime())) return 0;
-  return Math.max(0, Math.floor((d2.getTime() - d1.getTime()) / 86400000) + 1);
-}
 
 export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
   const router = useRouter();
@@ -42,14 +40,31 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
   }, []);
 
   const requestedDays = useMemo(() => {
-    if (type !== 'FULL_DAY') return 0.5;
-    return daysBetween(startDate, endDate || startDate);
+    if (!startDate) return 0;
+    // 반차: 시작일이 주말이면 신청 불가(0), 평일이면 0.5일.
+    if (type !== 'FULL_DAY') {
+      return isWeekendKSTDateStr(startDate) ? 0 : 0.5;
+    }
+    // 종일: 주말 제외 평일 수. BE `countWeekdaysKST`와 동일 규칙(양끝 포함, end<start면 0).
+    return countWeekdaysKST(startDate, endDate || startDate);
   }, [type, startDate, endDate]);
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  const canSubmit = !!startDate && requestedDays > 0 && !exceeds && !invalidRange && !isPast;
+  // 주말 전용 케이스: 반차는 시작일이 주말, 종일은 선택 범위가 전부 주말(평일 수=0).
+  // invalidRange일 때는 `requestedDays === 0`의 원인이 range 오류이므로 주말 에러를 숨긴다.
+  const isWeekendOnly =
+    !!startDate &&
+    !invalidRange &&
+    (type === 'FULL_DAY' ? requestedDays === 0 : isWeekendKSTDateStr(startDate));
+  const canSubmit =
+    !!startDate &&
+    requestedDays > 0 &&
+    !exceeds &&
+    !invalidRange &&
+    !isPast &&
+    !isWeekendOnly;
 
   const submit = () =>
     start(async () => {
@@ -152,7 +167,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       <div
         className={cn(
           'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
-          exceeds || invalidRange || isPast
+          exceeds || invalidRange || isPast || isWeekendOnly
             ? 'border-destructive/40 bg-destructive/5 text-destructive'
             : 'border-border/60 bg-muted/40 text-muted-foreground',
         )}
@@ -171,6 +186,9 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
           {exceeds && <p className="text-destructive">사용 가능 연차를 초과했습니다</p>}
           {invalidRange && <p className="text-destructive">종료일이 시작일보다 빠릅니다</p>}
           {isPast && <p className="text-destructive">과거 날짜는 신청할 수 없습니다</p>}
+          {isWeekendOnly && (
+            <p className="text-destructive">주말에는 연차를 신청할 수 없습니다</p>
+          )}
         </div>
       </div>
 
