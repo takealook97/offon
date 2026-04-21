@@ -127,19 +127,17 @@ model LeaveBalance {
 }
 
 model LoginCode {
-  id        Int       @id @default(autoincrement())
-  memberId  Int       @map("member_id")
-  codeHash  String    @map("code_hash")
-  expiresAt DateTime  @map("expires_at")
+  id        Int      @id @default(autoincrement())
+  memberId  Int      @unique @map("member_id")
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  attempts  Int       @default(0)
-  createdAt DateTime  @default(now())  @map("created_at")
-  updatedAt DateTime  @updatedAt       @map("updated_at")
-  deletedAt DateTime?                  @map("deleted_at")
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())  @map("created_at")
+  updatedAt DateTime @updatedAt       @map("updated_at")
 
   member Member @relation(fields: [memberId], references: [id])
 
-  @@index([memberId, expiresAt])
   @@map("login_codes")
 }
 

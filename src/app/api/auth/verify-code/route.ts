@@ -34,9 +34,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: '코드가 올바르지 않습니다' }, { status: 401 });
   }
 
-  const latest = await prisma.loginCode.findFirst({
-    where: { memberId: member.id, deletedAt: null },
-    orderBy: { createdAt: 'desc' },
+  const latest = await prisma.loginCode.findUnique({
+    where: { memberId: member.id },
   });
   if (
     !latest ||
