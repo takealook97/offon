@@ -70,14 +70,19 @@ export default async function DashboardPage() {
   const latestEnd = openSession
     ? null
     : latestSession?.endAt ?? todayAttendance?.clockOutAt ?? null;
-  const storedWorked = todayAttendance?.workedMinutes ?? 0;
-  const liveDelta = openSession
-    ? Math.max(0, Math.floor((Date.now() - openSession.startAt.getTime()) / 60000))
-    : 0;
-  const todayWorked = storedWorked + liveDelta;
+  const nowMs = Date.now();
+  const todayRawTotal = sessions.reduce((sum, s) => {
+    const endMs = s.endAt ? s.endAt.getTime() : nowMs;
+    return sum + Math.max(0, Math.floor((endMs - s.startAt.getTime()) / 60000));
+  }, 0);
+  const todayDeduction = todayRawTotal >= 300 ? 60 : 0;
+  const todayWorked = todayRawTotal - todayDeduction;
 
-  const weekTotal = weekRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
-  const monthTotal = monthRows.reduce((s, r) => s + r.workedMinutes, 0) + (isWorking ? liveDelta : 0);
+  const storedTodayWorked = todayAttendance?.workedMinutes ?? 0;
+  const weekTotal =
+    weekRows.reduce((s, r) => s + r.workedMinutes, 0) - storedTodayWorked + todayWorked;
+  const monthTotal =
+    monthRows.reduce((s, r) => s + r.workedMinutes, 0) - storedTodayWorked + todayWorked;
   const safe = (n: number) => (Number.isFinite(n) ? n : 0);
   const baseDays = balance ? safe(Number(balance.baseDays)) : 0;
   const bonusDays = balance ? safe(Number(balance.bonusDays)) : 0;

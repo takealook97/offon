@@ -6,6 +6,8 @@ import { logAudit } from '@/lib/audit';
 import { sendChannel } from '@/lib/slack';
 
 const STANDARD_MINUTES = 480;
+const LUNCH_DEDUCTION_THRESHOLD_MINUTES = 300;
+const LUNCH_DEDUCTION_MINUTES = 60;
 
 export async function POST() {
   try {
@@ -39,10 +41,14 @@ export async function POST() {
         select: { startAt: true, endAt: true },
       });
       const closed = all.filter((s) => s.endAt);
-      const worked = closed.reduce(
+      const rawWorked = closed.reduce(
         (sum, s) => sum + Math.floor((s.endAt!.getTime() - s.startAt.getTime()) / 60000),
         0,
       );
+      const worked =
+        rawWorked >= LUNCH_DEDUCTION_THRESHOLD_MINUTES
+          ? rawWorked - LUNCH_DEDUCTION_MINUTES
+          : rawWorked;
       const overtime = Math.max(0, worked - STANDARD_MINUTES);
       const minStart = all.reduce<Date | null>(
         (min, s) => (min === null || s.startAt < min ? s.startAt : min),
