@@ -5,16 +5,15 @@ import { getHolidaySet } from '@/lib/holidays';
 import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-
-function authorized(req: NextRequest) {
-  const header = req.headers.get('authorization');
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  return header === expected;
-}
+import { checkCronAuth } from '@/lib/cron-auth';
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  const auth = checkCronAuth(req);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.reason },
+      { status: auth.reason === 'misconfigured' ? 500 : 401 },
+    );
   }
   if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
@@ -40,15 +39,16 @@ export async function GET(req: NextRequest) {
   });
   const exemptMemberIds = new Set(afternoonOffLeaves.map((l) => l.memberId));
 
-  // 오늘 출근했고 아직 퇴근하지 않은(열린 세션이 있는) 멤버
+  // 오늘 출근했고 아직 퇴근하지 않은(열린 세션이 있는) + reminder 미발송 멤버
   const pending = await prisma.attendance.findMany({
     where: {
       workDate: date,
       deletedAt: null,
-      member: { deletedAt: null },
+      clockOutReminderSentAt: null,
+      member: { deletedAt: null, excludeMissingNotify: false },
       sessions: { some: { endAt: null, deletedAt: null } },
     },
-    include: { member: true },
+    include: { member: { select: { id: true, slackId: true } } },
   });
   const targets = pending.filter((a) => !exemptMemberIds.has(a.memberId));
 
@@ -60,6 +60,10 @@ export async function GET(req: NextRequest) {
           a.member.slackId,
           '오후 7시 기준 퇴근 기록이 없습니다. 퇴근 처리 부탁드립니다',
         );
+        await prisma.attendance.update({
+          where: { id: a.id },
+          data: { clockOutReminderSentAt: new Date() },
+        });
         notified++;
       } catch (err) {
         await logAudit({

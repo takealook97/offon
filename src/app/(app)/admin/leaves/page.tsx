@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 import { formatKST } from '@/lib/time';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

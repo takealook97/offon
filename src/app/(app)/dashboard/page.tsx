@@ -199,6 +199,7 @@ export default async function DashboardPage() {
           <LeaveRequestForm
             availableDays={availableDays}
             holidayDates={holidayDates}
+            todayStr={todayStr}
           />
         </CardContent>
       </Card>

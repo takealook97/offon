@@ -26,7 +26,10 @@ export async function DELETE(
         { status: 404 },
       );
     }
-    await prisma.holiday.delete({ where: { id } });
+    await prisma.holiday.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     await logAudit({
       actorId: admin.memberId,
       action: 'HOLIDAY_DELETE',

@@ -26,9 +26,11 @@ const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
 export function LeaveRequestForm({
   availableDays,
   holidayDates,
+  todayStr,
 }: {
   availableDays: number;
   holidayDates: string[];
+  todayStr: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -38,14 +40,6 @@ export function LeaveRequestForm({
   const [reason, setReason] = useState('');
 
   const holidays = useMemo(() => new Set(holidayDates), [holidayDates]);
-
-  const todayStr = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }, []);
 
   const missingEndDate = type === 'FULL_DAY' && !!startDate && !endDate;
   const missingStartDate = type === 'FULL_DAY' && !startDate && !!endDate;

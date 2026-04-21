@@ -5,16 +5,15 @@ import { getHolidaySet } from '@/lib/holidays';
 import { logAudit } from '@/lib/audit';
 import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
-
-function authorized(req: NextRequest) {
-  const header = req.headers.get('authorization');
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  return header === expected;
-}
+import { checkCronAuth } from '@/lib/cron-auth';
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  const auth = checkCronAuth(req);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.reason },
+      { status: auth.reason === 'misconfigured' ? 500 : 401 },
+    );
   }
   if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
@@ -27,52 +26,75 @@ export async function GET(req: NextRequest) {
 
   const settings = await getAppSettings();
   const members = await prisma.member.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, excludeMissingNotify: false },
+    select: { id: true, slackId: true },
   });
+  if (members.length === 0) {
+    await logAudit({
+      action: 'CRON_MISSING_CLOCKIN',
+      metadata: {
+        flagged: 0,
+        notified: 0,
+        notifyEnabled: settings.missingClockInNotifyEnabled,
+        totalActive: 0,
+      },
+    });
+    return NextResponse.json({ ok: true, flagged: 0, notified: 0 });
+  }
+
+  const memberIds = members.map((m) => m.id);
+
+  // 오늘 attendance 일괄 조회
+  const attendances = await prisma.attendance.findMany({
+    where: { workDate: date, memberId: { in: memberIds }, deletedAt: null },
+  });
+  const attByMember = new Map(attendances.map((a) => [a.memberId, a]));
+
+  // 오전 면제 연차(종일/오전반차) 일괄 조회
+  const morningOffRows = await prisma.leaveRequest.findMany({
+    where: {
+      memberId: { in: memberIds },
+      status: 'APPROVED',
+      type: { in: ['FULL_DAY', 'HALF_DAY_AM'] },
+      startDate: { lte: date },
+      endDate: { gte: date },
+      deletedAt: null,
+    },
+    select: { memberId: true },
+  });
+  const morningOffIds = new Set(morningOffRows.map((l) => l.memberId));
 
   let flagged = 0;
   let notified = 0;
   for (const m of members) {
-    const att = await prisma.attendance.findUnique({
-      where: { memberId_workDate: { memberId: m.id, workDate: date } },
-    });
+    if (morningOffIds.has(m.id)) continue;
+    const att = attByMember.get(m.id);
     if (att?.clockInAt) continue;
 
-    // 오전 근무 면제 연차(종일/오전 반차)만 제외. 오후 반차는 오전에 출근해야 한다.
-    const morningOffLeave = await prisma.leaveRequest.findFirst({
-      where: {
-        memberId: m.id,
-        status: 'APPROVED',
-        type: { in: ['FULL_DAY', 'HALF_DAY_AM'] },
-        startDate: { lte: date },
-        endDate: { gte: date },
-        deletedAt: null,
-      },
-    });
-    if (morningOffLeave) continue;
-
-    await prisma.attendance.upsert({
+    const upserted = await prisma.attendance.upsert({
       where: { memberId_workDate: { memberId: m.id, workDate: date } },
       create: { memberId: m.id, workDate: date, status: 'MISSING' },
       update: { status: 'MISSING' },
     });
-
     flagged++;
 
-    if (settings.missingClockInNotifyEnabled) {
-      try {
-        await sendDm(
-          m.slackId,
-          '오전 10시 기준 출근 기록이 없습니다. 확인 부탁드립니다',
-        );
-        notified++;
-      } catch (err) {
-        await logAudit({
-          actorId: m.id,
-          action: 'SLACK_SEND_FAIL',
-          metadata: { stage: 'missing_clockin', error: String(err) },
-        });
-      }
+    // 이미 오늘 reminder 보냈으면 스킵 (멱등성)
+    if (upserted.clockInReminderSentAt) continue;
+    if (!settings.missingClockInNotifyEnabled) continue;
+
+    try {
+      await sendDm(m.slackId, '오전 10시 기준 출근 기록이 없습니다. 확인 부탁드립니다');
+      await prisma.attendance.update({
+        where: { id: upserted.id },
+        data: { clockInReminderSentAt: new Date() },
+      });
+      notified++;
+    } catch (err) {
+      await logAudit({
+        actorId: m.id,
+        action: 'SLACK_SEND_FAIL',
+        metadata: { stage: 'missing_clockin', error: String(err) },
+      });
     }
   }
 

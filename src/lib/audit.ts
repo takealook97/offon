@@ -16,7 +16,8 @@ export async function logAudit(params: {
         metadata: params.metadata,
       },
     });
-  } catch {
-    // 감사 로그 실패가 상위 플로우를 막지 않는다
+  } catch (err) {
+    // 감사 로그 실패가 상위 플로우를 막지 않도록 console만 남김.
+    console.error('[audit] insert failed', err);
   }
 }

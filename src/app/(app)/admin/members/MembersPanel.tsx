@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ export type MemberRow = {
   slackId: string;
   position: string | null;
   role: 'EMPLOYEE' | 'ADMIN';
+  excludeMissingNotify: boolean;
   active: boolean;
   baseDays: number;
   bonusDays: number;
@@ -378,6 +380,7 @@ function EditDialog({
     slackId: member.slackId,
     position: member.position ?? '',
     role: member.role,
+    excludeMissingNotify: member.excludeMissingNotify,
     baseDays: member.baseDays,
     bonusDays: member.bonusDays,
   });
@@ -393,6 +396,7 @@ function EditDialog({
         slackId: form.slackId,
         position: form.position || undefined,
         role: form.role,
+        excludeMissingNotify: form.excludeMissingNotify,
         baseDays: form.baseDays,
         bonusDays: form.bonusDays,
       };
@@ -462,6 +466,28 @@ function EditDialog({
                 </SelectContent>
               </Select>
             </Field>
+          </div>
+
+          <div className="flex items-start justify-between gap-4 rounded-md border border-border/60 bg-muted/30 p-3">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor={`exclude-missing-${member.id}`}
+                className="text-sm font-medium"
+              >
+                출퇴근 알림 제외
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                이 직원에게는 미출근·미퇴근 Slack DM을 보내지 않습니다
+              </p>
+            </div>
+            <Switch
+              id={`exclude-missing-${member.id}`}
+              checked={form.excludeMissingNotify}
+              onCheckedChange={(v) =>
+                setForm((f) => ({ ...f, excludeMissingNotify: v }))
+              }
+              aria-label="출퇴근 알림 제외 토글"
+            />
           </div>
 
           <div className="rounded-md border border-border/60 bg-muted/30 p-3">
