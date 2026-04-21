@@ -46,6 +46,9 @@ next-env.d.ts
 # local-only dummy data and one-off scripts
 data/
 scripts/dump-members.ts
+scripts/seed-members.ts
+scripts/apply-leave-balances.ts
+scripts/apply-approved-leaves.ts
 
 # agent orchestration workspace
 _workspace/
