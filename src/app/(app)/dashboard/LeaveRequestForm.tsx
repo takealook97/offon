@@ -47,41 +47,47 @@ export function LeaveRequestForm({
     return `${y}-${m}-${d}`;
   }, []);
 
+  const missingEndDate = type === 'FULL_DAY' && !!startDate && !endDate;
+  const missingStartDate = type === 'FULL_DAY' && !startDate && !!endDate;
+
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
     // 반차: 시작일이 주말/공휴일이면 신청 불가(0), 평일이면 0.5일.
     if (type !== 'FULL_DAY') {
       return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
     }
-    // 종일: 주말·공휴일 제외. BE `countBusinessDaysKST`와 동일 규칙(양끝 포함, end<start면 0).
-    return countBusinessDaysKST(startDate, endDate || startDate, holidays);
+    // 종일: 시작일·종료일 모두 있어야 계산. BE `countBusinessDaysKST`와 동일 규칙.
+    if (!endDate) return 0;
+    return countBusinessDaysKST(startDate, endDate, holidays);
   }, [type, startDate, endDate, holidays]);
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  // 비영업일 전용 케이스: 반차는 시작일이 주말/공휴일, 종일은 범위 전부가 비영업일(=0일).
-  // invalidRange일 때는 range 오류가 원인이므로 비영업일 에러는 숨긴다.
-  const isNonBusinessOnly =
-    !!startDate &&
-    !invalidRange &&
-    (type === 'FULL_DAY'
-      ? requestedDays === 0
-      : !isBusinessDayKSTDateStr(startDate, holidays));
+  // 시작일/종료일 각각 주말·공휴일이면 차단. 범위 중간의 비영업일은 BE와 동일하게 일수에서 자동 제외.
+  const startIsNonBusiness =
+    !!startDate && !isBusinessDayKSTDateStr(startDate, holidays);
+  const endIsNonBusiness =
+    type === 'FULL_DAY' &&
+    !!endDate &&
+    !isBusinessDayKSTDateStr(endDate, holidays);
   const canSubmit =
     !!startDate &&
+    !missingEndDate &&
+    !missingStartDate &&
     requestedDays > 0 &&
     !exceeds &&
     !invalidRange &&
     !isPast &&
-    !isNonBusinessOnly;
+    !startIsNonBusiness &&
+    !endIsNonBusiness;
 
   const submit = () =>
     start(async () => {
       const body = {
         type,
         startDate,
-        endDate: type === 'FULL_DAY' ? endDate || startDate : startDate,
+        endDate: type === 'FULL_DAY' ? endDate : startDate,
         reason: reason || undefined,
       };
       const res = await fetch('/api/leave/request', {
@@ -177,7 +183,13 @@ export function LeaveRequestForm({
       <div
         className={cn(
           'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
-          exceeds || invalidRange || isPast || isNonBusinessOnly
+          exceeds ||
+            invalidRange ||
+            isPast ||
+            startIsNonBusiness ||
+            endIsNonBusiness ||
+            missingEndDate ||
+            missingStartDate
             ? 'border-destructive/40 bg-destructive/5 text-destructive'
             : 'border-border/60 bg-muted/40 text-muted-foreground',
         )}
@@ -193,12 +205,25 @@ export function LeaveRequestForm({
               </>
             )}
           </p>
+          {missingEndDate && (
+            <p className="text-destructive">종료일을 선택해 주세요</p>
+          )}
+          {missingStartDate && (
+            <p className="text-destructive">시작일을 선택해 주세요</p>
+          )}
           {exceeds && <p className="text-destructive">사용 가능 연차를 초과했습니다</p>}
           {invalidRange && <p className="text-destructive">종료일이 시작일보다 빠릅니다</p>}
           {isPast && <p className="text-destructive">과거 날짜는 신청할 수 없습니다</p>}
-          {isNonBusinessOnly && (
+          {startIsNonBusiness && (
             <p className="text-destructive">
-              주말·공휴일에는 연차를 신청할 수 없습니다
+              {type === 'FULL_DAY'
+                ? '시작일은 주말·공휴일로 지정할 수 없습니다'
+                : '주말·공휴일에는 반차를 신청할 수 없습니다'}
+            </p>
+          )}
+          {endIsNonBusiness && (
+            <p className="text-destructive">
+              종료일은 주말·공휴일로 지정할 수 없습니다
             </p>
           )}
         </div>

@@ -53,21 +53,30 @@ export async function POST(req: NextRequest) {
       );
     }
     const holidays = await getHolidaySet(startDate, endDate);
-    // 반차: 해당 날짜가 주말/공휴일이면 reject.
-    if (type !== 'FULL_DAY' && !isBusinessDayKSTDateStr(startDate, holidays)) {
-      return NextResponse.json(
-        { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
-        { status: 400 },
-      );
+    if (type !== 'FULL_DAY') {
+      // 반차: 해당 날짜가 주말/공휴일이면 reject.
+      if (!isBusinessDayKSTDateStr(startDate, holidays)) {
+        return NextResponse.json(
+          { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
+          { status: 400 },
+        );
+      }
+    } else {
+      // FULL_DAY: 시작일/종료일 각각 비영업일이면 reject. 범위 내부는 자동 제외.
+      if (!isBusinessDayKSTDateStr(startDate, holidays)) {
+        return NextResponse.json(
+          { ok: false, error: '시작일은 주말·공휴일로 지정할 수 없습니다' },
+          { status: 400 },
+        );
+      }
+      if (!isBusinessDayKSTDateStr(endDate, holidays)) {
+        return NextResponse.json(
+          { ok: false, error: '종료일은 주말·공휴일로 지정할 수 없습니다' },
+          { status: 400 },
+        );
+      }
     }
     const days = dayCount(startDate, endDate, type, holidays);
-    // FULL_DAY가 전부 주말/공휴일이면 reject.
-    if (type === 'FULL_DAY' && Number(days) === 0) {
-      return NextResponse.json(
-        { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
-        { status: 400 },
-      );
-    }
 
     const [balance, pending] = await Promise.all([
       prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
