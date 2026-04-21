@@ -87,11 +87,18 @@ export async function POST(req: NextRequest) {
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', deletedAt: null },
     });
+    const dateRange = startDate === endDate ? startDate : `${startDate}~${endDate}`;
+    const action =
+      type === 'FULL_DAY'
+        ? 'requested leave'
+        : type === 'HALF_DAY_AM'
+        ? 'requested a morning half day'
+        : 'requested an afternoon half day';
     await Promise.all(
       admins.map((a) =>
         sendDm(
           a.slackId,
-          `${requester?.name ?? 'An employee'} requested ${type} leave for ${startDate}~${endDate}`,
+          `${requester?.name ?? 'An employee'} ${action} ${dateRange}.`,
         ).catch((err) =>
           logAudit({
             actorId: session.memberId,
