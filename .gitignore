@@ -42,7 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local-only dummy data and one-off scripts
 data/
+scripts/dump-members.ts
 
 # agent orchestration workspace
 _workspace/
