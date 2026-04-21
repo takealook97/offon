@@ -13,7 +13,7 @@ import { cn } from '@/lib/cn';
 // has no server-only imports, so it is safe to pull across the 'use client' boundary.
 // If the client and the server compute differently, the form offers a count the server then refuses,
 // The original is shared rather than copied locally.
-import { countWeekdaysKST, isWeekendKSTDateStr } from '@/lib/time';
+import { countBusinessDaysKST, isBusinessDayKSTDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
@@ -23,13 +23,21 @@ const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'HALF_DAY_PM', label: 'Afternoon' },
 ];
 
-export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
+export function LeaveRequestForm({
+  availableDays,
+  holidayDates,
+}: {
+  availableDays: number;
+  holidayDates: string[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [type, setType] = useState<LeaveType>('FULL_DAY');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+
+  const holidays = useMemo(() => new Set(holidayDates), [holidayDates]);
 
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -41,30 +49,32 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
 
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
-    // A half day is refused on a weekend and worth half a day otherwise.
+    // A half day is refused on a weekend or a holiday and worth half a day otherwise.
     if (type !== 'FULL_DAY') {
-      return isWeekendKSTDateStr(startDate) ? 0 : 0.5;
+      return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
     }
-    // A full day counts weekdays, inclusive of both ends, and zero when they are the wrong way round.
-    return countWeekdaysKST(startDate, endDate || startDate);
-  }, [type, startDate, endDate]);
+    // A full day excludes weekends and holidays, inclusive of both ends, and is zero when reversed.
+    return countBusinessDaysKST(startDate, endDate || startDate, holidays);
+  }, [type, startDate, endDate, holidays]);
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  // The weekend-only case: a half day starting on a weekend, or a full day whose whole range is weekend.
-  // With an invalid range the zero comes from the range itself, so the weekend error is hidden.
-  const isWeekendOnly =
+  // The non-business-day case: a half day starting on one, or a full day whose whole range is made of them.
+  // With an invalid range the range is the cause, so the non-business-day error is hidden.
+  const isNonBusinessOnly =
     !!startDate &&
     !invalidRange &&
-    (type === 'FULL_DAY' ? requestedDays === 0 : isWeekendKSTDateStr(startDate));
+    (type === 'FULL_DAY'
+      ? requestedDays === 0
+      : !isBusinessDayKSTDateStr(startDate, holidays));
   const canSubmit =
     !!startDate &&
     requestedDays > 0 &&
     !exceeds &&
     !invalidRange &&
     !isPast &&
-    !isWeekendOnly;
+    !isNonBusinessOnly;
 
   const submit = () =>
     start(async () => {
@@ -167,7 +177,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       <div
         className={cn(
           'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
-          exceeds || invalidRange || isPast || isWeekendOnly
+          exceeds || invalidRange || isPast || isNonBusinessOnly
             ? 'border-destructive/40 bg-destructive/5 text-destructive'
             : 'border-border/60 bg-muted/40 text-muted-foreground',
         )}
@@ -186,8 +196,10 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
           {exceeds && <p className="text-destructive">That exceeds your available leave</p>}
           {invalidRange && <p className="text-destructive">The end date is before the start date</p>}
           {isPast && <p className="text-destructive">A date in the past cannot be requested</p>}
-          {isWeekendOnly && (
-            <p className="text-destructive">Leave cannot be requested on a weekend</p>
+          {isNonBusinessOnly && (
+            <p className="text-destructive">
+              Leave cannot be requested on a weekend or a holiday
+            </p>
           )}
         </div>
       </div>

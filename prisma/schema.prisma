@@ -142,6 +142,18 @@ model LoginCode {
   @@map("login_codes")
 }
 
+model Holiday {
+  id        Int       @id @default(autoincrement())
+  date      DateTime  @unique @db.Date
+  name      String
+  createdAt DateTime  @default(now())  @map("created_at")
+  updatedAt DateTime  @updatedAt       @map("updated_at")
+  deletedAt DateTime?                  @map("deleted_at")
+
+  @@index([date])
+  @@map("holidays")
+}
+
 model AppSetting {
   id                          Int      @id @default(1)
   missingClockInNotifyEnabled Boolean  @default(false) @map("missing_clockin_notify_enabled")

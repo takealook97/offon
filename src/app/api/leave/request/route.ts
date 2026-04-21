@@ -5,7 +5,12 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { countWeekdaysKST, isWeekendKSTDateStr, todayKST } from '@/lib/time';
+import {
+  countBusinessDaysKST,
+  isBusinessDayKSTDateStr,
+  todayKST,
+} from '@/lib/time';
+import { getHolidaySet } from '@/lib/holidays';
 
 const Body = z.object({
   type: z.enum(['FULL_DAY', 'HALF_DAY_AM', 'HALF_DAY_PM']),
@@ -14,12 +19,16 @@ const Body = z.object({
   reason: z.string().max(500).optional(),
 });
 
-const WEEKEND_REJECT_MESSAGE = 'Leave cannot be requested on a weekend';
+const NON_BUSINESS_REJECT_MESSAGE = 'Leave cannot be requested on a weekend or a holiday';
 
-function dayCount(start: string, end: string, type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM') {
+function dayCount(
+  start: string,
+  end: string,
+  type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM',
+  holidays: ReadonlySet<string>,
+) {
   if (type !== 'FULL_DAY') return new Prisma.Decimal(0.5);
-  // A full day counts weekdays only; weekends are excluded.
-  return new Prisma.Decimal(countWeekdaysKST(start, end));
+  return new Prisma.Decimal(countBusinessDaysKST(start, end, holidays));
 }
 
 export async function POST(req: NextRequest) {
@@ -43,18 +52,19 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    // A half day is refused when its date falls on a weekend.
-    if (type !== 'FULL_DAY' && isWeekendKSTDateStr(startDate)) {
+    const holidays = await getHolidaySet(startDate, endDate);
+    // A half day is refused when its date is a weekend or a holiday.
+    if (type !== 'FULL_DAY' && !isBusinessDayKSTDateStr(startDate, holidays)) {
       return NextResponse.json(
-        { ok: false, error: WEEKEND_REJECT_MESSAGE },
+        { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
         { status: 400 },
       );
     }
-    const days = dayCount(startDate, endDate, type);
-    // A full day made up entirely of weekend is refused.
+    const days = dayCount(startDate, endDate, type, holidays);
+    // A full day made up entirely of weekends and holidays is refused.
     if (type === 'FULL_DAY' && Number(days) === 0) {
       return NextResponse.json(
-        { ok: false, error: WEEKEND_REJECT_MESSAGE },
+        { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
         { status: 400 },
       );
     }
