@@ -6,9 +6,9 @@ description: offon의 Prisma 스키마 추가/수정/마이그레이션/쿼리 �
 # Prisma 작업 규약
 
 ## 전제
-- `postgresql` provider, AWS RDS (`lukuku-app.clyyn7nia8dj.ap-northeast-2`).
+- `postgresql` provider, AWS RDS.
 - 스키마: `prisma/schema.prisma`. 연결: `env("DATABASE_URL")`.
-- 비밀번호에 특수문자(`!`, `#`)가 들어가므로 URL-encode 필수: `REDACTED_PW`.
+- 비밀번호에 특수문자(`!`, `#` 등)가 포함될 수 있으니 `DATABASE_URL`에 넣을 때는 반드시 URL-encode. 실제 자격증명은 `.env` 로컬 파일이나 Vercel 환경변수에서만 관리하고 문서/스킬/커밋에 절대 포함하지 않는다.
 
 ## 싱글턴 클라이언트 (`src/lib/prisma.ts`)
 ```ts
