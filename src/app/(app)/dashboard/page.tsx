@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
 import { AttendanceActions } from './AttendanceActions';
 import { LeaveRequestForm } from './LeaveRequestForm';
+import { MyLeavesCard } from './MyLeavesCard';
 
 type SessionLite = { startAt: Date; endAt: Date | null };
 
@@ -183,6 +184,8 @@ export default async function DashboardPage() {
           <LeaveRequestForm availableDays={availableDays} />
         </CardContent>
       </Card>
+
+      <MyLeavesCard memberId={session.memberId} />
     </div>
   );
 }
