@@ -47,28 +47,28 @@ export async function MyLeavesCard({ memberId }: { memberId: number }) {
               return (
                 <li
                   key={l.id}
-                  className="flex flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex items-center justify-between gap-3 px-6 py-3"
                 >
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="text-sm">
+                  <div className="flex min-w-0 items-center gap-2 text-sm">
+                    {l.status === 'APPROVED' ? (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                      >
+                        Approve
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="shrink-0">
+                        pending
+                      </Badge>
+                    )}
+                    <span className="truncate">
                       <span className="font-mono tabular-nums">{range}</span>
                       <span className="mx-1.5 text-border">·</span>
                       <span className="text-muted-foreground">
-                        {TYPE_LABEL[l.type]} · {Number(l.days)}d
+                        {TYPE_LABEL[l.type]} ({Number(l.days)}Day)
                       </span>
-                    </p>
-                    <div className="flex items-center gap-2">
-                      {l.status === 'APPROVED' ? (
-                        <Badge
-                          variant="outline"
-                          className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
-                        >
-                          Approve
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">pending</Badge>
-                      )}
-                    </div>
+                    </span>
                   </div>
                   <CancelLeaveButton id={l.id} wasApproved={l.status === 'APPROVED'} />
                 </li>
