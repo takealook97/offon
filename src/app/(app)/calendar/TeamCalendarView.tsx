@@ -46,6 +46,13 @@ function eventStyle(ev: UiEvent): string {
   return 'rbc-event-leave-half';
 }
 
+function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
+  const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  return all.filter((e) => e.start < dayEnd && e.end > dayStart);
+}
+
 export function TeamCalendarView() {
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,10 +114,19 @@ export function TeamCalendarView() {
     [],
   );
 
+  const openDayModal = useCallback(
+    (d: Date) => {
+      const evts = eventsOnDate(events, d);
+      if (evts.length === 0) return;
+      setShowMore({ date: d, events: evts });
+    },
+    [events],
+  );
+
   return (
     <div className="space-y-3 p-2 sm:p-4">
       <div
-        className={`h-[calc(100svh-220px)] min-h-[520px] transition-opacity ${
+        className={`h-[calc(100svh-220px)] min-h-[680px] transition-opacity sm:min-h-[520px] ${
           loading ? 'opacity-70' : ''
         }`}
       >
@@ -129,6 +145,10 @@ export function TeamCalendarView() {
           eventPropGetter={eventPropGetter}
           views={VIEWS_ALLOWED}
           components={{ toolbar: ToolbarWithJump }}
+          selectable
+          onSelectSlot={(slot) => openDayModal(slot.start as Date)}
+          onSelectEvent={(ev) => openDayModal((ev as UiEvent).start)}
+          onDrillDown={(d) => openDayModal(d)}
           onShowMore={(evts, d) =>
             setShowMore({ date: d, events: evts as UiEvent[] })
           }
