@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { MembersPanel, type MemberRow } from './MembersPanel';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function MembersPage() {
   await requireAdmin();
@@ -22,6 +22,7 @@ export default async function MembersPage() {
     slackId: m.slackId,
     position: m.position,
     role: m.role,
+    excludeMissingNotify: m.excludeMissingNotify,
     active: m.deletedAt === null,
     baseDays: m.leaveBalance ? Number(m.leaveBalance.baseDays) : 0,
     bonusDays: m.leaveBalance ? Number(m.leaveBalance.bonusDays) : 0,

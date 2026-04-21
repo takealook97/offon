@@ -16,7 +16,8 @@ export async function logAudit(params: {
         metadata: params.metadata,
       },
     });
-  } catch {
-    // A failed audit write does not stop the flow above it
+  } catch (err) {
+    // A failed audit write must not stop the flow above it, so it only reaches the console.
+    console.error('[audit] insert failed', err);
   }
 }

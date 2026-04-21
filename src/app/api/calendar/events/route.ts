@@ -1,36 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireSession } from '@/lib/session';
+import { requireSession, requireAdmin } from '@/lib/session';
 import { formatKST } from '@/lib/time';
+import {
+  parseDate,
+  kstIsoFromDate,
+  addDaysUtc,
+  halfDayIsoRange,
+} from '@/lib/calendar-utils';
 import type { CalendarEvent } from '@/lib/api-types';
-
-function parseDate(s: string | null): Date | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-function kstIsoFromDate(d: Date, h = 0, min = 0): string {
-  const y = d.getUTCFullYear();
-  const m = pad(d.getUTCMonth() + 1);
-  const day = pad(d.getUTCDate());
-  return `${y}-${m}-${day}T${pad(h)}:${pad(min)}:00+09:00`;
-}
-
-function addDaysUtc(d: Date, n: number): Date {
-  const copy = new Date(d);
-  copy.setUTCDate(copy.getUTCDate() + n);
-  return copy;
-}
-
-function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
-  if (type === 'HALF_DAY_AM') {
-    return { start: kstIsoFromDate(workDate, 9), end: kstIsoFromDate(workDate, 13) };
-  }
-  return { start: kstIsoFromDate(workDate, 13), end: kstIsoFromDate(workDate, 18) };
-}
 
 const LUNCH_DEDUCTION_THRESHOLD_MINUTES = 300;
 const LUNCH_DEDUCTION_MINUTES = 60;
@@ -53,10 +31,15 @@ export async function GET(req: NextRequest) {
     }
     const memberIdRaw = req.nextUrl.searchParams.get('memberId');
     const parsedMemberId = memberIdRaw ? Number(memberIdRaw) : null;
-    const targetMemberId =
+    const requestedMemberId =
       parsedMemberId && Number.isInteger(parsedMemberId) && parsedMemberId > 0
         ? parsedMemberId
         : session.memberId;
+    // Only an admin may look up somebody else, which is what stops an insecure direct reference
+    if (requestedMemberId !== session.memberId) {
+      await requireAdmin();
+    }
+    const targetMemberId = requestedMemberId;
 
     const [attendances, leaves] = await Promise.all([
       prisma.attendance.findMany({
@@ -154,9 +137,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ events });
+    return NextResponse.json({ ok: true, events });
   } catch (e) {
     if (e instanceof Response) return e;
-    throw e;
+    console.error('[calendar/events] failed', e);
+    return NextResponse.json(
+      { ok: false, error: 'Could not load the calendar events' },
+      { status: 500 },
+    );
   }
 }

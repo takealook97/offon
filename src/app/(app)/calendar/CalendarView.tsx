@@ -11,6 +11,7 @@ import {
 import { format, parse, startOfWeek, getDay, isSameWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Clock } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
 import { CalendarToolbar } from './CalendarToolbar';
@@ -116,7 +117,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     ])
       .then(([data, hData]: [CalendarEventsResponse, { holidays?: { date: string }[] }]) => {
         if (cancelled) return;
-        if (data?.events) {
+        if (data && 'ok' in data && data.ok) {
           setEvents(
             data.events.map((e) => ({
               id: e.id,
@@ -126,6 +127,11 @@ export function CalendarView({ memberId }: { memberId?: number }) {
               allDay: e.allDay,
               resource: e.resource,
             })),
+          );
+        } else {
+          setEvents([]);
+          toast.error(
+            (data && 'error' in data && data.error) || 'Could not load the calendar',
           );
         }
         setHolidays(new Set((hData?.holidays ?? []).map((h) => h.date)));

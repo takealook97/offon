@@ -21,6 +21,7 @@ const UpdateBody = z.object({
   slackId: z.string().min(1).optional(),
   position: z.string().optional(),
   role: z.enum(['EMPLOYEE', 'ADMIN']).optional(),
+  excludeMissingNotify: z.boolean().optional(),
   baseDays: z.number().min(0).max(365).optional(),
   bonusDays: z.number().min(-365).max(365).optional(),
 });

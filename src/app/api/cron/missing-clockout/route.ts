@@ -5,16 +5,15 @@ import { getHolidaySet } from '@/lib/holidays';
 import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-
-function authorized(req: NextRequest) {
-  const header = req.headers.get('authorization');
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  return header === expected;
-}
+import { checkCronAuth } from '@/lib/cron-auth';
 
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  const auth = checkCronAuth(req);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, error: auth.reason },
+      { status: auth.reason === 'misconfigured' ? 500 : 401 },
+    );
   }
   if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
@@ -40,15 +39,16 @@ export async function GET(req: NextRequest) {
   });
   const exemptMemberIds = new Set(afternoonOffLeaves.map((l) => l.memberId));
 
-  // People who clocked in today and have not clocked out, with a session still open
+  // People who clocked in today, have not clocked out, and have not been reminded yet
   const pending = await prisma.attendance.findMany({
     where: {
       workDate: date,
       deletedAt: null,
-      member: { deletedAt: null },
+      clockOutReminderSentAt: null,
+      member: { deletedAt: null, excludeMissingNotify: false },
       sessions: { some: { endAt: null, deletedAt: null } },
     },
-    include: { member: true },
+    include: { member: { select: { id: true, slackId: true } } },
   });
   const targets = pending.filter((a) => !exemptMemberIds.has(a.memberId));
 
@@ -60,6 +60,10 @@ export async function GET(req: NextRequest) {
           a.member.slackId,
           'There is no clock-out recorded yet. Please clock out',
         );
+        await prisma.attendance.update({
+          where: { id: a.id },
+          data: { clockOutReminderSentAt: new Date() },
+        });
         notified++;
       } catch (err) {
         await logAudit({

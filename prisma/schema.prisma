@@ -33,15 +33,16 @@ enum LeaveStatus {
 }
 
 model Member {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String?   @unique
-  slackId   String    @unique @map("slack_id")
-  position  String?
-  role      Role      @default(EMPLOYEE)
-  createdAt DateTime  @default(now())  @map("created_at")
-  updatedAt DateTime  @updatedAt       @map("updated_at")
-  deletedAt DateTime?                  @map("deleted_at")
+  id                    Int       @id @default(autoincrement())
+  name                  String
+  email                 String?   @unique
+  slackId               String    @unique @map("slack_id")
+  position              String?
+  role                  Role      @default(EMPLOYEE)
+  excludeMissingNotify  Boolean   @default(false) @map("exclude_missing_notify")
+  createdAt             DateTime  @default(now())  @map("created_at")
+  updatedAt             DateTime  @updatedAt       @map("updated_at")
+  deletedAt             DateTime?                  @map("deleted_at")
 
   attendances    Attendance[]
   leaveRequests  LeaveRequest[] @relation("Requester")
@@ -63,6 +64,8 @@ model Attendance {
   workedMinutes   Int              @default(0) @map("worked_minutes")
   overtimeMinutes Int              @default(0) @map("overtime_minutes")
   status          AttendanceStatus @default(NOT_STARTED)
+  clockInReminderSentAt  DateTime? @map("clock_in_reminder_sent_at")
+  clockOutReminderSentAt DateTime? @map("clock_out_reminder_sent_at")
   createdAt       DateTime         @default(now())  @map("created_at")
   updatedAt       DateTime         @updatedAt       @map("updated_at")
   deletedAt       DateTime?                         @map("deleted_at")

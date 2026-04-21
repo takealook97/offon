@@ -18,7 +18,9 @@ export type CalendarEvent = {
   };
 };
 
-export type CalendarEventsResponse = { events: CalendarEvent[] };
+export type CalendarEventsResponse =
+  | { ok: true; events: CalendarEvent[] }
+  | { ok: false; error: string };
 
 export type LoginRequestBody = { email: string };
 export type LoginVerifyBody = { email: string; code: string };

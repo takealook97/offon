@@ -10,6 +10,7 @@ import {
 } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { toast } from 'sonner';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
 import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
@@ -43,6 +44,7 @@ type UiEvent = {
 };
 
 function eventStyle(ev: UiEvent): string {
+  if (ev.resource.kind !== 'LEAVE') return '';
   if (ev.resource.leaveType === 'FULL_DAY') return 'rbc-event-leave';
   return 'rbc-event-leave-half';
 }
@@ -95,7 +97,7 @@ export function TeamCalendarView() {
     ])
       .then(([data, hData]: [CalendarEventsResponse, { holidays?: { date: string }[] }]) => {
         if (cancelled) return;
-        if (data?.events) {
+        if (data && 'ok' in data && data.ok) {
           setEvents(
             data.events.map((e) => ({
               id: e.id,
@@ -105,6 +107,11 @@ export function TeamCalendarView() {
               allDay: e.allDay,
               resource: e.resource,
             })),
+          );
+        } else {
+          setEvents([]);
+          toast.error(
+            (data && 'error' in data && data.error) || 'Could not load the team leave schedule',
           );
         }
         setHolidays(new Set((hData?.holidays ?? []).map((h) => h.date)));
