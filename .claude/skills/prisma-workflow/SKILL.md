@@ -6,9 +6,9 @@ description: How schema changes, migrations and queries are done here - the soft
 # Working with Prisma
 
 ## Assumptions
-- `postgresql` provider, AWS RDS (`db.internal`).
+- `postgresql` provider, AWS RDS.
 - The schema is `prisma/schema.prisma`; the connection comes from `env("DATABASE_URL")`.
-- A password containing special characters has to be URL-encoded before going into the connection string.
+- A password may contain characters that need URL-encoding before going into the connection string. Real credentials live only in a local env file or the host's settings, never in documentation or a commit.
 
 ## The singleton client (`src/lib/prisma.ts`)
 ```ts
