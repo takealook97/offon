@@ -1,12 +1,17 @@
 import { requireAdmin } from '@/lib/session';
 import { getAppSettings } from '@/lib/settings';
+import { listHolidays } from '@/lib/holidays';
 import { SettingsPanel } from './SettingsPanel';
+import { HolidaysPanel } from './HolidaysPanel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
   await requireAdmin();
-  const settings = await getAppSettings();
+  const [settings, holidays] = await Promise.all([
+    getAppSettings(),
+    listHolidays(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -17,6 +22,7 @@ export default async function AdminSettingsPage() {
         </p>
       </header>
       <SettingsPanel initial={settings} />
+      <HolidaysPanel initial={holidays} />
     </div>
   );
 }

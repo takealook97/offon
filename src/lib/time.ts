@@ -86,3 +86,35 @@ export function countWeekdaysKST(start: string, end: string): number {
   }
   return count;
 }
+
+/** 주말 또는 공휴일이면 비영업일. */
+export function isBusinessDayKSTDateStr(
+  s: string,
+  holidays: ReadonlySet<string>,
+): boolean {
+  if (isWeekendKSTDateStr(s)) return false;
+  return !holidays.has(s);
+}
+
+/** `countWeekdaysKST`에서 추가로 공휴일(holidays Set, "YYYY-MM-DD")도 제외한다. */
+export function countBusinessDaysKST(
+  start: string,
+  end: string,
+  holidays: ReadonlySet<string>,
+): number {
+  const s = new Date(`${start}T00:00:00Z`);
+  const e = new Date(`${end}T00:00:00Z`);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+  if (e.getTime() < s.getTime()) return 0;
+  const dayMs = 24 * 60 * 60 * 1000;
+  let count = 0;
+  for (let t = s.getTime(); t <= e.getTime(); t += dayMs) {
+    const d = new Date(t);
+    const dow = d.getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    const key = d.toISOString().slice(0, 10);
+    if (holidays.has(key)) continue;
+    count++;
+  }
+  return count;
+}

@@ -13,7 +13,7 @@ import { cn } from '@/lib/cn';
 // server-only 의존성이 없어 'use client' 경계에서도 안전하게 import 가능하다.
 // 서버와 클라 계산이 달라지면 "폼은 N일인데 서버는 거부" 같은 회귀가 발생하므로
 // 로컬 복제 대신 원본을 공유한다.
-import { countWeekdaysKST, isWeekendKSTDateStr } from '@/lib/time';
+import { countBusinessDaysKST, isBusinessDayKSTDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
@@ -23,13 +23,21 @@ const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'HALF_DAY_PM', label: '오후' },
 ];
 
-export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
+export function LeaveRequestForm({
+  availableDays,
+  holidayDates,
+}: {
+  availableDays: number;
+  holidayDates: string[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [type, setType] = useState<LeaveType>('FULL_DAY');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+
+  const holidays = useMemo(() => new Set(holidayDates), [holidayDates]);
 
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -41,30 +49,32 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
 
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
-    // 반차: 시작일이 주말이면 신청 불가(0), 평일이면 0.5일.
+    // 반차: 시작일이 주말/공휴일이면 신청 불가(0), 평일이면 0.5일.
     if (type !== 'FULL_DAY') {
-      return isWeekendKSTDateStr(startDate) ? 0 : 0.5;
+      return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
     }
-    // 종일: 주말 제외 평일 수. BE `countWeekdaysKST`와 동일 규칙(양끝 포함, end<start면 0).
-    return countWeekdaysKST(startDate, endDate || startDate);
-  }, [type, startDate, endDate]);
+    // 종일: 주말·공휴일 제외. BE `countBusinessDaysKST`와 동일 규칙(양끝 포함, end<start면 0).
+    return countBusinessDaysKST(startDate, endDate || startDate, holidays);
+  }, [type, startDate, endDate, holidays]);
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  // 주말 전용 케이스: 반차는 시작일이 주말, 종일은 선택 범위가 전부 주말(평일 수=0).
-  // invalidRange일 때는 `requestedDays === 0`의 원인이 range 오류이므로 주말 에러를 숨긴다.
-  const isWeekendOnly =
+  // 비영업일 전용 케이스: 반차는 시작일이 주말/공휴일, 종일은 범위 전부가 비영업일(=0일).
+  // invalidRange일 때는 range 오류가 원인이므로 비영업일 에러는 숨긴다.
+  const isNonBusinessOnly =
     !!startDate &&
     !invalidRange &&
-    (type === 'FULL_DAY' ? requestedDays === 0 : isWeekendKSTDateStr(startDate));
+    (type === 'FULL_DAY'
+      ? requestedDays === 0
+      : !isBusinessDayKSTDateStr(startDate, holidays));
   const canSubmit =
     !!startDate &&
     requestedDays > 0 &&
     !exceeds &&
     !invalidRange &&
     !isPast &&
-    !isWeekendOnly;
+    !isNonBusinessOnly;
 
   const submit = () =>
     start(async () => {
@@ -167,7 +177,7 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
       <div
         className={cn(
           'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
-          exceeds || invalidRange || isPast || isWeekendOnly
+          exceeds || invalidRange || isPast || isNonBusinessOnly
             ? 'border-destructive/40 bg-destructive/5 text-destructive'
             : 'border-border/60 bg-muted/40 text-muted-foreground',
         )}
@@ -186,8 +196,10 @@ export function LeaveRequestForm({ availableDays }: { availableDays: number }) {
           {exceeds && <p className="text-destructive">사용 가능 연차를 초과했습니다</p>}
           {invalidRange && <p className="text-destructive">종료일이 시작일보다 빠릅니다</p>}
           {isPast && <p className="text-destructive">과거 날짜는 신청할 수 없습니다</p>}
-          {isWeekendOnly && (
-            <p className="text-destructive">주말에는 연차를 신청할 수 없습니다</p>
+          {isNonBusinessOnly && (
+            <p className="text-destructive">
+              주말·공휴일에는 연차를 신청할 수 없습니다
+            </p>
           )}
         </div>
       </div>

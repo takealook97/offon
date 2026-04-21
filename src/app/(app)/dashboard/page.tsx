@@ -2,6 +2,7 @@ import { Calendar, CalendarClock, Clock3, CalendarCheck, CalendarPlus } from 'lu
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { formatKST, monthRangeKST, nowKST, todayKST, weekRangeKST } from '@/lib/time';
+import { listHolidays } from '@/lib/holidays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
@@ -25,7 +26,19 @@ export default async function DashboardPage() {
   const week = weekRangeKST();
   const month = monthRangeKST();
 
-  const [me, todayAttendance, weekRows, monthRows, balance, pending] = await Promise.all([
+  const todayStr = formatKST(today, 'yyyy-MM-dd');
+  const year = Number(todayStr.slice(0, 4));
+  const holidayFrom = `${year}-01-01`;
+  const holidayTo = `${year + 1}-12-31`;
+  const [
+    me,
+    todayAttendance,
+    weekRows,
+    monthRows,
+    balance,
+    pending,
+    holidayRows,
+  ] = await Promise.all([
     prisma.member.findUnique({
       where: { id: session.memberId },
       select: { name: true },
@@ -61,7 +74,9 @@ export default async function DashboardPage() {
       where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
       _sum: { days: true },
     }),
+    listHolidays({ from: holidayFrom, to: holidayTo }),
   ]);
+  const holidayDates = holidayRows.map((h) => h.date);
 
   const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
   const latestSession = sessions.at(-1) ?? null;
@@ -181,7 +196,10 @@ export default async function DashboardPage() {
           <CardTitle className="text-lg">연차 신청</CardTitle>
         </CardHeader>
         <CardContent>
-          <LeaveRequestForm availableDays={availableDays} />
+          <LeaveRequestForm
+            availableDays={availableDays}
+            holidayDates={holidayDates}
+          />
         </CardContent>
       </Card>
 
