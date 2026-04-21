@@ -53,21 +53,30 @@ export async function POST(req: NextRequest) {
       );
     }
     const holidays = await getHolidaySet(startDate, endDate);
-    // A half day is refused when its date is a weekend or a holiday.
-    if (type !== 'FULL_DAY' && !isBusinessDayKSTDateStr(startDate, holidays)) {
-      return NextResponse.json(
-        { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
-        { status: 400 },
-      );
+    if (type !== 'FULL_DAY') {
+      // A half day is refused when its date is a weekend or a holiday.
+      if (!isBusinessDayKSTDateStr(startDate, holidays)) {
+        return NextResponse.json(
+          { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
+          { status: 400 },
+        );
+      }
+    } else {
+      // Full leave is refused when either end falls on a non-business day. Any inside the range are excluded automatically.
+      if (!isBusinessDayKSTDateStr(startDate, holidays)) {
+        return NextResponse.json(
+          { ok: false, error: 'The start date cannot be a weekend or a holiday' },
+          { status: 400 },
+        );
+      }
+      if (!isBusinessDayKSTDateStr(endDate, holidays)) {
+        return NextResponse.json(
+          { ok: false, error: 'The end date cannot be a weekend or a holiday' },
+          { status: 400 },
+        );
+      }
     }
     const days = dayCount(startDate, endDate, type, holidays);
-    // A full day made up entirely of weekends and holidays is refused.
-    if (type === 'FULL_DAY' && Number(days) === 0) {
-      return NextResponse.json(
-        { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
-        { status: 400 },
-      );
-    }
 
     const [balance, pending] = await Promise.all([
       prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),

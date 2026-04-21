@@ -47,41 +47,47 @@ export function LeaveRequestForm({
     return `${y}-${m}-${d}`;
   }, []);
 
+  const missingEndDate = type === 'FULL_DAY' && !!startDate && !endDate;
+  const missingStartDate = type === 'FULL_DAY' && !startDate && !!endDate;
+
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
     // A half day is refused on a weekend or a holiday and worth half a day otherwise.
     if (type !== 'FULL_DAY') {
       return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
     }
-    // A full day excludes weekends and holidays, inclusive of both ends, and is zero when reversed.
-    return countBusinessDaysKST(startDate, endDate || startDate, holidays);
+    // A full day needs both dates to count. Same rule as the server applies.
+    if (!endDate) return 0;
+    return countBusinessDaysKST(startDate, endDate, holidays);
   }, [type, startDate, endDate, holidays]);
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  // The non-business-day case: a half day starting on one, or a full day whose whole range is made of them.
-  // With an invalid range the range is the cause, so the non-business-day error is hidden.
-  const isNonBusinessOnly =
-    !!startDate &&
-    !invalidRange &&
-    (type === 'FULL_DAY'
-      ? requestedDays === 0
-      : !isBusinessDayKSTDateStr(startDate, holidays));
+  // Either end falling on a weekend or holiday is refused. Non-business days inside the range drop out of the count, as on the server.
+  const startIsNonBusiness =
+    !!startDate && !isBusinessDayKSTDateStr(startDate, holidays);
+  const endIsNonBusiness =
+    type === 'FULL_DAY' &&
+    !!endDate &&
+    !isBusinessDayKSTDateStr(endDate, holidays);
   const canSubmit =
     !!startDate &&
+    !missingEndDate &&
+    !missingStartDate &&
     requestedDays > 0 &&
     !exceeds &&
     !invalidRange &&
     !isPast &&
-    !isNonBusinessOnly;
+    !startIsNonBusiness &&
+    !endIsNonBusiness;
 
   const submit = () =>
     start(async () => {
       const body = {
         type,
         startDate,
-        endDate: type === 'FULL_DAY' ? endDate || startDate : startDate,
+        endDate: type === 'FULL_DAY' ? endDate : startDate,
         reason: reason || undefined,
       };
       const res = await fetch('/api/leave/request', {
@@ -177,7 +183,13 @@ export function LeaveRequestForm({
       <div
         className={cn(
           'flex items-start gap-2 rounded-md border px-3 py-2 text-xs',
-          exceeds || invalidRange || isPast || isNonBusinessOnly
+          exceeds ||
+            invalidRange ||
+            isPast ||
+            startIsNonBusiness ||
+            endIsNonBusiness ||
+            missingEndDate ||
+            missingStartDate
             ? 'border-destructive/40 bg-destructive/5 text-destructive'
             : 'border-border/60 bg-muted/40 text-muted-foreground',
         )}
@@ -193,12 +205,25 @@ export function LeaveRequestForm({
               </>
             )}
           </p>
+          {missingEndDate && (
+            <p className="text-destructive">Pick an end date</p>
+          )}
+          {missingStartDate && (
+            <p className="text-destructive">Pick a start date</p>
+          )}
           {exceeds && <p className="text-destructive">That exceeds your available leave</p>}
           {invalidRange && <p className="text-destructive">The end date is before the start date</p>}
           {isPast && <p className="text-destructive">A date in the past cannot be requested</p>}
-          {isNonBusinessOnly && (
+          {startIsNonBusiness && (
             <p className="text-destructive">
-              Leave cannot be requested on a weekend or a holiday
+              {type === 'FULL_DAY'
+                ? 'The start date cannot be a weekend or a holiday'
+                : 'A half day cannot be requested on a weekend or a holiday'}
+            </p>
+          )}
+          {endIsNonBusiness && (
+            <p className="text-destructive">
+              The end date cannot be a weekend or a holiday
             </p>
           )}
         </div>
