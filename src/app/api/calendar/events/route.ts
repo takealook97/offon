@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : 'In progress';
         events.push({
           id: `sess-${s.id}`,
-          title: `${inLabel} ~ ${outLabel} · ${formatDuration(minutes)}`,
+          title: `${inLabel} ~ ${outLabel} · ${formatDuration(workedMinutes)}`,
           start: s.startAt.toISOString(),
           end: endAt.toISOString(),
           allDay: false,
