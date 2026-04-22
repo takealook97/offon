@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
+import { kstYear } from '../src/lib/time';
 
 const prisma = new PrismaClient();
 
@@ -27,7 +28,11 @@ async function main() {
       data: { name, email, slackId, role: 'ADMIN' },
     });
     await tx.leaveBalance.create({
-      data: { memberId: m.id, baseDays: new Prisma.Decimal(totalDays) },
+      data: {
+        memberId: m.id,
+        baseDays: new Prisma.Decimal(totalDays),
+        rolloverYear: kstYear(),
+      },
     });
     return m;
   });

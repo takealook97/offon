@@ -116,14 +116,15 @@ model LeaveRequest {
 }
 
 model LeaveBalance {
-  id        Int       @id @default(autoincrement())
-  memberId  Int       @unique @map("member_id")
-  baseDays  Decimal   @db.Decimal(5, 1) @default(0) @map("base_days")
-  bonusDays Decimal   @db.Decimal(5, 1) @default(0) @map("bonus_days")
-  usedDays  Decimal   @db.Decimal(5, 1) @default(0) @map("used_days")
-  createdAt DateTime  @default(now())  @map("created_at")
-  updatedAt DateTime  @updatedAt       @map("updated_at")
-  deletedAt DateTime?                  @map("deleted_at")
+  id           Int       @id @default(autoincrement())
+  memberId     Int       @unique @map("member_id")
+  baseDays     Decimal   @db.Decimal(5, 1) @default(0) @map("base_days")
+  bonusDays    Decimal   @db.Decimal(5, 1) @default(0) @map("bonus_days")
+  usedDays     Decimal   @db.Decimal(5, 1) @default(0) @map("used_days")
+  rolloverYear Int       @map("rollover_year")
+  createdAt    DateTime  @default(now())  @map("created_at")
+  updatedAt    DateTime  @updatedAt       @map("updated_at")
+  deletedAt    DateTime?                  @map("deleted_at")
 
   member Member @relation(fields: [memberId], references: [id])
 

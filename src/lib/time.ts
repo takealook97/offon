@@ -52,6 +52,17 @@ export function isWeekdayKST(d: Date = nowKST()): boolean {
   return dow >= 1 && dow <= 5;
 }
 
+/** KST 기준 연도(`YYYY`)를 반환. */
+export function kstYear(d: Date = new Date()): number {
+  return kstShifted(d).getUTCFullYear();
+}
+
+/** KST 기준 `{ month: 1..12, day: 1..31 }`를 반환. */
+export function kstMonthDay(d: Date = new Date()): { month: number; day: number } {
+  const shifted = kstShifted(d);
+  return { month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
+}
+
 /**
  * `YYYY-MM-DD` 문자열이 KST 기준 주말(토·일)인지 판정.
  *
