@@ -90,6 +90,11 @@ model AttendanceSession {
   attendance Attendance @relation(fields: [attendanceId], references: [id])
 
   @@index([attendanceId])
+  // Partial unique (raw SQL, Prisma DSL 비지원):
+  //   CREATE UNIQUE INDEX attendance_sessions_open_unique
+  //     ON attendance_sessions (attendance_id)
+  //    WHERE end_at IS NULL AND deleted_at IS NULL;
+  // → migration 20260422020000_attendance_session_open_unique
   @@map("attendance_sessions")
 }
 

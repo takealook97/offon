@@ -1,0 +1,34 @@
+-- Enforces "at most one open session per attendance" at the DB level.
+--
+-- Pre-check (attendance.ts) could race: two near-simultaneous requests
+-- (Slack retry, browser double-click, multi-tab) both read activeOpen=null
+-- and both succeed INSERT, producing duplicate open rows.
+-- This partial unique index makes the second INSERT fail with 23505/P2002.
+--
+-- Prisma DSL has no WHERE clause on @@unique, so we apply the constraint
+-- via raw SQL here. clockInMember() catches P2002 with this index name and
+-- returns the same { ok:false, code:'ALREADY_WORKING' } shape as the
+-- pre-check does.
+--
+-- Pre-flight: confirm no existing duplicates before applying. If any row
+-- comes back, soft-delete the stale session first (set deleted_at) or the
+-- migration will fail.
+--   SELECT attendance_id, COUNT(*)
+--     FROM attendance_sessions
+--    WHERE end_at IS NULL AND deleted_at IS NULL
+--    GROUP BY attendance_id
+--   HAVING COUNT(*) > 1;
+--
+-- Deploy order (prod):
+--   1) Ship app code that handles P2002 for this index (deployed first).
+--   2) Apply this migration:
+--        pnpm prisma migrate deploy
+--      or, if bypassing migrate deploy:
+--        pnpm prisma db execute \
+--          --file prisma/migrations/20260422020000_attendance_session_open_unique/migration.sql \
+--          --url "$DATABASE_URL"
+--
+-- Reversible: DROP INDEX "attendance_sessions_open_unique";
+CREATE UNIQUE INDEX "attendance_sessions_open_unique"
+  ON "attendance_sessions" ("attendance_id")
+  WHERE "end_at" IS NULL AND "deleted_at" IS NULL;
