@@ -4,7 +4,7 @@ import { verifySession } from '@/lib/auth';
 
 export const config = {
   matcher: [
-    '/((?!api/auth|api/cron|login|_next/static|_next/image|.*\\..*).*)',
+    '/((?!api/auth|api/cron|api/slack|login|_next/static|_next/image|.*\\..*).*)',
   ],
 };
 
