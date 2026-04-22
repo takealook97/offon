@@ -71,9 +71,6 @@ export default async function AdminLeavesPage() {
                         <span className="mx-1.5 text-border">·</span>
                         {TYPE_LABEL[l.type]} · {Number(l.days)}일
                       </p>
-                      {l.reason && (
-                        <p className="truncate text-sm text-muted-foreground">사유: {l.reason}</p>
-                      )}
                     </div>
                   </div>
                   <LeaveActions id={l.id} />

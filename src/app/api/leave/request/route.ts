@@ -16,7 +16,6 @@ const Body = z.object({
   type: z.enum(['FULL_DAY', 'HALF_DAY_AM', 'HALF_DAY_PM']),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  reason: z.string().max(500).optional(),
 });
 
 const NON_BUSINESS_REJECT_MESSAGE = '주말·공휴일에는 연차를 신청할 수 없습니다';
@@ -38,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: '입력이 올바르지 않습니다' }, { status: 400 });
     }
-    const { type, startDate, endDate, reason } = parsed.data;
+    const { type, startDate, endDate } = parsed.data;
     if (type !== 'FULL_DAY' && startDate !== endDate) {
       return NextResponse.json(
         { ok: false, error: '반차는 당일 범위로만 신청 가능합니다' },
@@ -105,7 +104,6 @@ export async function POST(req: NextRequest) {
         endDate: new Date(endDate),
         days,
         status: 'REQUESTED',
-        reason,
       },
     });
 
