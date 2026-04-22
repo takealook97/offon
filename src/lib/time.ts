@@ -52,6 +52,17 @@ export function isWeekdayKST(d: Date = nowKST()): boolean {
   return dow >= 1 && dow <= 5;
 }
 
+/** The year in the org timezone. */
+export function kstYear(d: Date = new Date()): number {
+  return kstShifted(d).getUTCFullYear();
+}
+
+/** `{ month: 1..12, day: 1..31 }` in the org timezone. */
+export function kstMonthDay(d: Date = new Date()): { month: number; day: number } {
+  const shifted = kstShifted(d);
+  return { month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
+}
+
 /**
  * Whether a `YYYY-MM-DD` string falls on a weekend in the org timezone.
  *
