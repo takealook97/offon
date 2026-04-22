@@ -102,7 +102,6 @@ model LeaveRequest {
   days       Decimal     @db.Decimal(4, 1)
   status     LeaveStatus @default(REQUESTED)
   approverId Int?        @map("approver_id")
-  reason     String?
   createdAt  DateTime    @default(now())  @map("created_at")
   updatedAt  DateTime    @updatedAt       @map("updated_at")
   deletedAt  DateTime?                    @map("deleted_at")

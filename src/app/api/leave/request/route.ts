@@ -16,7 +16,6 @@ const Body = z.object({
   type: z.enum(['FULL_DAY', 'HALF_DAY_AM', 'HALF_DAY_PM']),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  reason: z.string().max(500).optional(),
 });
 
 const NON_BUSINESS_REJECT_MESSAGE = 'Leave cannot be requested on a weekend or a holiday';
@@ -38,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
     }
-    const { type, startDate, endDate, reason } = parsed.data;
+    const { type, startDate, endDate } = parsed.data;
     if (type !== 'FULL_DAY' && startDate !== endDate) {
       return NextResponse.json(
         { ok: false, error: 'A half day has to start and end on the same date' },
@@ -105,7 +104,6 @@ export async function POST(req: NextRequest) {
         endDate: new Date(endDate),
         days,
         status: 'REQUESTED',
-        reason,
       },
     });
 

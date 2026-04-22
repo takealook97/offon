@@ -37,7 +37,6 @@ export function LeaveRequestForm({
   const [type, setType] = useState<LeaveType>('FULL_DAY');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [reason, setReason] = useState('');
 
   const holidays = useMemo(() => new Set(holidayDates), [holidayDates]);
 
@@ -82,7 +81,6 @@ export function LeaveRequestForm({
         type,
         startDate,
         endDate: type === 'FULL_DAY' ? endDate : startDate,
-        reason: reason || undefined,
       };
       const res = await fetch('/api/leave/request', {
         method: 'POST',
@@ -97,7 +95,6 @@ export function LeaveRequestForm({
       toast.success('Leave requested');
       setStartDate('');
       setEndDate('');
-      setReason('');
       router.refresh();
     });
 
@@ -159,20 +156,6 @@ export function LeaveRequestForm({
           />
         </div>
       )}
-
-      <div className="space-y-1.5">
-        <Label htmlFor="reason">
-          {type === 'FULL_DAY' ? 'Reason for leave' : 'Reason for the half day'}
-        </Label>
-        <Input
-          id="reason"
-          type="text"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="(optional)"
-          className="h-11"
-        />
-      </div>
 
       <div
         className={cn(
