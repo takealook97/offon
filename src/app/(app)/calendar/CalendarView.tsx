@@ -10,7 +10,6 @@ import {
 } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, isSameWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
@@ -204,7 +203,6 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     [date, openDayModal],
   );
 
-  // The agenda view maps onto the month aggregation too, for the badge and the weekly summary
   const viewMode: 'month' | 'week' | 'day' =
     view === Views.DAY ? 'day' : view === Views.WEEK ? 'week' : 'month';
 
@@ -221,32 +219,10 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     [events],
   );
 
-  const totalMinutes = useMemo(
-    () => attendanceMinutesIn(apiEvents, rangeForView(viewMode, date)),
-    [apiEvents, viewMode, date],
-  );
-
-  const totalLabel = useMemo(() => {
-    if (viewMode === 'month') return format(date, 'MMonth', { locale: ko });
-    if (viewMode === 'week') {
-      const r = rangeForView('week', date);
-      return `${format(r.start, 'M/d', { locale: ko })} – ${format(r.end, 'M/d', { locale: ko })}`;
-    }
-    return format(date, 'M/d (EEE)', { locale: ko });
-  }, [viewMode, date]);
-
   const Toolbar = useMemo(
     () => (props: ToolbarProps<UiEvent>) =>
-      (
-        <CustomToolbar
-          {...props}
-          totalMinutes={totalMinutes}
-          totalLabel={totalLabel}
-          date={date}
-          onJump={setDate}
-        />
-      ),
-    [totalMinutes, totalLabel, date],
+      <CustomToolbar {...props} date={date} onJump={setDate} />,
+    [date],
   );
 
   return (
@@ -318,13 +294,11 @@ export function CalendarView({ memberId }: { memberId?: number }) {
 
 function CustomToolbar(
   props: ToolbarProps<UiEvent> & {
-    totalMinutes: number;
-    totalLabel: string;
     date: Date;
     onJump: (d: Date) => void;
   },
 ) {
-  const { label, onNavigate, totalMinutes, totalLabel, date, onJump } = props;
+  const { label, onNavigate, date, onJump } = props;
   return (
     <CalendarToolbar
       label={label as string}
@@ -333,13 +307,6 @@ function CustomToolbar(
       onNext={() => onNavigate('NEXT')}
       onToday={() => onNavigate('TODAY')}
       onJump={onJump}
-      right={
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium">
-          <Clock className="size-3 text-muted-foreground" aria-hidden />
-          <span className="text-muted-foreground">{totalLabel}</span>
-          <span className="font-mono tabular-nums">{formatMinutes(totalMinutes)}</span>
-        </span>
-      }
     />
   );
 }
