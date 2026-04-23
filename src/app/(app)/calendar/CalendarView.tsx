@@ -65,6 +65,8 @@ function eventStyle(ev: UiEvent): string {
     return 'rbc-event-attendance';
   }
   if (ev.resource.kind === 'LEAVE') {
+    // Public duty is one category now; it used to be two.
+    if (ev.resource.leaveCategory === 'PUBLIC_DUTY') return 'rbc-event-public-duty';
     return ev.resource.leaveType === 'FULL_DAY'
       ? 'rbc-event-leave'
       : 'rbc-event-leave-half';

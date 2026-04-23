@@ -62,10 +62,13 @@ export async function POST(req: NextRequest) {
           days: recomputedDays,
         },
       });
-      await tx.leaveBalance.update({
-        where: { memberId: target.memberId },
-        data: { usedDays: { increment: recomputedDays } },
-      });
+      // Public duty does not come out of the leave balance; only annual leave does.
+      if (target.category === 'ANNUAL') {
+        await tx.leaveBalance.update({
+          where: { memberId: target.memberId },
+          data: { usedDays: { increment: recomputedDays } },
+        });
+      }
       return tx.member.findUnique({ where: { id: target.memberId } });
     });
 
@@ -81,9 +84,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (requester?.slackId) {
+      const subject = target.category === 'PUBLIC_DUTY' ? 'Public duty' : 'Leave';
       await sendDm(
         requester.slackId,
-        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was approved`,
+        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} ${subject} was approved`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

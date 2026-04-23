@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { LeaveType, LeaveCategory } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import {
@@ -9,10 +10,12 @@ import {
 } from '@/lib/calendar-utils';
 import type { CalendarEvent } from '@/lib/api-types';
 
-function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
+function typeLabel(type: LeaveType, category: LeaveCategory): string {
+  // Public duty can only be a full day, refused at validation. Half-day labels apply to annual leave only.
+  if (category === 'PUBLIC_DUTY') return 'Public duty';
   if (type === 'HALF_DAY_AM') return 'Half day (morning)';
   if (type === 'HALF_DAY_PM') return 'Half day (afternoon)';
-  return 'Leave';
+  return 'Leave (full day)';
 }
 
 export async function GET(req: NextRequest) {
@@ -39,7 +42,8 @@ export async function GET(req: NextRequest) {
     });
 
     const events: CalendarEvent[] = leaves.map((l) => {
-      const label = typeLabel(l.type);
+      const category = l.category;
+      const label = typeLabel(l.type, category);
       const title = `${l.member.name} ${label}`;
       if (l.type === 'FULL_DAY') {
         return {
@@ -51,6 +55,7 @@ export async function GET(req: NextRequest) {
           resource: {
             kind: 'LEAVE',
             leaveType: 'FULL_DAY',
+            leaveCategory: category,
             leaveStatus: 'APPROVED',
             memberName: l.member.name,
           },
@@ -69,6 +74,7 @@ export async function GET(req: NextRequest) {
         resource: {
           kind: 'LEAVE',
           leaveType: l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
+          leaveCategory: category,
           leaveStatus: 'APPROVED',
           memberName: l.member.name,
         },

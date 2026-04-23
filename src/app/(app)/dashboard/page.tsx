@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { formatKST, monthRangeKST, nowKST, todayKST, weekRangeKST } from '@/lib/time';
 import { listHolidays } from '@/lib/holidays';
+import { ANNUAL_USAGE_FILTER } from '@/lib/leave';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
@@ -71,7 +72,11 @@ export default async function DashboardPage() {
     }),
     prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
     prisma.leaveRequest.aggregate({
-      where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
+      where: {
+        ...ANNUAL_USAGE_FILTER,
+        memberId: session.memberId,
+        status: 'REQUESTED',
+      },
       _sum: { days: true },
     }),
     listHolidays({ from: holidayFrom, to: holidayTo }),

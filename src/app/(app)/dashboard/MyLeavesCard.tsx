@@ -11,6 +11,12 @@ const TYPE_LABEL: Record<string, string> = {
   HALF_DAY_PM: 'Afternoon half day',
 };
 
+// The leave category is down to two values in the database.
+// The UI shows the friendly label; the internal term is not surfaced.
+const CATEGORY_LABEL: Record<string, string> = {
+  PUBLIC_DUTY: 'Public duty',
+};
+
 export async function MyLeavesCard({ memberId }: { memberId: number }) {
   const today = todayKST();
   const items = await prisma.leaveRequest.findMany({
@@ -60,6 +66,14 @@ export async function MyLeavesCard({ memberId }: { memberId: number }) {
                     ) : (
                       <Badge variant="secondary" className="shrink-0">
                         pending
+                      </Badge>
+                    )}
+                    {l.category === 'PUBLIC_DUTY' && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-neutral-500/40 text-neutral-700 dark:text-neutral-300"
+                      >
+                        {CATEGORY_LABEL.PUBLIC_DUTY}
                       </Badge>
                     )}
                     <span className="truncate">

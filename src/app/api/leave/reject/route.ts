@@ -40,9 +40,10 @@ export async function POST(req: NextRequest) {
 
     const requester = await prisma.member.findUnique({ where: { id: target.memberId } });
     if (requester?.slackId) {
+      const subject = target.category === 'PUBLIC_DUTY' ? 'Public duty' : 'Leave';
       await sendDm(
         requester.slackId,
-        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}`,
+        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} ${subject} was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

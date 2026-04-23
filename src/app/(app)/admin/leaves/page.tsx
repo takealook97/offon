@@ -13,6 +13,27 @@ const TYPE_LABEL: Record<string, string> = {
   HALF_DAY_PM: 'Afternoon half day',
 };
 
+// The leave category is down to two values in the database.
+// The UI shows the friendly label.
+const CATEGORY_LABEL: Record<string, string> = {
+  PUBLIC_DUTY: 'Public duty',
+};
+
+// Annual leave is the default, so it gets no badge; that would just be noise.
+function CategoryBadge({ category }: { category: string }) {
+  if (category === 'PUBLIC_DUTY') {
+    return (
+      <Badge
+        variant="outline"
+        className="shrink-0 border-neutral-500/40 text-neutral-700 dark:text-neutral-300"
+      >
+        {CATEGORY_LABEL.PUBLIC_DUTY}
+      </Badge>
+    );
+  }
+  return null;
+}
+
 export default async function AdminLeavesPage() {
   await requireAdmin();
   const pending = await prisma.leaveRequest.findMany({
@@ -58,11 +79,12 @@ export default async function AdminLeavesPage() {
                   <div className="flex min-w-0 gap-3">
                     <Avatar name={l.member.name} />
                     <div className="min-w-0 space-y-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{l.member.name}</span>
                         {l.member.position && (
                           <span className="text-xs text-muted-foreground">{l.member.position}</span>
                         )}
+                        <CategoryBadge category={l.category} />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         <span className="font-mono tabular-nums">
@@ -104,25 +126,28 @@ export default async function AdminLeavesPage() {
                       )}
                     </div>
                   </div>
-                  {l.status === 'APPROVED' ? (
-                    <Badge
-                      variant="outline"
-                      className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
-                    >
-                      Approve
-                    </Badge>
-                  ) : l.status === 'REJECTED' ? (
-                    <Badge
-                      variant="outline"
-                      className="border-red-500/40 text-red-700 dark:text-red-300"
-                    >
-                      Reject
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">
-                      Cancelled
-                    </Badge>
-                  )}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <CategoryBadge category={l.category} />
+                    {l.status === 'APPROVED' ? (
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                      >
+                        Approve
+                      </Badge>
+                    ) : l.status === 'REJECTED' ? (
+                      <Badge
+                        variant="outline"
+                        className="border-red-500/40 text-red-700 dark:text-red-300"
+                      >
+                        Reject
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Cancelled
+                      </Badge>
+                    )}
+                  </div>
                 </li>
               ))}
               {recent.length === 0 && (

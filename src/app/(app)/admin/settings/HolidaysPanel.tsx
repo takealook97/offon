@@ -108,7 +108,7 @@ export function HolidaysPanel({ initial }: Props) {
         <CardTitle className="text-lg">Public holidays</CardTitle>
         <p className="text-xs leading-relaxed text-muted-foreground">
           A holiday is treated exactly as a weekend is. It drops out of the day count,
-          and a half day cannot be requested on it. At <b>approval</b>, the days are recounted
+          Neither leave nor a half day can be requested on that date. At <b>approval</b>, the days are recounted
           against the holidays as they stand, so one added after the request still counts.
         </p>
       </CardHeader>

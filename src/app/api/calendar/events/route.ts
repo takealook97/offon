@@ -103,16 +103,20 @@ export async function GET(req: NextRequest) {
     }
 
     for (const l of leaves) {
+      const category = l.category;
+      const isPublicDuty = category === 'PUBLIC_DUTY';
       if (l.type === 'FULL_DAY') {
+        const title = isPublicDuty ? 'Public duty' : 'Leave (full day)';
         events.push({
           id: `leave-${l.id}`,
-          title: 'Leave (full day)',
+          title,
           start: kstIsoFromDate(l.startDate),
           end: kstIsoFromDate(addDaysUtc(l.endDate, 1)),
           allDay: true,
           resource: {
             kind: 'LEAVE',
             leaveType: 'FULL_DAY',
+            leaveCategory: category,
             leaveStatus: 'APPROVED',
           },
         });
@@ -122,15 +126,18 @@ export async function GET(req: NextRequest) {
           l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
         );
         const suffix = l.type === 'HALF_DAY_AM' ? '(morning)' : '(afternoon)';
+        // Public duty can only be a full day, refused at validation. Legacy rows fall back to the plain label.
+        const title = isPublicDuty ? 'Public duty' : `Half day${suffix}`;
         events.push({
           id: `leave-${l.id}`,
-          title: `Half day${suffix}`,
+          title,
           start: s,
           end: e,
           allDay: false,
           resource: {
             kind: 'LEAVE',
             leaveType: l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
+            leaveCategory: category,
             leaveStatus: 'APPROVED',
           },
         });
