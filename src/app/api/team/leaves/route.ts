@@ -15,7 +15,7 @@ function typeLabel(type: LeaveType, category: LeaveCategory): string {
   if (category === 'PUBLIC_DUTY') return 'Public duty';
   if (type === 'HALF_DAY_AM') return 'Half day (morning)';
   if (type === 'HALF_DAY_PM') return 'Half day (afternoon)';
-  return 'Leave (full day)';
+  return 'Leave';
 }
 
 export async function GET(req: NextRequest) {

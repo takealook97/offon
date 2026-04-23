@@ -165,9 +165,6 @@ export function MemberSearch() {
               {selected.position && (
                 <span className="ml-2 text-muted-foreground">{selected.position}</span>
               )}
-              {selected.role === 'ADMIN' && (
-                <span className="ml-2 text-xs text-muted-foreground">· admin</span>
-              )}
             </div>
             <Button
               type="button"

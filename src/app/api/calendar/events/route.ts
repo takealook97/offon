@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
       const category = l.category;
       const isPublicDuty = category === 'PUBLIC_DUTY';
       if (l.type === 'FULL_DAY') {
-        const title = isPublicDuty ? 'Public duty' : 'Leave (full day)';
+        const title = isPublicDuty ? 'Public duty' : 'Leave';
         events.push({
           id: `leave-${l.id}`,
           title,

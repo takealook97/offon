@@ -204,7 +204,7 @@ export function LeaveRequestForm({
             </p>
           ) : (
             <p>
-              {selectedLabel} counts as public duty and does not come out of your balance
+              {selectedLabel} does not come out of your balance
               {startDate && (
                 <>
                   {' '}
