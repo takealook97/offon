@@ -77,6 +77,31 @@ export async function POST(req: NextRequest) {
     }
     const days = dayCount(startDate, endDate, type, holidays);
 
+    const overlap = await prisma.leaveRequest.findFirst({
+      where: {
+        memberId: session.memberId,
+        status: { in: ['REQUESTED', 'APPROVED'] },
+        deletedAt: null,
+        startDate: { lte: new Date(endDate) },
+        endDate: { gte: new Date(startDate) },
+      },
+      select: { startDate: true, endDate: true, type: true, status: true },
+    });
+    if (overlap) {
+      const range =
+        overlap.startDate.toISOString().slice(0, 10) ===
+        overlap.endDate.toISOString().slice(0, 10)
+          ? overlap.startDate.toISOString().slice(0, 10)
+          : `${overlap.startDate.toISOString().slice(0, 10)}~${overlap.endDate.toISOString().slice(0, 10)}`;
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Leave has already been requested or approved for those dates (${range})`,
+        },
+        { status: 409 },
+      );
+    }
+
     const [balance, pending] = await Promise.all([
       prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
       prisma.leaveRequest.aggregate({
