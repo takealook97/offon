@@ -63,7 +63,9 @@ export function AppShell({
               {me.name}
               {me.role === 'ADMIN' && <span className="ml-1.5">· admin</span>}
             </span>
-            <ThemeToggle />
+            <div className="hidden md:block">
+              <ThemeToggle />
+            </div>
             <div className="hidden md:block">
               <LogoutButton />
             </div>
