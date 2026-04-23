@@ -63,7 +63,8 @@ function PersonalLegend() {
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <Dot cls="bg-emerald-500" label="Working" />
       <Dot cls="bg-blue-500" label="Leave" />
-      <Dot cls="bg-sky-400" label="Half day" />
+      <Dot cls="bg-violet-500" label="Half day" />
+      <Dot cls="bg-neutral-500" label="Public duty" />
     </div>
   );
 }
@@ -72,7 +73,8 @@ function TeamLegend() {
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <Dot cls="bg-blue-500" label="Leave" />
-      <Dot cls="bg-sky-400" label="Half day" />
+      <Dot cls="bg-violet-500" label="Half day" />
+      <Dot cls="bg-neutral-500" label="Public duty" />
     </div>
   );
 }
