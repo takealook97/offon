@@ -162,7 +162,8 @@ export function TeamCalendarView() {
   const handleCellClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.rbc-event')) return;
+      // A click on an event bubble is resolved back to cell coordinates too, so a multi-day
+      // leave opens on the cell actually clicked rather than on its first day.
       if (target.closest('.rbc-show-more')) return;
       const row = target.closest('.rbc-month-row') as HTMLElement | null;
       if (!row) return;
@@ -218,11 +219,8 @@ export function TeamCalendarView() {
               ),
             },
           }}
-          onSelectEvent={(ev) => openDayModal((ev as UiEvent).start)}
           onDrillDown={(d) => openDayModal(d)}
-          onShowMore={(evts, d) =>
-            setShowMore({ date: d, events: evts as UiEvent[] })
-          }
+          onShowMore={(_evts, d) => openDayModal(d)}
           doShowMoreDrillDown={false}
           messages={{
             month: 'Month',
