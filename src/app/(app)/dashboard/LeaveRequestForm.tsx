@@ -16,28 +16,12 @@ import { cn } from '@/lib/cn';
 import { countBusinessDaysKST, isBusinessDayKSTDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
-type LeaveCategory = 'ANNUAL' | 'PUBLIC_DUTY';
-type OptionKey = 'ANNUAL_FULL' | 'ANNUAL_AM' | 'ANNUAL_PM' | 'PUBLIC_DUTY';
 
-// Public duty is one category in the database now; it used to be two.
-// The UI shows the friendly label while the request carries the category value.
-const OPTIONS: {
-  key: OptionKey;
-  label: string;
-  type: LeaveType;
-  category: LeaveCategory;
-}[] = [
-  { key: 'ANNUAL_FULL', label: 'Leave', type: 'FULL_DAY', category: 'ANNUAL' },
-  { key: 'ANNUAL_AM', label: 'Morning half day', type: 'HALF_DAY_AM', category: 'ANNUAL' },
-  { key: 'ANNUAL_PM', label: 'Afternoon half day', type: 'HALF_DAY_PM', category: 'ANNUAL' },
-  { key: 'PUBLIC_DUTY', label: 'Public duty', type: 'FULL_DAY', category: 'PUBLIC_DUTY' },
+const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
+  { value: 'FULL_DAY', label: 'Full day' },
+  { value: 'HALF_DAY_AM', label: 'Morning' },
+  { value: 'HALF_DAY_PM', label: 'Afternoon' },
 ];
-
-function subjectParticle(word: string): '\uc774' | '\uac00' {
-  const ch = word.charCodeAt(word.length - 1);
-  if (ch < 0xac00 || ch > 0xd7a3) return '\uac00';
-  return (ch - 0xac00) % 28 === 0 ? '\uac00' : '\uc774';
-}
 
 export function LeaveRequestForm({
   availableDays,
@@ -50,12 +34,9 @@ export function LeaveRequestForm({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [selected, setSelected] = useState<OptionKey>('ANNUAL_FULL');
+  const [type, setType] = useState<LeaveType>('FULL_DAY');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  const option = OPTIONS.find((o) => o.key === selected)!;
-  const { type, category, label: selectedLabel } = option;
 
   const holidays = useMemo(() => new Set(holidayDates), [holidayDates]);
 
@@ -64,17 +45,19 @@ export function LeaveRequestForm({
 
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
+    // A half day is refused on a weekend or a holiday and worth half a day otherwise.
     if (type !== 'FULL_DAY') {
       return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
     }
+    // A full day needs both dates to count. Same rule as the server applies.
     if (!endDate) return 0;
     return countBusinessDaysKST(startDate, endDate, holidays);
   }, [type, startDate, endDate, holidays]);
 
-  // The balance is only checked for annual leave. Public duty must be submittable even at zero remaining.
-  const exceeds = category === 'ANNUAL' && requestedDays > availableDays;
+  const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
+  // Either end falling on a weekend or holiday is refused. Non-business days inside the range drop out of the count, as on the server.
   const startIsNonBusiness =
     !!startDate && !isBusinessDayKSTDateStr(startDate, holidays);
   const endIsNonBusiness =
@@ -96,7 +79,6 @@ export function LeaveRequestForm({
     start(async () => {
       const body = {
         type,
-        category,
         startDate,
         endDate: type === 'FULL_DAY' ? endDate : startDate,
       };
@@ -110,7 +92,7 @@ export function LeaveRequestForm({
         toast.error(data.error ?? 'Request failed');
         return;
       }
-      toast.success(`${selectedLabel} requested`);
+      toast.success('Leave requested');
       setStartDate('');
       setEndDate('');
       router.refresh();
@@ -119,15 +101,14 @@ export function LeaveRequestForm({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {OPTIONS.map((opt) => (
+        {TYPE_OPTIONS.map((opt) => (
           <button
-            key={opt.key}
+            key={opt.value}
             type="button"
-            onClick={() => setSelected(opt.key)}
-            aria-label={opt.label}
+            onClick={() => setType(opt.value)}
             className={cn(
               'h-9 rounded-full border px-3.5 text-sm transition-colors',
-              selected === opt.key
+              type === opt.value
                 ? 'border-foreground bg-foreground text-background'
                 : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
             )}
@@ -192,27 +173,15 @@ export function LeaveRequestForm({
       >
         <Info className="mt-0.5 size-3.5 shrink-0" />
         <div className="space-y-0.5">
-          {category === 'ANNUAL' ? (
-            <p>
-              Available <span className="font-mono tabular-nums">{availableDays}</span>Day
-              {startDate && (
-                <>
-                  {' '}
-                  · requested <span className="font-mono tabular-nums">{requestedDays}</span>d
-                </>
-              )}
-            </p>
-          ) : (
-            <p>
-              {selectedLabel} does not come out of your balance
-              {startDate && (
-                <>
-                  {' '}
-                  · requested <span className="font-mono tabular-nums">{requestedDays}</span>d
-                </>
-              )}
-            </p>
-          )}
+          <p>
+            Available <span className="font-mono tabular-nums">{availableDays}</span>Day
+            {startDate && (
+              <>
+                {' '}
+                · requested <span className="font-mono tabular-nums">{requestedDays}</span>d
+              </>
+            )}
+          </p>
           {missingEndDate && (
             <p className="text-destructive">Pick an end date</p>
           )}
@@ -243,7 +212,13 @@ export function LeaveRequestForm({
         onClick={submit}
         className="h-11 w-full sm:w-auto"
       >
-        {pending ? <Loader2 className="size-4 animate-spin" /> : `${selectedLabel} Requesting`}
+        {pending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : type === 'FULL_DAY' ? (
+          'Request leave'
+        ) : (
+          'Request half day'
+        )}
       </Button>
     </div>
   );

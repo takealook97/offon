@@ -25,11 +25,6 @@ function eventClass(ev: UiEvent): string {
     return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200';
   }
   if (ev.resource.kind === 'LEAVE') {
-    // Anything but annual leave takes its category colour before status or type are considered.
-    // Public duty keeps its own tone whether it was approved or rejected.
-    // These used to be two separate categories and are now one.
-    if (ev.resource.leaveCategory === 'PUBLIC_DUTY')
-      return 'border-neutral-500/40 bg-neutral-500/15 text-neutral-700 dark:text-neutral-200';
     if (ev.resource.leaveStatus === 'REQUESTED')
       return 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200';
     if (ev.resource.leaveType === 'FULL_DAY')

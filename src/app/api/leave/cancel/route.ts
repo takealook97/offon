@@ -14,14 +14,6 @@ const TYPE_LABEL: Record<string, string> = {
   HALF_DAY_PM: 'Afternoon half day',
 };
 
-function cancelLabel(
-  category: 'ANNUAL' | 'PUBLIC_DUTY',
-  type: string,
-): string {
-  if (category === 'PUBLIC_DUTY') return 'Public duty';
-  return TYPE_LABEL[type] ?? 'Leave';
-}
-
 export async function POST(req: NextRequest) {
   try {
     const session = await requireSession();
@@ -58,9 +50,7 @@ export async function POST(req: NextRequest) {
         where: { id: target.id },
         data: { status: 'CANCELLED' },
       });
-      // Only approved annual leave restores the balance. Public duty never came out of it
-      // It was never deducted, so there is nothing to give back.
-      if (previousStatus === 'APPROVED' && target.category === 'ANNUAL') {
+      if (previousStatus === 'APPROVED') {
         await tx.leaveBalance.update({
           where: { memberId: target.memberId },
           data: { usedDays: { decrement: target.days } },
@@ -83,7 +73,7 @@ export async function POST(req: NextRequest) {
       formatKST(target.startDate, 'yyyy-MM-dd') === formatKST(target.endDate, 'yyyy-MM-dd')
         ? formatKST(target.startDate, 'yyyy-MM-dd')
         : `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')}`;
-    const typeLabel = cancelLabel(target.category, target.type);
+    const typeLabel = TYPE_LABEL[target.type] ?? 'Leave';
     await Promise.all(
       admins.map((a) =>
         sendDm(

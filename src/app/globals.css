@@ -337,14 +337,6 @@
   background: color-mix(in oklab, oklch(0.7 0.22 27) 30%, transparent);
   color: oklch(0.9 0.17 27);
 }
-.rbc-event.rbc-event-public-duty {
-  background: color-mix(in oklab, oklch(0.7 0 0) 22%, transparent);
-  color: oklch(0.4 0 0);
-}
-.dark .rbc-event.rbc-event-public-duty {
-  background: color-mix(in oklab, oklch(0.7 0 0) 30%, transparent);
-  color: oklch(0.9 0 0);
-}
 
 .rbc-show-more {
   color: var(--muted-foreground);

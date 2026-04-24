@@ -25,11 +25,6 @@ enum LeaveType {
   HALF_DAY_PM
 }
 
-enum LeaveCategory {
-  ANNUAL
-  PUBLIC_DUTY
-}
-
 enum LeaveStatus {
   REQUESTED
   APPROVED
@@ -104,15 +99,14 @@ model AttendanceSession {
 }
 
 model LeaveRequest {
-  id         Int           @id @default(autoincrement())
-  memberId   Int           @map("member_id")
+  id         Int         @id @default(autoincrement())
+  memberId   Int         @map("member_id")
   type       LeaveType
-  category   LeaveCategory @default(ANNUAL)
-  startDate  DateTime      @db.Date @map("start_date")
-  endDate    DateTime      @db.Date @map("end_date")
-  days       Decimal       @db.Decimal(4, 1)
-  status     LeaveStatus   @default(REQUESTED)
-  approverId Int?          @map("approver_id")
+  startDate  DateTime    @db.Date @map("start_date")
+  endDate    DateTime    @db.Date @map("end_date")
+  days       Decimal     @db.Decimal(4, 1)
+  status     LeaveStatus @default(REQUESTED)
+  approverId Int?        @map("approver_id")
   createdAt  DateTime    @default(now())  @map("created_at")
   updatedAt  DateTime    @updatedAt       @map("updated_at")
   deletedAt  DateTime?                    @map("deleted_at")
