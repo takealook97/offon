@@ -107,7 +107,7 @@ export function LeaveRequestForm({
             type="button"
             onClick={() => setType(opt.value)}
             className={cn(
-              'h-9 rounded-full border px-3.5 text-sm transition-colors',
+              'h-9 cursor-pointer rounded-full border px-3.5 text-sm transition-colors',
               type === opt.value
                 ? 'border-foreground bg-foreground text-background'
                 : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',

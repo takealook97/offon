@@ -44,7 +44,7 @@ export function AttendanceActions({ status }: { status: Status }) {
       <Button
         type="button"
         size="lg"
-        variant="secondary"
+        variant={isOnBreak ? 'default' : 'outline'}
         disabled={pending || !canToggleBreak}
         onClick={() =>
           isOnBreak

@@ -120,6 +120,25 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /* Anything clickable gets the hand cursor. Tailwind v4 and current Chrome leave a
+     button on the default cursor. A few shadcn primitives hardcode cursor-default as a
+     utility; those are replaced in their own files, since a utility outranks this. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="switch"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="option"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="menuitem"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="menuitemcheckbox"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="menuitemradio"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="tab"]:not([aria-disabled="true"]):not([data-disabled]),
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
   /* iOS Safari: <input type="date"> ignores explicit height and renders the
      native picker chrome inline, producing an oversized empty box on mobile.
      Neutralize the UA appearance and force a sane inner min-height. */
