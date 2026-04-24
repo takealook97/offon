@@ -17,12 +17,20 @@ export function attendanceMinutesIn(
 ): number {
   const startMs = range.start.getTime();
   const endMs = range.end.getTime();
-  return events.reduce((sum, e) => {
-    if (e.resource.kind !== 'ATTENDANCE') return sum;
-    const t = new Date(e.start).getTime();
-    if (t < startMs || t > endMs) return sum;
-    return sum + (e.resource.workedMinutes ?? 0);
-  }, 0);
+  // Every session event of a day carries the same day-level worked minutes.
+  // Summed once per day rather than once per session, or the total is wrong.
+  const perDay = new Map<string, number>();
+  for (const e of events) {
+    if (e.resource.kind !== 'ATTENDANCE') continue;
+    const d = new Date(e.start);
+    const t = d.getTime();
+    if (t < startMs || t > endMs) continue;
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!perDay.has(key)) perDay.set(key, e.resource.workedMinutes ?? 0);
+  }
+  let total = 0;
+  for (const v of perDay.values()) total += v;
+  return total;
 }
 
 export function rangeForView(
