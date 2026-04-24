@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: offon-local-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: offon
+      POSTGRES_PASSWORD: offon
+      POSTGRES_DB: offon
+    ports:
+      - "55432:5432"
+    volumes:
+      - offon-pg-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U offon -d offon"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  offon-pg-data:

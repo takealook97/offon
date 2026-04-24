@@ -9,7 +9,11 @@
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:local:up": "docker compose up -d postgres",
+    "db:local:down": "docker compose down",
+    "db:local:sync": "bash scripts/dump-local-db.sh",
+    "db:local:psql": "docker exec -it offon-local-pg psql -U offon -d offon"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
