@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     }
 
     const [balance, pending] = await Promise.all([
-      prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
+      prisma.leaveBalance.findFirst({ where: { memberId: session.memberId, deletedAt: null } }),
       prisma.leaveRequest.aggregate({
         where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
         _sum: { days: true },
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
       metadata: { type, startDate, endDate },
     });
 
-    const requester = await prisma.member.findUnique({ where: { id: session.memberId } });
+    const requester = await prisma.member.findFirst({ where: { id: session.memberId, deletedAt: null } });
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', deletedAt: null },
     });

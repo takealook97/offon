@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     });
 
     const [requester, admins] = await Promise.all([
-      prisma.member.findUnique({ where: { id: session.memberId } }),
+      prisma.member.findFirst({ where: { id: session.memberId, deletedAt: null } }),
       prisma.member.findMany({ where: { role: 'ADMIN', deletedAt: null } }),
     ]);
     const dateRange =

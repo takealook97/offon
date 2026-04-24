@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       metadata: { memberId: target.memberId, reason: parsed.data.reason },
     });
 
-    const requester = await prisma.member.findUnique({ where: { id: target.memberId } });
+    const requester = await prisma.member.findFirst({ where: { id: target.memberId, deletedAt: null } });
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,

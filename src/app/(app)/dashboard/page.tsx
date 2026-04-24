@@ -40,12 +40,12 @@ export default async function DashboardPage() {
     pending,
     holidayRows,
   ] = await Promise.all([
-    prisma.member.findUnique({
-      where: { id: session.memberId },
+    prisma.member.findFirst({
+      where: { id: session.memberId, deletedAt: null },
       select: { name: true },
     }),
-    prisma.attendance.findUnique({
-      where: { memberId_workDate: { memberId: session.memberId, workDate: today } },
+    prisma.attendance.findFirst({
+      where: { memberId: session.memberId, workDate: today, deletedAt: null },
       include: {
         sessions: {
           where: { deletedAt: null },
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
       },
       select: { workedMinutes: true },
     }),
-    prisma.leaveBalance.findUnique({ where: { memberId: session.memberId } }),
+    prisma.leaveBalance.findFirst({ where: { memberId: session.memberId, deletedAt: null } }),
     prisma.leaveRequest.aggregate({
       where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
       _sum: { days: true },

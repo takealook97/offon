@@ -166,8 +166,8 @@ export async function clockInMember(
     return { ok: false, code: 'ALREADY_WORKING', error: 'You are already clocked in' };
   }
 
-  const existing = await prisma.attendance.findUnique({
-    where: { memberId_workDate: { memberId, workDate: date } },
+  const existing = await prisma.attendance.findFirst({
+    where: { memberId, workDate: date, deletedAt: null },
   });
 
   if (existing && existing.status === 'ON_BREAK') {
@@ -208,8 +208,8 @@ export async function clockInMember(
       target: String(updated.id),
       metadata: { reopen: true, source },
     });
-    const reopenMember = await prisma.member.findUnique({
-      where: { id: memberId },
+    const reopenMember = await prisma.member.findFirst({
+      where: { id: memberId, deletedAt: null },
       select: { name: true },
     });
     const reopenName = reopenMember?.name ?? null;
@@ -254,8 +254,8 @@ export async function clockInMember(
     target: String(created.id),
     metadata: { source },
   });
-  const m = await prisma.member.findUnique({
-    where: { id: memberId },
+  const m = await prisma.member.findFirst({
+    where: { id: memberId, deletedAt: null },
     select: { name: true },
   });
   const name = m?.name ?? null;
@@ -286,8 +286,8 @@ export async function clockOutMember(
   });
   if (!open) {
     const today = todayKST();
-    const onBreak = await prisma.attendance.findUnique({
-      where: { memberId_workDate: { memberId, workDate: today } },
+    const onBreak = await prisma.attendance.findFirst({
+      where: { memberId, workDate: today, deletedAt: null },
       select: { status: true },
     });
     if (onBreak?.status === 'ON_BREAK') {
@@ -370,8 +370,8 @@ export async function clockOutMember(
       source,
     },
   });
-  const m = await prisma.member.findUnique({
-    where: { id: memberId },
+  const m = await prisma.member.findFirst({
+    where: { id: memberId, deletedAt: null },
     select: { name: true },
   });
   const name = m?.name ?? null;
@@ -387,8 +387,8 @@ export async function startBreak(
   kind: BreakKind = 'break',
 ): Promise<StartBreakResult> {
   const today = todayKST();
-  const attendance = await prisma.attendance.findUnique({
-    where: { memberId_workDate: { memberId, workDate: today } },
+  const attendance = await prisma.attendance.findFirst({
+    where: { memberId, workDate: today, deletedAt: null },
   });
   if (!attendance || attendance.status === 'NOT_STARTED') {
     return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
@@ -447,8 +447,8 @@ export async function startBreak(
     metadata: { source, kind, at: at.toISOString() },
   });
 
-  const m = await prisma.member.findUnique({
-    where: { id: memberId },
+  const m = await prisma.member.findFirst({
+    where: { id: memberId, deletedAt: null },
     select: { name: true },
   });
   const name = m?.name ?? null;
@@ -464,8 +464,8 @@ export async function endBreak(
   source: AttendanceSource,
 ): Promise<EndBreakResult> {
   const today = todayKST();
-  const attendance = await prisma.attendance.findUnique({
-    where: { memberId_workDate: { memberId, workDate: today } },
+  const attendance = await prisma.attendance.findFirst({
+    where: { memberId, workDate: today, deletedAt: null },
   });
   if (!attendance || attendance.status !== 'ON_BREAK') {
     return {
@@ -512,8 +512,8 @@ export async function endBreak(
     metadata: { source, at: at.toISOString() },
   });
 
-  const m = await prisma.member.findUnique({
-    where: { id: memberId },
+  const m = await prisma.member.findFirst({
+    where: { id: memberId, deletedAt: null },
     select: { name: true },
   });
   const name = m?.name ?? null;
