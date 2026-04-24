@@ -113,7 +113,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm text-muted-foreground">
-          {formatKST(nowKST(), 'EEEE, d MMMM yyyy')}
+          {formatKST(new Date(), 'EEEE, d MMMM yyyy')}
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
           Hello, {me?.name ?? ''}
