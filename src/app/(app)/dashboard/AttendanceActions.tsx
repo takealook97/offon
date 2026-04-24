@@ -1,12 +1,14 @@
 'use client';
 
-import { LogIn, LogOut } from 'lucide-react';
+import { Coffee, LogIn, LogOut, Undo2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
-export function AttendanceActions({ isWorking }: { isWorking: boolean }) {
+type Status = 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
+
+export function AttendanceActions({ status }: { status: Status }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -22,12 +24,17 @@ export function AttendanceActions({ isWorking }: { isWorking: boolean }) {
       router.refresh();
     });
 
+  const canClockIn = status === 'NOT_STARTED' || status === 'DONE' || status === 'MISSING';
+  const canClockOut = status === 'WORKING';
+  const canToggleBreak = status === 'WORKING' || status === 'ON_BREAK';
+  const isOnBreak = status === 'ON_BREAK';
+
   return (
     <div className="flex flex-row gap-2">
       <Button
         type="button"
         size="lg"
-        disabled={pending || isWorking}
+        disabled={pending || !canClockIn}
         onClick={() => call('/api/attendance/clock-in', 'Clocked in')}
         className="h-11 flex-1 gap-2"
       >
@@ -37,8 +44,23 @@ export function AttendanceActions({ isWorking }: { isWorking: boolean }) {
       <Button
         type="button"
         size="lg"
+        variant="secondary"
+        disabled={pending || !canToggleBreak}
+        onClick={() =>
+          isOnBreak
+            ? call('/api/attendance/back', 'Welcome back')
+            : call('/api/attendance/break', 'Marked away')
+        }
+        className="h-11 flex-1 gap-2"
+      >
+        {isOnBreak ? <Undo2 className="size-4" /> : <Coffee className="size-4" />}
+        {isOnBreak ? 'Back' : 'Away'}
+      </Button>
+      <Button
+        type="button"
+        size="lg"
         variant="outline"
-        disabled={pending || !isWorking}
+        disabled={pending || !canClockOut}
         onClick={() => call('/api/attendance/clock-out', 'Clocked out')}
         className="h-11 flex-1 gap-2"
       >

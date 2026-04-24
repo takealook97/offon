@@ -52,3 +52,4 @@ scripts/apply-approved-leaves.ts
 
 # agent orchestration workspace
 _workspace/
+backups/

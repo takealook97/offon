@@ -20,6 +20,14 @@ type UiEvent = {
   resource: CalendarEvent['resource'];
 };
 
+function formatMinutes(m: number): string {
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h > 0 && mm > 0) return `${h}h ${mm}m`;
+  if (h > 0) return `${h}h`;
+  return `${mm}m`;
+}
+
 function eventClass(ev: UiEvent): string {
   if (ev.resource.kind === 'ATTENDANCE') {
     return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200';
@@ -32,6 +40,34 @@ function eventClass(ev: UiEvent): string {
     return 'border-violet-500/40 bg-violet-500/15 text-violet-700 dark:text-violet-200';
   }
   return 'border-red-500/40 bg-red-500/15 text-red-700 dark:text-red-200';
+}
+
+function AttendanceDaySummary({ events }: { events: UiEvent[] }) {
+  const att = events.filter((e) => e.resource.kind === 'ATTENDANCE');
+  if (att.length === 0) return null;
+  const worked = att.reduce((m, e) => Math.max(m, e.resource.workedMinutes ?? 0), 0);
+  const brk = att.reduce((m, e) => Math.max(m, e.resource.breakMinutes ?? 0), 0);
+  const overtime = att.reduce(
+    (m, e) => Math.max(m, e.resource.overtimeMinutes ?? 0),
+    0,
+  );
+  return (
+    <li className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-0.5">
+      <div>
+        <span className="text-muted-foreground">Working</span>{' '}
+        <span className="font-medium">{formatMinutes(worked)}</span>
+        {overtime > 0 && (
+          <span className="text-muted-foreground"> (overtime {formatMinutes(overtime)})</span>
+        )}
+      </div>
+      {brk > 0 && (
+        <div>
+          <span className="text-muted-foreground">Away</span>{' '}
+          <span className="font-medium">{formatMinutes(brk)}</span>
+        </div>
+      )}
+    </li>
+  );
 }
 
 export function ShowMoreDialog({
@@ -59,17 +95,20 @@ export function ShowMoreDialog({
               Nothing on this day
             </li>
           ) : (
-            events.map((e) => (
-              <li
-                key={e.id}
-                className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-medium',
-                  eventClass(e),
-                )}
-              >
-                {e.title}
-              </li>
-            ))
+            <>
+              {events.map((e) => (
+                <li
+                  key={e.id}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-xs font-medium',
+                    eventClass(e),
+                  )}
+                >
+                  {e.title}
+                </li>
+              ))}
+              <AttendanceDaySummary events={events} />
+            </>
           )}
         </ul>
       </DialogContent>

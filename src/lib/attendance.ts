@@ -30,11 +30,33 @@ export type ClockInResult =
 
 export type ClockOutResult =
   | { ok: true; attendance: Attendance; at: Date; memberName: string | null }
-  | { ok: false; code: 'NO_OPEN_SESSION'; error: string };
+  | { ok: false; code: 'NO_OPEN_SESSION' | 'ON_BREAK'; error: string };
+
+export type BreakKind = 'lunch' | 'break';
+
+export type StartBreakResult =
+  | {
+      ok: true;
+      attendance: Attendance;
+      at: Date;
+      memberName: string | null;
+      kind: BreakKind;
+    }
+  | {
+      ok: false;
+      code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'NO_OPEN_SESSION';
+      error: string;
+    };
+
+export type EndBreakResult =
+  | { ok: true; attendance: Attendance; at: Date; memberName: string | null }
+  | {
+      ok: false;
+      code: 'NOT_ON_BREAK' | 'ALREADY_WORKING';
+      error: string;
+    };
 
 const STANDARD_MINUTES = 480;
-const LUNCH_DEDUCTION_THRESHOLD_MINUTES = 300;
-const LUNCH_DEDUCTION_MINUTES = 60;
 
 export async function notifyChannelIn(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
@@ -66,6 +88,51 @@ export async function notifyChannelOut(name: string, at: Date, memberId: number)
   }
 }
 
+export async function notifyChannelLunch(name: string, at: Date, memberId: number) {
+  const channel = process.env.SLACK_OFFON_CHANNEL;
+  if (!channel) return;
+  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} went for a meal\ud83c\udf7d\ufe0f`;
+  try {
+    await sendChannel(channel, text);
+  } catch (err) {
+    await logAudit({
+      actorId: memberId,
+      action: 'SLACK_SEND_FAIL',
+      metadata: { stage: 'channel_Meal', error: String(err) },
+    });
+  }
+}
+
+export async function notifyChannelBreak(name: string, at: Date, memberId: number) {
+  const channel = process.env.SLACK_OFFON_CHANNEL;
+  if (!channel) return;
+  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} stepped away\u23f8\ufe0f`;
+  try {
+    await sendChannel(channel, text);
+  } catch (err) {
+    await logAudit({
+      actorId: memberId,
+      action: 'SLACK_SEND_FAIL',
+      metadata: { stage: 'channel_Away', error: String(err) },
+    });
+  }
+}
+
+export async function notifyChannelBack(name: string, at: Date, memberId: number) {
+  const channel = process.env.SLACK_OFFON_CHANNEL;
+  if (!channel) return;
+  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} is back\u25b6\ufe0f`;
+  try {
+    await sendChannel(channel, text);
+  } catch (err) {
+    await logAudit({
+      actorId: memberId,
+      action: 'SLACK_SEND_FAIL',
+      metadata: { stage: 'channel_Back', error: String(err) },
+    });
+  }
+}
+
 export async function clockInMember(
   memberId: number,
   source: AttendanceSource,
@@ -87,6 +154,14 @@ export async function clockInMember(
   const existing = await prisma.attendance.findUnique({
     where: { memberId_workDate: { memberId, workDate: date } },
   });
+
+  if (existing && existing.status === 'ON_BREAK') {
+    return {
+      ok: false,
+      code: 'ALREADY_WORKING',
+      error: 'You are away. Use the back command',
+    };
+  }
 
   if (existing) {
     let updated: Attendance;
@@ -195,6 +270,18 @@ export async function clockOutMember(
     include: { attendance: true },
   });
   if (!open) {
+    const today = todayKST();
+    const onBreak = await prisma.attendance.findUnique({
+      where: { memberId_workDate: { memberId, workDate: today } },
+      select: { status: true },
+    });
+    if (onBreak?.status === 'ON_BREAK') {
+      return {
+        ok: false,
+        code: 'ON_BREAK',
+        error: 'You are away. Come back before clocking out',
+      };
+    }
     return {
       ok: false,
       code: 'NO_OPEN_SESSION',
@@ -214,14 +301,10 @@ export async function clockOutMember(
       select: { startAt: true, endAt: true },
     });
     const closed = all.filter((s) => s.endAt);
-    const rawWorked = closed.reduce(
+    const worked = closed.reduce(
       (sum, s) => sum + Math.floor((s.endAt!.getTime() - s.startAt.getTime()) / 60000),
       0,
     );
-    const worked =
-      rawWorked >= LUNCH_DEDUCTION_THRESHOLD_MINUTES
-        ? rawWorked - LUNCH_DEDUCTION_MINUTES
-        : rawWorked;
     const overtime = Math.max(0, worked - STANDARD_MINUTES);
     const minStart = all.reduce<Date | null>(
       (min, s) => (min === null || s.startAt < min ? s.startAt : min),
@@ -231,12 +314,18 @@ export async function clockOutMember(
       (max, s) => (max === null || s.endAt! > max ? s.endAt! : max),
       null,
     );
+    const span =
+      minStart && maxEnd
+        ? Math.floor((maxEnd.getTime() - minStart.getTime()) / 60000)
+        : worked;
+    const breakMinutes = Math.max(0, span - worked);
     return tx.attendance.update({
       where: { id: open.attendanceId },
       data: {
         clockInAt: minStart ?? open.attendance.clockInAt,
         clockOutAt: maxEnd,
         workedMinutes: worked,
+        breakMinutes,
         overtimeMinutes: overtime,
         status: 'DONE',
       },
@@ -249,6 +338,7 @@ export async function clockOutMember(
     target: String(updated.id),
     metadata: {
       worked: updated.workedMinutes,
+      break: updated.breakMinutes,
       overtime: updated.overtimeMinutes,
       source,
     },
@@ -262,4 +352,127 @@ export async function clockOutMember(
     await notifyChannelOut(name, clockOut, memberId);
   }
   return { ok: true, attendance: updated, at: clockOut, memberName: name };
+}
+
+export async function startBreak(
+  memberId: number,
+  source: AttendanceSource,
+  kind: BreakKind = 'break',
+): Promise<StartBreakResult> {
+  const today = todayKST();
+  const attendance = await prisma.attendance.findUnique({
+    where: { memberId_workDate: { memberId, workDate: today } },
+  });
+  if (!attendance || attendance.status === 'NOT_STARTED') {
+    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+  }
+  if (attendance.status === 'DONE') {
+    return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+  }
+  if (attendance.status === 'ON_BREAK') {
+    return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
+  }
+
+  const open = await prisma.attendanceSession.findFirst({
+    where: {
+      endAt: null,
+      deletedAt: null,
+      attendanceId: attendance.id,
+    },
+    orderBy: { startAt: 'desc' },
+  });
+  if (!open) {
+    return {
+      ok: false,
+      code: 'NO_OPEN_SESSION',
+      error: 'No work session is open',
+    };
+  }
+
+  const at = new Date();
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.attendanceSession.update({
+      where: { id: open.id },
+      data: { endAt: at },
+    });
+    return tx.attendance.update({
+      where: { id: attendance.id },
+      data: { status: 'ON_BREAK' },
+    });
+  });
+
+  await logAudit({
+    actorId: memberId,
+    action: 'BREAK_START',
+    target: String(updated.id),
+    metadata: { source, kind, at: at.toISOString() },
+  });
+
+  const m = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: { name: true },
+  });
+  const name = m?.name ?? null;
+  if (source === 'web' && name) {
+    if (kind === 'lunch') await notifyChannelLunch(name, at, memberId);
+    else await notifyChannelBreak(name, at, memberId);
+  }
+  return { ok: true, attendance: updated, at, memberName: name, kind };
+}
+
+export async function endBreak(
+  memberId: number,
+  source: AttendanceSource,
+): Promise<EndBreakResult> {
+  const today = todayKST();
+  const attendance = await prisma.attendance.findUnique({
+    where: { memberId_workDate: { memberId, workDate: today } },
+  });
+  if (!attendance || attendance.status !== 'ON_BREAK') {
+    return {
+      ok: false,
+      code: 'NOT_ON_BREAK',
+      error: 'You are not marked away',
+    };
+  }
+
+  const at = new Date();
+  let updated: Attendance;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      await tx.attendanceSession.create({
+        data: { attendanceId: attendance.id, startAt: at },
+      });
+      return tx.attendance.update({
+        where: { id: attendance.id },
+        data: { status: 'WORKING' },
+      });
+    });
+  } catch (e) {
+    if (isOpenSessionConflict(e)) {
+      return {
+        ok: false,
+        code: 'ALREADY_WORKING',
+        error: 'You are already clocked in',
+      };
+    }
+    throw e;
+  }
+
+  await logAudit({
+    actorId: memberId,
+    action: 'BREAK_END',
+    target: String(updated.id),
+    metadata: { source, at: at.toISOString() },
+  });
+
+  const m = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: { name: true },
+  });
+  const name = m?.name ?? null;
+  if (source === 'web' && name) {
+    await notifyChannelBack(name, at, memberId);
+  }
+  return { ok: true, attendance: updated, at, memberName: name };
 }

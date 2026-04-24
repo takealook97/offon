@@ -81,18 +81,18 @@ export default async function DashboardPage() {
   const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
   const latestSession = sessions.at(-1) ?? null;
   const openSession = latestSession && !latestSession.endAt ? latestSession : null;
-  const isWorking = todayAttendance?.status === 'WORKING' && !!openSession;
+  const status = todayAttendance?.status ?? 'NOT_STARTED';
+  const isWorking = status === 'WORKING' && !!openSession;
+  const isOnBreak = status === 'ON_BREAK';
   const latestStart = latestSession?.startAt ?? todayAttendance?.clockInAt ?? null;
   const latestEnd = openSession
     ? null
     : latestSession?.endAt ?? todayAttendance?.clockOutAt ?? null;
   const nowMs = Date.now();
-  const todayRawTotal = sessions.reduce((sum, s) => {
-    const endMs = s.endAt ? s.endAt.getTime() : nowMs;
+  const todayWorked = sessions.reduce((sum, s) => {
+    const endMs = s.endAt ? s.endAt.getTime() : isWorking ? nowMs : s.startAt.getTime();
     return sum + Math.max(0, Math.floor((endMs - s.startAt.getTime()) / 60000));
   }, 0);
-  const todayDeduction = todayRawTotal >= 300 ? 60 : 0;
-  const todayWorked = todayRawTotal - todayDeduction;
 
   const storedTodayWorked = todayAttendance?.workedMinutes ?? 0;
   const weekTotal =
@@ -127,16 +127,18 @@ export default async function DashboardPage() {
               <CalendarClock className="size-3.5" /> Today
             </CardDescription>
             <CardTitle className="text-xl">
-              {todayAttendance?.status === 'DONE'
+              {status === 'DONE'
                 ? 'Clocked out'
-                : todayAttendance?.status === 'WORKING'
+                : status === 'WORKING'
                 ? 'Working'
-                : todayAttendance?.status === 'MISSING'
+                : status === 'ON_BREAK'
+                ? 'Away'
+                : status === 'MISSING'
                 ? 'Missing'
                 : 'Not started'}
             </CardTitle>
           </div>
-          <AttendanceStatusBadge status={todayAttendance?.status ?? 'NOT_STARTED'} />
+          <AttendanceStatusBadge status={status} />
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
@@ -149,6 +151,8 @@ export default async function DashboardPage() {
               value={
                 isWorking
                   ? 'In progress'
+                  : isOnBreak
+                  ? 'Away'
                   : latestEnd
                   ? formatKST(latestEnd, 'HH:mm')
                   : '—'
@@ -159,7 +163,7 @@ export default async function DashboardPage() {
               value={latestStart ? formatMinutes(todayWorked) : '—'}
             />
           </div>
-          <AttendanceActions isWorking={isWorking} />
+          <AttendanceActions status={status} />
           <SessionTimeline sessions={sessions} />
         </CardContent>
       </Card>
@@ -246,13 +250,20 @@ function StatCard({
 function AttendanceStatusBadge({
   status,
 }: {
-  status: 'NOT_STARTED' | 'WORKING' | 'DONE' | 'MISSING';
+  status: 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
 }) {
   if (status === 'WORKING')
     return (
       <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
         <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
         Working
+      </Badge>
+    );
+  if (status === 'ON_BREAK')
+    return (
+      <Badge variant="outline" className="border-sky-500/40 text-sky-700 dark:text-sky-300">
+        <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-sky-500" />
+        Away
       </Badge>
     );
   if (status === 'DONE')

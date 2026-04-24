@@ -10,9 +10,6 @@ import {
 } from '@/lib/calendar-utils';
 import type { CalendarEvent } from '@/lib/api-types';
 
-const LUNCH_DEDUCTION_THRESHOLD_MINUTES = 300;
-const LUNCH_DEDUCTION_MINUTES = 60;
-
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -68,35 +65,47 @@ export async function GET(req: NextRequest) {
 
     for (const a of attendances) {
       if (a.sessions.length === 0) continue;
-      const rawMinutesPerSession = a.sessions.map((s) => {
+      const sessionMinutes = a.sessions.map((s) => {
         const endAt = s.endAt ?? now;
         return Math.max(
           0,
           Math.floor((endAt.getTime() - s.startAt.getTime()) / 60000),
         );
       });
-      const dayRawTotal = rawMinutesPerSession.reduce((sum, m) => sum + m, 0);
-      const dayDeduction =
-        dayRawTotal >= LUNCH_DEDUCTION_THRESHOLD_MINUTES ? LUNCH_DEDUCTION_MINUTES : 0;
-      const lastIdx = a.sessions.length - 1;
+      const dayStatus: 'WORKING' | 'ON_BREAK' | 'DONE' =
+        a.status === 'DONE' ? 'DONE' : a.status === 'ON_BREAK' ? 'ON_BREAK' : 'WORKING';
+      const minStart = a.sessions[0]?.startAt ?? null;
+      const maxEnd = a.sessions.reduce<Date | null>((acc, s) => {
+        const e = s.endAt ?? (dayStatus === 'WORKING' ? now : null);
+        if (!e) return acc;
+        return acc === null || e > acc ? e : acc;
+      }, null);
+      const worked = sessionMinutes.reduce((sum, m) => sum + m, 0);
+      const span =
+        minStart && maxEnd
+          ? Math.max(0, Math.floor((maxEnd.getTime() - minStart.getTime()) / 60000))
+          : worked;
+      const dayBreakMinutes =
+        dayStatus === 'DONE' ? a.breakMinutes : Math.max(0, span - worked);
+      const dayWorkedMinutes = dayStatus === 'DONE' ? a.workedMinutes : worked;
+      const dayOvertimeMinutes = dayStatus === 'DONE' ? a.overtimeMinutes : 0;
       a.sessions.forEach((s, idx) => {
         const endAt = s.endAt ?? now;
-        const minutes = rawMinutesPerSession[idx];
-        const workedMinutes =
-          idx === lastIdx ? Math.max(0, minutes - dayDeduction) : minutes;
+        const minutes = sessionMinutes[idx];
         const inLabel = formatKST(s.startAt, 'HH:mm');
         const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : 'In progress';
         events.push({
           id: `sess-${s.id}`,
-          title: `${inLabel} ~ ${outLabel} · ${formatDuration(workedMinutes)}`,
+          title: `${inLabel} ~ ${outLabel} · ${formatDuration(minutes)}`,
           start: s.startAt.toISOString(),
           end: endAt.toISOString(),
           allDay: false,
           resource: {
             kind: 'ATTENDANCE',
-            workedMinutes,
-            overtimeMinutes: 0,
-            attendanceStatus: s.endAt ? 'DONE' : 'WORKING',
+            workedMinutes: dayWorkedMinutes,
+            overtimeMinutes: dayOvertimeMinutes,
+            breakMinutes: dayBreakMinutes,
+            attendanceStatus: dayStatus,
           },
         });
       });

@@ -15,6 +15,7 @@ enum Role {
 enum AttendanceStatus {
   NOT_STARTED
   WORKING
+  ON_BREAK
   DONE
   MISSING
 }
@@ -62,6 +63,7 @@ model Attendance {
   clockInAt       DateTime?        @map("clock_in_at")
   clockOutAt      DateTime?        @map("clock_out_at")
   workedMinutes   Int              @default(0) @map("worked_minutes")
+  breakMinutes    Int              @default(0) @map("break_minutes")
   overtimeMinutes Int              @default(0) @map("overtime_minutes")
   status          AttendanceStatus @default(NOT_STARTED)
   clockInReminderSentAt  DateTime? @map("clock_in_reminder_sent_at")

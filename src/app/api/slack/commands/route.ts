@@ -3,8 +3,13 @@ import { prisma } from '@/lib/prisma';
 import {
   clockInMember,
   clockOutMember,
+  startBreak,
+  endBreak,
   notifyChannelIn,
   notifyChannelOut,
+  notifyChannelLunch,
+  notifyChannelBreak,
+  notifyChannelBack,
 } from '@/lib/attendance';
 import { verifySlackSignature } from '@/lib/slack-verify';
 
@@ -72,7 +77,44 @@ export async function POST(req: Request) {
       }
       return silentOk();
     }
+    if (r.code === 'ON_BREAK') {
+      return ephemeral('You are away. Come back before clocking out\ud83d\ude4f');
+    }
     return ephemeral('There is no clock-in recorded\u26a0\ufe0f');
+  }
+  if (command === '/lunch' || command === '/break') {
+    const kind = command === '/lunch' ? 'lunch' : 'break';
+    const r = await startBreak(member.id, 'slack', kind);
+    if (r.ok) {
+      if (r.memberName) {
+        const name = r.memberName;
+        const at = r.at;
+        const id = member.id;
+        after(() =>
+          kind === 'lunch'
+            ? notifyChannelLunch(name, at, id)
+            : notifyChannelBreak(name, at, id),
+        );
+      }
+      return silentOk();
+    }
+    if (r.code === 'ALREADY_ON_BREAK') return ephemeral('You are already marked away\u23f8\ufe0f');
+    if (r.code === 'ALREADY_DONE') return ephemeral('Today is already finished\ud83c\udf19');
+    return ephemeral('Clock in first☀️');
+  }
+  if (command === '/back') {
+    const r = await endBreak(member.id, 'slack');
+    if (r.ok) {
+      if (r.memberName) {
+        const name = r.memberName;
+        const at = r.at;
+        const id = member.id;
+        after(() => notifyChannelBack(name, at, id));
+      }
+      return silentOk();
+    }
+    if (r.code === 'ALREADY_WORKING') return ephemeral('You are already clocked in\ud83d\udcbb');
+    return ephemeral('You are not marked away\u26a0\ufe0f');
   }
   return ephemeral('That command is not supported');
 }

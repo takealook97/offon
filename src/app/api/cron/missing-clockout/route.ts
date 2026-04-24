@@ -39,14 +39,17 @@ export async function GET(req: NextRequest) {
   });
   const exemptMemberIds = new Set(afternoonOffLeaves.map((l) => l.memberId));
 
-  // People who clocked in today, have not clocked out, and have not been reminded yet
+  // People who clocked in today and have not clocked out — an open session or an active break — and have not been reminded yet.
   const pending = await prisma.attendance.findMany({
     where: {
       workDate: date,
       deletedAt: null,
       clockOutReminderSentAt: null,
       member: { deletedAt: null, excludeMissingNotify: false },
-      sessions: { some: { endAt: null, deletedAt: null } },
+      OR: [
+        { sessions: { some: { endAt: null, deletedAt: null } } },
+        { status: 'ON_BREAK' },
+      ],
     },
     include: { member: { select: { id: true, slackId: true } } },
   });
@@ -56,10 +59,11 @@ export async function GET(req: NextRequest) {
   if (settings.missingClockOutNotifyEnabled) {
     for (const a of targets) {
       try {
-        await sendDm(
-          a.member.slackId,
-          'There is no clock-out recorded yet. Please clock out',
-        );
+        const msg =
+          a.status === 'ON_BREAK'
+            ? 'You are still marked away. Please come back before clocking out'
+            : 'There is no clock-out recorded yet. Please clock out';
+        await sendDm(a.member.slackId, msg);
         await prisma.attendance.update({
           where: { id: a.id },
           data: { clockOutReminderSentAt: new Date() },
