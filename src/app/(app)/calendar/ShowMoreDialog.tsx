@@ -54,7 +54,7 @@ function AttendanceDaySummary({ events }: { events: UiEvent[] }) {
   return (
     <li className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-0.5">
       <div>
-        <span className="text-muted-foreground">Working</span>{' '}
+        <span className="text-muted-foreground">Worked</span>{' '}
         <span className="font-medium">{formatMinutes(sessionSpan)}</span>
       </div>
       <div>
