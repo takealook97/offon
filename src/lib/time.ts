@@ -47,7 +47,10 @@ export function monthRangeKST(ref: Date = nowKST()): { start: Date; end: Date } 
   };
 }
 
-export function isWeekdayKST(d: Date = nowKST()): boolean {
+export function isWeekdayKST(d: Date = new Date()): boolean {
+  // The shift is applied internally, so the argument must be a real UTC instant.
+  // Defaulting to an already-shifted value shifts it again and pushes the weekday forward by a day.
+  // Friday afternoon read as Saturday, so the clock-out cron skipped a weekday evening.
   const dow = kstShifted(d).getDay();
   return dow >= 1 && dow <= 5;
 }
