@@ -11,6 +11,7 @@ import { LeaveRequestForm } from './LeaveRequestForm';
 import { MyLeavesCard } from './MyLeavesCard';
 
 type SessionLite = { startAt: Date; endAt: Date | null };
+type BreakLite = { startAt: Date; endAt: Date | null };
 
 function formatMinutes(m: number): string {
   const h = Math.floor(m / 60);
@@ -51,6 +52,11 @@ export default async function DashboardPage() {
           orderBy: { startAt: 'asc' },
           select: { startAt: true, endAt: true },
         },
+        breaks: {
+          where: { deletedAt: null },
+          orderBy: { startAt: 'asc' },
+          select: { startAt: true, endAt: true },
+        },
       },
     }),
     prisma.attendance.findMany({
@@ -79,20 +85,32 @@ export default async function DashboardPage() {
   const holidayDates = holidayRows.map((h) => h.date);
 
   const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
+  const breaks: BreakLite[] = todayAttendance?.breaks ?? [];
   const latestSession = sessions.at(-1) ?? null;
   const openSession = latestSession && !latestSession.endAt ? latestSession : null;
   const status = todayAttendance?.status ?? 'NOT_STARTED';
   const isWorking = status === 'WORKING' && !!openSession;
   const isOnBreak = status === 'ON_BREAK';
   const latestStart = latestSession?.startAt ?? todayAttendance?.clockInAt ?? null;
+  // While away the session is still open, so its end is null.
+  // The clock-out slot checks the away state first, so the open-session test is left as it is.
   const latestEnd = openSession
     ? null
     : latestSession?.endAt ?? todayAttendance?.clockOutAt ?? null;
   const nowMs = Date.now();
-  const todayWorked = sessions.reduce((sum, s) => {
-    const endMs = s.endAt ? s.endAt.getTime() : isWorking ? nowMs : s.startAt.getTime();
+  const sessionSpan = sessions.reduce((sum, s) => {
+    const endMs = s.endAt
+      ? s.endAt.getTime()
+      : isWorking || isOnBreak
+      ? nowMs
+      : s.startAt.getTime();
     return sum + Math.max(0, Math.floor((endMs - s.startAt.getTime()) / 60000));
   }, 0);
+  const breakSpan = breaks.reduce((sum, b) => {
+    const endMs = b.endAt ? b.endAt.getTime() : isOnBreak ? nowMs : b.startAt.getTime();
+    return sum + Math.max(0, Math.floor((endMs - b.startAt.getTime()) / 60000));
+  }, 0);
+  const todayWorked = Math.max(0, sessionSpan - breakSpan);
 
   const storedTodayWorked = todayAttendance?.workedMinutes ?? 0;
   const weekTotal =

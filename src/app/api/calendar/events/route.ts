@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
         },
         include: {
           sessions: { where: { deletedAt: null }, orderBy: { startAt: 'asc' } },
+          breaks: { where: { deletedAt: null }, orderBy: { startAt: 'asc' } },
         },
       }),
       prisma.leaveRequest.findMany({
@@ -65,29 +66,33 @@ export async function GET(req: NextRequest) {
 
     for (const a of attendances) {
       if (a.sessions.length === 0) continue;
+      const dayStatus: 'WORKING' | 'ON_BREAK' | 'DONE' =
+        a.status === 'DONE' ? 'DONE' : a.status === 'ON_BREAK' ? 'ON_BREAK' : 'WORKING';
+      // Each session's duration, used only in the event title. An open session keeps running
+      // even while the person is away, so it is filled to now.
       const sessionMinutes = a.sessions.map((s) => {
-        const endAt = s.endAt ?? now;
+        const endAt =
+          s.endAt ?? (dayStatus === 'WORKING' || dayStatus === 'ON_BREAK' ? now : s.startAt);
         return Math.max(
           0,
           Math.floor((endAt.getTime() - s.startAt.getTime()) / 60000),
         );
       });
-      const dayStatus: 'WORKING' | 'ON_BREAK' | 'DONE' =
-        a.status === 'DONE' ? 'DONE' : a.status === 'ON_BREAK' ? 'ON_BREAK' : 'WORKING';
-      const minStart = a.sessions[0]?.startAt ?? null;
-      const maxEnd = a.sessions.reduce<Date | null>((acc, s) => {
-        const e = s.endAt ?? (dayStatus === 'WORKING' ? now : null);
-        if (!e) return acc;
-        return acc === null || e > acc ? e : acc;
-      }, null);
-      const worked = sessionMinutes.reduce((sum, m) => sum + m, 0);
-      const span =
-        minStart && maxEnd
-          ? Math.max(0, Math.floor((maxEnd.getTime() - minStart.getTime()) / 60000))
-          : worked;
-      const dayBreakMinutes =
-        dayStatus === 'DONE' ? a.breakMinutes : Math.max(0, span - worked);
-      const dayWorkedMinutes = dayStatus === 'DONE' ? a.workedMinutes : worked;
+      // Day totals: a finished day uses its stored values, anything else is computed live as session span minus break span.
+      const sessionSpanMin = a.sessions.reduce((sum, s) => {
+        const endAt =
+          s.endAt ?? (dayStatus === 'WORKING' || dayStatus === 'ON_BREAK' ? now : null);
+        if (!endAt) return sum;
+        return sum + Math.max(0, Math.floor((endAt.getTime() - s.startAt.getTime()) / 60000));
+      }, 0);
+      const breakSpanMin = a.breaks.reduce((sum, b) => {
+        const endAt = b.endAt ?? (dayStatus === 'ON_BREAK' ? now : null);
+        if (!endAt) return sum;
+        return sum + Math.max(0, Math.floor((endAt.getTime() - b.startAt.getTime()) / 60000));
+      }, 0);
+      const dayWorkedMinutes =
+        dayStatus === 'DONE' ? a.workedMinutes : Math.max(0, sessionSpanMin - breakSpanMin);
+      const dayBreakMinutes = dayStatus === 'DONE' ? a.breakMinutes : breakSpanMin;
       const dayOvertimeMinutes = dayStatus === 'DONE' ? a.overtimeMinutes : 0;
       a.sessions.forEach((s, idx) => {
         const endAt = s.endAt ?? now;

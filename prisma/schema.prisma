@@ -26,6 +26,11 @@ enum LeaveType {
   HALF_DAY_PM
 }
 
+enum BreakKind {
+  BREAK
+  LUNCH
+}
+
 enum LeaveStatus {
   REQUESTED
   APPROVED
@@ -74,6 +79,7 @@ model Attendance {
 
   member   Member              @relation(fields: [memberId], references: [id])
   sessions AttendanceSession[]
+  breaks   AttendanceBreak[]
 
   @@unique([memberId, workDate])
   @@index([workDate])
@@ -89,7 +95,8 @@ model AttendanceSession {
   updatedAt    DateTime  @updatedAt      @map("updated_at")
   deletedAt    DateTime?                  @map("deleted_at")
 
-  attendance Attendance @relation(fields: [attendanceId], references: [id])
+  attendance Attendance        @relation(fields: [attendanceId], references: [id])
+  breaks     AttendanceBreak[]
 
   @@index([attendanceId])
   // A partial unique, written as raw SQL because the Prisma DSL cannot express one:
@@ -98,6 +105,30 @@ model AttendanceSession {
   //    WHERE end_at IS NULL AND deleted_at IS NULL;
   // → migration 20260422020000_attendance_session_open_unique
   @@map("attendance_sessions")
+}
+
+model AttendanceBreak {
+  id           Int       @id @default(autoincrement())
+  attendanceId Int       @map("attendance_id")
+  sessionId    Int       @map("session_id")
+  startAt      DateTime  @map("start_at")
+  endAt        DateTime? @map("end_at")
+  kind         BreakKind @default(BREAK)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt      @map("updated_at")
+  deletedAt    DateTime?                  @map("deleted_at")
+
+  attendance Attendance        @relation(fields: [attendanceId], references: [id])
+  session    AttendanceSession @relation(fields: [sessionId], references: [id])
+
+  @@index([attendanceId])
+  @@index([sessionId])
+  // A partial unique, written as raw SQL because the Prisma DSL cannot express one:
+  //   CREATE UNIQUE INDEX attendance_breaks_open_unique
+  //     ON attendance_breaks (session_id)
+  //    WHERE end_at IS NULL AND deleted_at IS NULL;
+  // → migration 20260424120200_attendance_breaks_open_unique
+  @@map("attendance_breaks")
 }
 
 model LeaveRequest {

@@ -6,6 +6,7 @@ import { logAudit } from './audit';
 import { sendChannel } from './slack';
 
 const OPEN_SESSION_UNIQUE_INDEX = 'attendance_sessions_open_unique';
+const OPEN_BREAK_UNIQUE_INDEX = 'attendance_breaks_open_unique';
 
 function isOpenSessionConflict(e: unknown): boolean {
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;
@@ -13,6 +14,15 @@ function isOpenSessionConflict(e: unknown): boolean {
   const target = e.meta?.target;
   if (target === OPEN_SESSION_UNIQUE_INDEX) return true;
   if (Array.isArray(target) && target.includes(OPEN_SESSION_UNIQUE_INDEX)) return true;
+  return false;
+}
+
+function isOpenBreakConflict(e: unknown): boolean {
+  if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (e.code !== 'P2002') return false;
+  const target = e.meta?.target;
+  if (target === OPEN_BREAK_UNIQUE_INDEX) return true;
+  if (Array.isArray(target) && target.includes(OPEN_BREAK_UNIQUE_INDEX)) return true;
   return false;
 }
 
@@ -55,6 +65,11 @@ export type EndBreakResult =
       code: 'NOT_ON_BREAK' | 'ALREADY_WORKING';
       error: string;
     };
+
+// Maps the stored enum to the external interface
+function toPrismaBreakKind(kind: BreakKind): 'BREAK' | 'LUNCH' {
+  return kind === 'lunch' ? 'LUNCH' : 'BREAK';
+}
 
 const STANDARD_MINUTES = 480;
 
@@ -296,36 +311,48 @@ export async function clockOutMember(
       where: { id: open.id },
       data: { endAt: clockOut },
     });
-    const all = await tx.attendanceSession.findMany({
+    const allSessions = await tx.attendanceSession.findMany({
       where: { attendanceId: open.attendanceId, deletedAt: null },
       select: { startAt: true, endAt: true },
     });
-    const closed = all.filter((s) => s.endAt);
-    const worked = closed.reduce(
+    const closedSessions = allSessions.filter((s) => s.endAt);
+    const sessionMin = closedSessions.reduce(
       (sum, s) => sum + Math.floor((s.endAt!.getTime() - s.startAt.getTime()) / 60000),
       0,
     );
+
+    const closedBreaks = await tx.attendanceBreak.findMany({
+      where: {
+        attendanceId: open.attendanceId,
+        deletedAt: null,
+        endAt: { not: null },
+      },
+      select: { startAt: true, endAt: true },
+    });
+    const breakMin = closedBreaks.reduce(
+      (sum, b) => sum + Math.floor((b.endAt!.getTime() - b.startAt.getTime()) / 60000),
+      0,
+    );
+
+    const worked = Math.max(0, sessionMin - breakMin);
     const overtime = Math.max(0, worked - STANDARD_MINUTES);
-    const minStart = all.reduce<Date | null>(
+
+    const minStart = allSessions.reduce<Date | null>(
       (min, s) => (min === null || s.startAt < min ? s.startAt : min),
       null,
     );
-    const maxEnd = closed.reduce<Date | null>(
+    const maxEnd = closedSessions.reduce<Date | null>(
       (max, s) => (max === null || s.endAt! > max ? s.endAt! : max),
       null,
     );
-    const span =
-      minStart && maxEnd
-        ? Math.floor((maxEnd.getTime() - minStart.getTime()) / 60000)
-        : worked;
-    const breakMinutes = Math.max(0, span - worked);
+
     return tx.attendance.update({
       where: { id: open.attendanceId },
       data: {
         clockInAt: minStart ?? open.attendance.clockInAt,
         clockOutAt: maxEnd,
         workedMinutes: worked,
-        breakMinutes,
+        breakMinutes: breakMin,
         overtimeMinutes: overtime,
         status: 'DONE',
       },
@@ -390,16 +417,28 @@ export async function startBreak(
   }
 
   const at = new Date();
-  const updated = await prisma.$transaction(async (tx) => {
-    await tx.attendanceSession.update({
-      where: { id: open.id },
-      data: { endAt: at },
+  let updated: Attendance;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      await tx.attendanceBreak.create({
+        data: {
+          attendanceId: attendance.id,
+          sessionId: open.id,
+          startAt: at,
+          kind: toPrismaBreakKind(kind),
+        },
+      });
+      return tx.attendance.update({
+        where: { id: attendance.id },
+        data: { status: 'ON_BREAK' },
+      });
     });
-    return tx.attendance.update({
-      where: { id: attendance.id },
-      data: { status: 'ON_BREAK' },
-    });
-  });
+  } catch (e) {
+    if (isOpenBreakConflict(e)) {
+      return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
+    }
+    throw e;
+  }
 
   await logAudit({
     actorId: memberId,
@@ -436,28 +475,35 @@ export async function endBreak(
     };
   }
 
-  const at = new Date();
-  let updated: Attendance;
-  try {
-    updated = await prisma.$transaction(async (tx) => {
-      await tx.attendanceSession.create({
-        data: { attendanceId: attendance.id, startAt: at },
-      });
-      return tx.attendance.update({
-        where: { id: attendance.id },
-        data: { status: 'WORKING' },
-      });
-    });
-  } catch (e) {
-    if (isOpenSessionConflict(e)) {
-      return {
-        ok: false,
-        code: 'ALREADY_WORKING',
-        error: 'You are already clocked in',
-      };
-    }
-    throw e;
+  const openBreak = await prisma.attendanceBreak.findFirst({
+    where: {
+      attendanceId: attendance.id,
+      endAt: null,
+      deletedAt: null,
+    },
+    orderBy: { startAt: 'desc' },
+  });
+  if (!openBreak) {
+    // The inconsistent case: the attendance says away but no break is actually open.
+    // From the user's side this reads the same as an ordinary not-on-a-break answer.
+    return {
+      ok: false,
+      code: 'NOT_ON_BREAK',
+      error: 'You are not marked away',
+    };
   }
+
+  const at = new Date();
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.attendanceBreak.update({
+      where: { id: openBreak.id },
+      data: { endAt: at },
+    });
+    return tx.attendance.update({
+      where: { id: attendance.id },
+      data: { status: 'WORKING' },
+    });
+  });
 
   await logAudit({
     actorId: memberId,

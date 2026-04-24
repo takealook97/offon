@@ -45,20 +45,26 @@ function eventClass(ev: UiEvent): string {
 function AttendanceDaySummary({ events }: { events: UiEvent[] }) {
   const att = events.filter((e) => e.resource.kind === 'ATTENDANCE');
   if (att.length === 0) return null;
+  // Every session event of a day carries the same day-level worked and break minutes
+  // carried on the resource, so a max across them gives one consistent day figure.
   const worked = att.reduce((m, e) => Math.max(m, e.resource.workedMinutes ?? 0), 0);
   const brk = att.reduce((m, e) => Math.max(m, e.resource.breakMinutes ?? 0), 0);
+  // Time on the clock is the worked total plus the breaks.
+  const sessionSpan = worked + brk;
   return (
     <li className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-0.5">
       <div>
         <span className="text-muted-foreground">Working</span>{' '}
+        <span className="font-medium">{formatMinutes(sessionSpan)}</span>
+      </div>
+      <div>
+        <span className="text-muted-foreground">Away</span>{' '}
+        <span className="font-medium">{formatMinutes(brk)}</span>
+      </div>
+      <div>
+        <span className="text-muted-foreground">Total</span>{' '}
         <span className="font-medium">{formatMinutes(worked)}</span>
       </div>
-      {brk > 0 && (
-        <div>
-          <span className="text-muted-foreground">Away</span>{' '}
-          <span className="font-medium">{formatMinutes(brk)}</span>
-        </div>
-      )}
     </li>
   );
 }
