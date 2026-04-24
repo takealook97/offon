@@ -47,18 +47,11 @@ function AttendanceDaySummary({ events }: { events: UiEvent[] }) {
   if (att.length === 0) return null;
   const worked = att.reduce((m, e) => Math.max(m, e.resource.workedMinutes ?? 0), 0);
   const brk = att.reduce((m, e) => Math.max(m, e.resource.breakMinutes ?? 0), 0);
-  const overtime = att.reduce(
-    (m, e) => Math.max(m, e.resource.overtimeMinutes ?? 0),
-    0,
-  );
   return (
     <li className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-0.5">
       <div>
         <span className="text-muted-foreground">Working</span>{' '}
         <span className="font-medium">{formatMinutes(worked)}</span>
-        {overtime > 0 && (
-          <span className="text-muted-foreground"> (overtime {formatMinutes(overtime)})</span>
-        )}
       </div>
       {brk > 0 && (
         <div>
