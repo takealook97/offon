@@ -217,7 +217,7 @@ function ClockSlot({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="font-mono text-lg font-semibold tabular-nums">{value}</p>
+      <p className="whitespace-nowrap font-mono text-lg font-semibold tabular-nums">{value}</p>
     </div>
   );
 }
