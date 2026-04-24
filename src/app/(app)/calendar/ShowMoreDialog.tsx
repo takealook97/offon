@@ -61,6 +61,7 @@ function AttendanceDaySummary({ events }: { events: UiEvent[] }) {
         <span className="text-muted-foreground">Away</span>{' '}
         <span className="font-medium">{formatMinutes(brk)}</span>
       </div>
+      <div className="my-1 border-t border-border/60" aria-hidden />
       <div>
         <span className="text-muted-foreground">Total</span>{' '}
         <span className="font-medium">{formatMinutes(worked)}</span>
