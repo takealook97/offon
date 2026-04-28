@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { verifySession, type SessionPayload } from './auth';
+import { prisma } from './prisma';
 
 const COOKIE = 'session';
 
@@ -16,6 +17,12 @@ export async function getSession(): Promise<SessionPayload | null> {
 export async function requireSession(): Promise<SessionPayload> {
   const s = await getSession();
   if (!s) throw new Response('unauthorized', { status: 401 });
+  // A deactivated member is refused even while their token is still valid, so deactivation takes effect at once.
+  const member = await prisma.member.findFirst({
+    where: { id: s.memberId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!member) throw new Response('unauthorized', { status: 401 });
   return s;
 }
 
