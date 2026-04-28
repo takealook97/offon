@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         startDate: { lte: end },
         endDate: { gte: start },
         deletedAt: null,
+        member: { deletedAt: null },
       },
       include: { member: { select: { name: true } } },
       orderBy: [{ startDate: 'asc' }, { memberId: 'asc' }],
