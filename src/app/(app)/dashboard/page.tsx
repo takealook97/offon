@@ -5,7 +5,6 @@ import {
   formatKST,
   kstDayKey,
   monthRangeKST,
-  nowKST,
   todayKST,
   weekRangeKST,
 } from '@/lib/time';
@@ -50,7 +49,9 @@ export default async function DashboardPage() {
   const today = todayKST();
   const week = weekRangeKST();
   const month = monthRangeKST();
-  const now = nowKST();
+  // clippedDailyTotals needs a real UTC instant. The shifted value is a sentinel, and
+  // it to clamp an open session inflates the worked time by the whole offset.
+  const now = new Date();
 
   const todayStr = formatKST(today, 'yyyy-MM-dd');
   const year = Number(todayStr.slice(0, 4));
