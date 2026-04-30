@@ -173,6 +173,14 @@ export function clipMinutes(
   return Math.floor((e - s) / 60000);
 }
 
+/** Local `HH:mm`, independent of the runtime timezone. The formatter would read the Date in the local zone and double-shift it on a client already in that zone, so the UTC getters are used directly. */
+function kstHhMm(d: Date): string {
+  const shifted = kstShifted(d);
+  const h = String(shifted.getUTCHours()).padStart(2, '0');
+  const m = String(shifted.getUTCMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 /**
  * The display label for a session segment clipped to one local day.
  * - segEnd === null means an open session; `now` is assumed as its end before clipping.
@@ -192,15 +200,14 @@ export function kstClipSegmentLabel(
   const clipStartMs = Math.max(segStart.getTime(), ds.getTime());
   const clipEndMs = Math.min(effectiveEnd.getTime(), de.getTime());
   const minutes = clipEndMs > clipStartMs ? Math.floor((clipEndMs - clipStartMs) / 60000) : 0;
-  const startLabel =
-    clipStartMs === ds.getTime() ? '00:00' : fnsFormat(kstShifted(new Date(clipStartMs)), 'HH:mm');
+  const startLabel = clipStartMs === ds.getTime() ? '00:00' : kstHhMm(new Date(clipStartMs));
   let endLabel: string;
   if (clipEndMs === de.getTime()) {
     endLabel = '24:00';
   } else if (isOpen) {
     endLabel = 'In progress';
   } else {
-    endLabel = fnsFormat(kstShifted(new Date(clipEndMs)), 'HH:mm');
+    endLabel = kstHhMm(new Date(clipEndMs));
   }
   return { startLabel, endLabel, minutes };
 }
