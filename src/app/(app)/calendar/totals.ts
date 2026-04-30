@@ -6,30 +6,38 @@ import {
   startOfMonth,
   endOfMonth,
   eachWeekOfInterval,
+  format,
 } from 'date-fns';
-import type { CalendarEvent } from '@/lib/api-types';
+import type { DailyAttendanceTotal } from '@/lib/api-types';
 
 const WEEK_OPTS = { weekStartsOn: 0 as const };
 
+/**
+ * Enumerates the day keys in the range and sums the worked minutes from dailyTotals.
+ * Those totals arrive from `/api/calendar/events` already clipped at local midnight, so a
+ * session crossing midnight is split correctly across both days.
+ */
 export function attendanceMinutesIn(
-  events: CalendarEvent[],
+  dailyTotals: Record<string, DailyAttendanceTotal>,
   range: { start: Date; end: Date },
 ): number {
-  const startMs = range.start.getTime();
-  const endMs = range.end.getTime();
-  // Every session event of a day carries the same day-level worked minutes.
-  // Summed once per day rather than once per session, or the total is wrong.
-  const perDay = new Map<string, number>();
-  for (const e of events) {
-    if (e.resource.kind !== 'ATTENDANCE') continue;
-    const d = new Date(e.start);
-    const t = d.getTime();
-    if (t < startMs || t > endMs) continue;
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    if (!perDay.has(key)) perDay.set(key, e.resource.workedMinutes ?? 0);
-  }
+  // Assumes the viewer is in the org timezone, where the browser's local date is the day key.
+  const cur = new Date(
+    range.start.getFullYear(),
+    range.start.getMonth(),
+    range.start.getDate(),
+  );
+  const last = new Date(
+    range.end.getFullYear(),
+    range.end.getMonth(),
+    range.end.getDate(),
+  );
   let total = 0;
-  for (const v of perDay.values()) total += v;
+  while (cur.getTime() <= last.getTime()) {
+    const key = format(cur, 'yyyy-MM-dd');
+    total += dailyTotals[key]?.workedMinutes ?? 0;
+    cur.setDate(cur.getDate() + 1);
+  }
   return total;
 }
 

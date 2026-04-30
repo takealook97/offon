@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ ok: true, events });
+    return NextResponse.json({ ok: true, events, dailyTotals: {} });
   } catch (e) {
     if (e instanceof Response) return e;
     console.error('[team/leaves] failed', e);

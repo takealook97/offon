@@ -12,7 +12,12 @@ import { format, parse, startOfWeek, getDay, isSameWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
-import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import type {
+  CalendarEvent,
+  CalendarEventsResponse,
+  DailyAttendanceTotal,
+} from '@/lib/api-types';
+// CalendarEvent stays imported because UiEvent.resource infers its type through it.
 import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
@@ -81,6 +86,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 
 export function CalendarView({ memberId }: { memberId?: number }) {
   const [events, setEvents] = useState<UiEvent[]>([]);
+  const [dailyTotals, setDailyTotals] = useState<Record<string, DailyAttendanceTotal>>({});
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
@@ -127,8 +133,10 @@ export function CalendarView({ memberId }: { memberId?: number }) {
               resource: e.resource,
             })),
           );
+          setDailyTotals(data.dailyTotals);
         } else {
           setEvents([]);
+          setDailyTotals({});
           toast.error(
             (data && 'error' in data && data.error) || 'Could not load the calendar',
           );
@@ -138,6 +146,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
       .catch(() => {
         if (!cancelled) {
           setEvents([]);
+          setDailyTotals({});
           setHolidays(new Set());
         }
       })
@@ -207,19 +216,6 @@ export function CalendarView({ memberId }: { memberId?: number }) {
   const viewMode: 'month' | 'week' | 'day' =
     view === Views.DAY ? 'day' : view === Views.WEEK ? 'week' : 'month';
 
-  const apiEvents: CalendarEvent[] = useMemo(
-    () =>
-      events.map((e) => ({
-        id: e.id,
-        title: e.title,
-        start: e.start.toISOString(),
-        end: e.end.toISOString(),
-        allDay: e.allDay,
-        resource: e.resource,
-      })),
-    [events],
-  );
-
   const Toolbar = useMemo(
     () => (props: ToolbarProps<UiEvent>) =>
       <CustomToolbar {...props} date={date} onJump={setDate} />,
@@ -278,13 +274,16 @@ export function CalendarView({ memberId }: { memberId?: number }) {
         />
       </div>
       {viewMode === 'month' && (
-        <WeeklySummary apiEvents={apiEvents} date={date} />
+        <WeeklySummary dailyTotals={dailyTotals} date={date} />
       )}
       <ShowMoreDialog
         open={!!showMore}
         onOpenChange={(v) => !v && setShowMore(null)}
         date={showMore?.date ?? null}
         events={showMore?.events ?? []}
+        summary={
+          showMore ? dailyTotals[format(showMore.date, 'yyyy-MM-dd')] : undefined
+        }
       />
     </div>
   );
@@ -310,17 +309,17 @@ function CustomToolbar(
 }
 
 function WeeklySummary({
-  apiEvents,
+  dailyTotals,
   date,
 }: {
-  apiEvents: CalendarEvent[];
+  dailyTotals: Record<string, DailyAttendanceTotal>;
   date: Date;
 }) {
   const today = new Date();
   const weeks = useMemo(() => weeksInMonth(date), [date]);
   const monthTotal = useMemo(
-    () => attendanceMinutesIn(apiEvents, rangeForView('month', date)),
-    [apiEvents, date],
+    () => attendanceMinutesIn(dailyTotals, rangeForView('month', date)),
+    [dailyTotals, date],
   );
 
   return (
@@ -336,7 +335,7 @@ function WeeklySummary({
       </header>
       <ul className="divide-y divide-border/60">
         {weeks.map((w) => {
-          const minutes = attendanceMinutesIn(apiEvents, w);
+          const minutes = attendanceMinutesIn(dailyTotals, w);
           const isCurrent = isSameWeek(today, w.start, WEEK_OPTS);
           const isFuture = w.start.getTime() > today.getTime();
           return (

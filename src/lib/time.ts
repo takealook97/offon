@@ -132,3 +132,75 @@ export function countBusinessDaysKST(
   }
   return count;
 }
+
+/**
+ * An absolute instant to the local `yyyy-MM-dd` string.
+ * Daily totals are clipped at local midnight, so every day-key conversion goes through here.
+ */
+export function kstDayKey(d: Date): string {
+  return fnsFormat(kstShifted(d), 'yyyy-MM-dd');
+}
+
+/**
+ * A `yyyy-MM-dd` string to that day's [00:00, next 00:00) as UTC instants.
+ * `'2026-04-30'` → `{ start: 2026-04-29T15:00:00Z, end: 2026-04-30T15:00:00Z }`.
+ */
+export function kstDayBoundsUtc(key: string): { start: Date; end: Date } {
+  const [y, m, d] = key.split('-').map(Number);
+  // Local midnight is 15:00 UTC the previous day.
+  const start = new Date(Date.UTC(y, m - 1, d) - KST_OFFSET_MS);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
+/** The day key after a given one. Month, year and leap-day boundaries are normalised automatically. */
+export function nextKstDayKey(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return next.toISOString().slice(0, 10);
+}
+
+/** Minutes in [segStart, segEnd] intersected with [dayStart, dayEnd] (floored, never negative). */
+export function clipMinutes(
+  segStart: Date,
+  segEnd: Date,
+  dayStart: Date,
+  dayEnd: Date,
+): number {
+  const s = Math.max(segStart.getTime(), dayStart.getTime());
+  const e = Math.min(segEnd.getTime(), dayEnd.getTime());
+  if (e <= s) return 0;
+  return Math.floor((e - s) / 60000);
+}
+
+/**
+ * The display label for a session segment clipped to one local day.
+ * - segEnd === null means an open session; `now` is assumed as its end before clipping.
+ * - A clipped start on midnight gives `'00:00'`: it carried over from the previous day.
+ * - A clipped end on the next midnight gives `'24:00'`: it carries into the next day, or is still open.
+ * - Still open and ending before the next midnight gives the in-progress label.
+ */
+export function kstClipSegmentLabel(
+  segStart: Date,
+  segEnd: Date | null,
+  dayKey: string,
+  opts: { now: Date },
+): { startLabel: string; endLabel: string; minutes: number } {
+  const isOpen = segEnd === null;
+  const effectiveEnd = segEnd ?? opts.now;
+  const { start: ds, end: de } = kstDayBoundsUtc(dayKey);
+  const clipStartMs = Math.max(segStart.getTime(), ds.getTime());
+  const clipEndMs = Math.min(effectiveEnd.getTime(), de.getTime());
+  const minutes = clipEndMs > clipStartMs ? Math.floor((clipEndMs - clipStartMs) / 60000) : 0;
+  const startLabel =
+    clipStartMs === ds.getTime() ? '00:00' : fnsFormat(kstShifted(new Date(clipStartMs)), 'HH:mm');
+  let endLabel: string;
+  if (clipEndMs === de.getTime()) {
+    endLabel = '24:00';
+  } else if (isOpen) {
+    endLabel = 'In progress';
+  } else {
+    endLabel = fnsFormat(kstShifted(new Date(clipEndMs)), 'HH:mm');
+  }
+  return { startLabel, endLabel, minutes };
+}

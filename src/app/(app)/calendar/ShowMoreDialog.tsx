@@ -9,7 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/cn';
-import type { CalendarEvent } from '@/lib/api-types';
+import { kstClipSegmentLabel } from '@/lib/time';
+import type { CalendarEvent, DailyAttendanceTotal } from '@/lib/api-types';
 
 type UiEvent = {
   id: string;
@@ -42,13 +43,8 @@ function eventClass(ev: UiEvent): string {
   return 'border-red-500/40 bg-red-500/15 text-red-700 dark:text-red-200';
 }
 
-function AttendanceDaySummary({ events }: { events: UiEvent[] }) {
-  const att = events.filter((e) => e.resource.kind === 'ATTENDANCE');
-  if (att.length === 0) return null;
-  // Every session event of a day carries the same day-level worked and break minutes
-  // carried on the resource, so a max across them gives one consistent day figure.
-  const worked = att.reduce((m, e) => Math.max(m, e.resource.workedMinutes ?? 0), 0);
-  const brk = att.reduce((m, e) => Math.max(m, e.resource.breakMinutes ?? 0), 0);
+function AttendanceDaySummary({ summary }: { summary: DailyAttendanceTotal }) {
+  const { workedMinutes: worked, breakMinutes: brk } = summary;
   // Time on the clock is the worked total plus the breaks.
   const sessionSpan = worked + brk;
   return (
@@ -75,12 +71,29 @@ export function ShowMoreDialog({
   onOpenChange,
   date,
   events,
+  summary,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   date: Date | null;
   events: UiEvent[];
+  summary?: DailyAttendanceTotal;
 }) {
+  const dayKey = date ? format(date, 'yyyy-MM-dd') : null;
+  const now = new Date();
+
+  const titleFor = (e: UiEvent): string => {
+    if (e.resource.kind !== 'ATTENDANCE' || !dayKey) return e.title;
+    const segEnd: Date | null = e.resource.isOpenSession ? null : e.end;
+    const { startLabel, endLabel, minutes } = kstClipSegmentLabel(
+      e.start,
+      segEnd,
+      dayKey,
+      { now },
+    );
+    return `${startLabel} ~ ${endLabel} · ${formatMinutes(minutes)}`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px]">
@@ -104,10 +117,10 @@ export function ShowMoreDialog({
                     eventClass(e),
                   )}
                 >
-                  {e.title}
+                  {titleFor(e)}
                 </li>
               ))}
-              <AttendanceDaySummary events={events} />
+              {summary && <AttendanceDaySummary summary={summary} />}
             </>
           )}
         </ul>

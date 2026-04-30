@@ -1,7 +1,16 @@
 import { Calendar, CalendarClock, Clock3, CalendarCheck, CalendarPlus } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
-import { formatKST, monthRangeKST, nowKST, todayKST, weekRangeKST } from '@/lib/time';
+import {
+  formatKST,
+  kstDayKey,
+  monthRangeKST,
+  nowKST,
+  todayKST,
+  weekRangeKST,
+} from '@/lib/time';
+import { clippedDailyTotals } from '@/lib/calendar-aggregation';
+import type { DailyAttendanceTotal } from '@/lib/api-types';
 import { listHolidays } from '@/lib/holidays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +20,8 @@ import { LeaveRequestForm } from './LeaveRequestForm';
 import { MyLeavesCard } from './MyLeavesCard';
 
 type SessionLite = { startAt: Date; endAt: Date | null };
-type BreakLite = { startAt: Date; endAt: Date | null };
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function formatMinutes(m: number): string {
   const h = Math.floor(m / 60);
@@ -21,21 +31,46 @@ function formatMinutes(m: number): string {
   return `${mm}m`;
 }
 
+function sumMinutesInRange(
+  totals: Record<string, DailyAttendanceTotal>,
+  start: Date,
+  end: Date,
+): number {
+  if (start.getTime() > end.getTime()) return 0;
+  // start and end are local midnights. Enumerating day keys with a 24h step is safe in a zone with no DST.
+  let total = 0;
+  for (let t = start.getTime(); t <= end.getTime(); t += MS_PER_DAY) {
+    total += totals[kstDayKey(new Date(t))]?.workedMinutes ?? 0;
+  }
+  return total;
+}
+
 export default async function DashboardPage() {
   const session = await requireSession();
   const today = todayKST();
   const week = weekRangeKST();
   const month = monthRangeKST();
+  const now = nowKST();
 
   const todayStr = formatKST(today, 'yyyy-MM-dd');
   const year = Number(todayStr.slice(0, 4));
   const holidayFrom = `${year}-01-01`;
   const holidayTo = `${year + 1}-12-31`;
+
+  // Loads attendance with its sessions and breaks over a range one day wider on each side,
+  // so the week total, the month total and today's clip can all be computed in one pass.
+  // The extra day catches a session that crossed midnight and is anchored to a row outside the range.
+  const loadStartMs =
+    Math.min(week.start.getTime(), month.start.getTime(), today.getTime()) - MS_PER_DAY;
+  const loadEndMs =
+    Math.max(week.end.getTime(), month.end.getTime(), today.getTime()) + MS_PER_DAY;
+  const loadStart = new Date(loadStartMs);
+  const loadEnd = new Date(loadEndMs);
+
   const [
     me,
-    todayAttendance,
-    weekRows,
-    monthRows,
+    rangeRows,
+    activeOpenRow,
     balance,
     pending,
     holidayRows,
@@ -44,8 +79,12 @@ export default async function DashboardPage() {
       where: { id: session.memberId, deletedAt: null },
       select: { name: true },
     }),
-    prisma.attendance.findFirst({
-      where: { memberId: session.memberId, workDate: today, deletedAt: null },
+    prisma.attendance.findMany({
+      where: {
+        memberId: session.memberId,
+        workDate: { gte: loadStart, lte: loadEnd },
+        deletedAt: null,
+      },
       include: {
         sessions: {
           where: { deletedAt: null },
@@ -59,21 +98,25 @@ export default async function DashboardPage() {
         },
       },
     }),
-    prisma.attendance.findMany({
+    // Guards against an open session left dangling outside the range above.
+    prisma.attendance.findFirst({
       where: {
         memberId: session.memberId,
-        workDate: { gte: week.start, lte: week.end },
         deletedAt: null,
+        sessions: { some: { endAt: null, deletedAt: null } },
       },
-      select: { workedMinutes: true },
-    }),
-    prisma.attendance.findMany({
-      where: {
-        memberId: session.memberId,
-        workDate: { gte: month.start, lte: month.end },
-        deletedAt: null,
+      include: {
+        sessions: {
+          where: { deletedAt: null },
+          orderBy: { startAt: 'asc' },
+          select: { startAt: true, endAt: true },
+        },
+        breaks: {
+          where: { deletedAt: null },
+          orderBy: { startAt: 'asc' },
+          select: { startAt: true, endAt: true },
+        },
       },
-      select: { workedMinutes: true },
     }),
     prisma.leaveBalance.findFirst({ where: { memberId: session.memberId, deletedAt: null } }),
     prisma.leaveRequest.aggregate({
@@ -84,39 +127,87 @@ export default async function DashboardPage() {
   ]);
   const holidayDates = holidayRows.map((h) => h.date);
 
-  const sessions: SessionLite[] = todayAttendance?.sessions ?? [];
-  const breaks: BreakLite[] = todayAttendance?.breaks ?? [];
-  const latestSession = sessions.at(-1) ?? null;
-  const openSession = latestSession && !latestSession.endAt ? latestSession : null;
-  const status = todayAttendance?.status ?? 'NOT_STARTED';
-  const isWorking = status === 'WORKING' && !!openSession;
-  const isOnBreak = status === 'ON_BREAK';
-  const latestStart = latestSession?.startAt ?? todayAttendance?.clockInAt ?? null;
-  // While away the session is still open, so its end is null.
-  // The clock-out slot checks the away state first, so the open-session test is left as it is.
-  const latestEnd = openSession
-    ? null
-    : latestSession?.endAt ?? todayAttendance?.clockOutAt ?? null;
-  const nowMs = Date.now();
-  const sessionSpan = sessions.reduce((sum, s) => {
-    const endMs = s.endAt
-      ? s.endAt.getTime()
-      : isWorking || isOnBreak
-      ? nowMs
-      : s.startAt.getTime();
-    return sum + Math.max(0, Math.floor((endMs - s.startAt.getTime()) / 60000));
-  }, 0);
-  const breakSpan = breaks.reduce((sum, b) => {
-    const endMs = b.endAt ? b.endAt.getTime() : isOnBreak ? nowMs : b.startAt.getTime();
-    return sum + Math.max(0, Math.floor((endMs - b.startAt.getTime()) / 60000));
-  }, 0);
-  const todayWorked = Math.max(0, sessionSpan - breakSpan);
+  type Row = (typeof rangeRows)[number];
+  const rowsById = new Map<number, Row>();
+  for (const r of rangeRows) rowsById.set(r.id, r);
+  if (activeOpenRow && !rowsById.has(activeOpenRow.id)) {
+    rowsById.set(activeOpenRow.id, activeOpenRow);
+  }
+  const allRows: Row[] = Array.from(rowsById.values());
+  const dailyTotals = clippedDailyTotals(
+    allRows.map((a) => ({
+      status: a.status,
+      sessions: a.sessions,
+      breaks: a.breaks,
+    })),
+    now,
+  );
 
-  const storedTodayWorked = todayAttendance?.workedMinutes ?? 0;
-  const weekTotal =
-    weekRows.reduce((s, r) => s + r.workedMinutes, 0) - storedTodayWorked + todayWorked;
-  const monthTotal =
-    monthRows.reduce((s, r) => s + r.workedMinutes, 0) - storedTodayWorked + todayWorked;
+  const todayKey = kstDayKey(today);
+  const todayWorked = dailyTotals[todayKey]?.workedMinutes ?? 0;
+  const weekTotal = sumMinutesInRange(dailyTotals, week.start, week.end);
+  const monthTotal = sumMinutesInRange(dailyTotals, month.start, month.end);
+
+  function countWorkedDays(start: Date, end: Date): number {
+    if (start.getTime() > end.getTime()) return 0;
+    let count = 0;
+    for (let t = start.getTime(); t <= end.getTime(); t += MS_PER_DAY) {
+      const minutes = dailyTotals[kstDayKey(new Date(t))]?.workedMinutes ?? 0;
+      if (minutes > 0) count += 1;
+    }
+    return count;
+  }
+  const weekDaysWorked = countWorkedDays(week.start, week.end);
+  const monthDaysWorked = countWorkedDays(month.start, month.end);
+
+  // Data for the \"today\" card.
+  const todayRow =
+    allRows.find((r) => kstDayKey(r.workDate) === todayKey) ?? null;
+  const status = (activeOpenRow?.status ?? todayRow?.status ?? 'NOT_STARTED') as
+    | 'NOT_STARTED'
+    | 'WORKING'
+    | 'ON_BREAK'
+    | 'DONE'
+    | 'MISSING';
+  const isWorking = status === 'WORKING';
+  const isOnBreak = status === 'ON_BREAK';
+  const isCrossMidnightActive =
+    !!activeOpenRow && kstDayKey(activeOpenRow.workDate) !== todayKey;
+  const sessions: SessionLite[] = todayRow?.sessions ?? [];
+
+  // The clock-in label prefers today's own value, falling back to midnight when today's worked time came from a session that crossed it.
+  let clockInLabel: string;
+  if (todayRow?.clockInAt) {
+    clockInLabel = formatKST(todayRow.clockInAt, 'HH:mm');
+  } else if (isCrossMidnightActive || todayWorked > 0) {
+    clockInLabel = '00:00';
+  } else {
+    clockInLabel = '—';
+  }
+
+  // The clock-out label reads as in progress while working, otherwise today's value, otherwise yesterday's end where it crossed midnight.
+  let clockOutLabel: string;
+  if (isWorking) {
+    clockOutLabel = 'In progress';
+  } else if (todayRow?.clockOutAt) {
+    clockOutLabel = formatKST(todayRow.clockOutAt, 'HH:mm');
+  } else {
+    const todayEndMs = today.getTime() + MS_PER_DAY;
+    let crossEnd: Date | null = null;
+    for (const r of allRows) {
+      if (kstDayKey(r.workDate) === todayKey) continue;
+      for (const s of r.sessions) {
+        if (!s.endAt) continue;
+        const endMs = s.endAt.getTime();
+        if (endMs > today.getTime() && endMs <= todayEndMs) {
+          if (!crossEnd || endMs > crossEnd.getTime()) crossEnd = s.endAt;
+        }
+      }
+    }
+    clockOutLabel = crossEnd ? formatKST(crossEnd, 'HH:mm') : '—';
+  }
+  const hasClockIn = clockInLabel !== '—';
+
   const safe = (n: number) => (Number.isFinite(n) ? n : 0);
   const baseDays = balance ? safe(Number(balance.baseDays)) : 0;
   const bonusDays = balance ? safe(Number(balance.bonusDays)) : 0;
@@ -160,25 +251,14 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
+            <ClockSlot label="Clock in" value={clockInLabel} />
             <ClockSlot
-              label="Clock in"
-              value={latestStart ? formatKST(latestStart, 'HH:mm') : '—'}
-            />
-            <ClockSlot
-              label="Clock out"
-              value={
-                isWorking
-                  ? 'In progress'
-                  : isOnBreak
-                  ? 'Away'
-                  : latestEnd
-                  ? formatKST(latestEnd, 'HH:mm')
-                  : '—'
-              }
+              label={isOnBreak ? 'Away' : 'Clock out'}
+              value={isOnBreak ? 'In progress' : clockOutLabel}
             />
             <ClockSlot
               label="Worked"
-              value={latestStart ? formatMinutes(todayWorked) : '—'}
+              value={hasClockIn ? formatMinutes(todayWorked) : '—'}
             />
           </div>
           <AttendanceActions status={status} />
@@ -191,13 +271,13 @@ export default async function DashboardPage() {
           icon={Clock3}
           label="This week"
           value={formatMinutes(weekTotal)}
-          sub={weekRows.length > 0 ? `${weekRows.length}Day Working` : 'No records'}
+          sub={weekDaysWorked > 0 ? `${weekDaysWorked}Day Working` : 'No records'}
         />
         <StatCard
           icon={Calendar}
           label="This month"
           value={formatMinutes(monthTotal)}
-          sub={`${monthRows.length}Day Working`}
+          sub={`${monthDaysWorked}Day Working`}
         />
         <StatCard
           icon={CalendarCheck}

@@ -8,6 +8,7 @@ import {
   addDaysUtc,
   halfDayIsoRange,
 } from '@/lib/calendar-utils';
+import { clippedDailyTotals } from '@/lib/calendar-aggregation';
 import type { CalendarEvent } from '@/lib/api-types';
 
 function formatDuration(minutes: number): string {
@@ -111,6 +112,7 @@ export async function GET(req: NextRequest) {
             overtimeMinutes: dayOvertimeMinutes,
             breakMinutes: dayBreakMinutes,
             attendanceStatus: dayStatus,
+            isOpenSession: s.endAt === null,
           },
         });
       });
@@ -151,7 +153,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, events });
+    const dailyTotals = clippedDailyTotals(
+      attendances.map((a) => ({
+        status: a.status,
+        sessions: a.sessions.map((s) => ({ startAt: s.startAt, endAt: s.endAt })),
+        breaks: a.breaks.map((b) => ({ startAt: b.startAt, endAt: b.endAt })),
+      })),
+      now,
+    );
+    return NextResponse.json({ ok: true, events, dailyTotals });
   } catch (e) {
     if (e instanceof Response) return e;
     console.error('[calendar/events] failed', e);

@@ -16,11 +16,24 @@ export type CalendarEvent = {
     leaveStatus?: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
     reason?: 'CLOCK_IN' | 'CLOCK_OUT';
     memberName?: string;
+    /** Attendance events only. True for a session still running, with a null endAt. The client uses it to choose the midnight-clipped label. */
+    isOpenSession?: boolean;
   };
 };
 
+export type DailyAttendanceTotal = {
+  workedMinutes: number;
+  breakMinutes: number;
+  attendanceStatus: 'WORKING' | 'ON_BREAK' | 'DONE';
+};
+
 export type CalendarEventsResponse =
-  | { ok: true; events: CalendarEvent[] }
+  | {
+      ok: true;
+      events: CalendarEvent[];
+      /** Local `yyyy-MM-dd` keys mapped to that day's midnight-clipped totals. Only days attendance touches appear. */
+      dailyTotals: Record<string, DailyAttendanceTotal>;
+    }
   | { ok: false; error: string };
 
 export type LoginRequestBody = { email: string };
