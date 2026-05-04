@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
 import { AttendanceActions } from './AttendanceActions';
+import { BreakDuration } from './BreakDuration';
 import { LeaveRequestForm } from './LeaveRequestForm';
 import { MyLeavesCard } from './MyLeavesCard';
 
@@ -176,6 +177,17 @@ export default async function DashboardPage() {
     !!activeOpenRow && kstDayKey(activeOpenRow.workDate) !== todayKey;
   const sessions: SessionLite[] = todayRow?.sessions ?? [];
 
+  // The start of the open break while the status is ON_BREAK, as a UTC ISO string.
+  const onBreakRow = isOnBreak
+    ? activeOpenRow?.status === 'ON_BREAK'
+      ? activeOpenRow
+      : todayRow?.status === 'ON_BREAK'
+        ? todayRow
+        : null
+    : null;
+  const breakStartedAt =
+    onBreakRow?.breaks.find((b) => b.endAt === null)?.startAt.toISOString() ?? null;
+
   // The clock-in label prefers today's own value, falling back to midnight when today's worked time came from a session that crossed it.
   let clockInLabel: string;
   if (todayRow?.clockInAt) {
@@ -248,7 +260,7 @@ export default async function DashboardPage() {
                 : 'Not started'}
             </CardTitle>
           </div>
-          <AttendanceStatusBadge status={status} />
+          <AttendanceStatusBadge status={status} breakStartedAt={breakStartedAt} />
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
@@ -348,8 +360,10 @@ function StatCard({
 
 function AttendanceStatusBadge({
   status,
+  breakStartedAt,
 }: {
   status: 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
+  breakStartedAt?: string | null;
 }) {
   if (status === 'WORKING')
     return (
@@ -362,7 +376,7 @@ function AttendanceStatusBadge({
     return (
       <Badge variant="outline" className="border-sky-500/40 text-sky-700 dark:text-sky-300">
         <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-sky-500" />
-        Away
+        {breakStartedAt ? <BreakDuration startedAt={breakStartedAt} /> : 'Away'}
       </Badge>
     );
   if (status === 'DONE')
