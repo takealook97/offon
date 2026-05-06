@@ -7,7 +7,7 @@ import { formatKST } from '@/lib/time';
 // the Slack announcement takes the same form as the meal command produces.
 function pickKindForNow(): BreakKind {
   const kstHour = Number(formatKST(new Date(), 'H'));
-  return kstHour >= 11 && kstHour < 14 ? 'lunch' : 'break';
+  return kstHour >= 11 && kstHour < 15 ? 'lunch' : 'break';
 }
 
 export async function POST() {
