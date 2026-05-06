@@ -49,6 +49,10 @@ scripts/dump-members.ts
 scripts/seed-members.ts
 scripts/apply-leave-balances.ts
 scripts/apply-approved-leaves.ts
+scripts/oneoff/
+
+# claude code local state
+.claude/scheduled_tasks.lock
 
 # agent orchestration workspace
 _workspace/
