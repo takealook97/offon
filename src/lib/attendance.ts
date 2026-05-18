@@ -495,9 +495,32 @@ export async function endBreak(
   }
   const attendance = openBreak.attendance;
   if (attendance.status !== 'ON_BREAK') {
-    // The inconsistent case: an open break exists but the attendance does not say away
-    // An orphan left behind when a clock-out went through while someone was on a break.
-    // The status is not forced back; from the user's side this reads as an ordinary not-on-a-break answer.
+    // An orphan: an open break exists but the attendance does not say away.
+    // Data left behind before the fix, where a clock-out went through while someone was on a break,
+    //  leaving the break open.
+    // Clocking out now refuses whenever an open break exists, so left alone both coming back and clocking out
+    // both fail and the person cannot recover on their own. Closing the break at the recorded clock-out
+    // breaks the deadlock. The stored worked and break minutes are already wrong,
+    // but recomputing them is left to a separate admin step, and the audit log makes it traceable.
+    const cleanupEnd = attendance.clockOutAt ?? new Date();
+    await prisma.attendanceBreak.update({
+      where: { id: openBreak.id },
+      data: { endAt: cleanupEnd },
+    });
+    await logAudit({
+      actorId: memberId,
+      action: 'BREAK_END_ORPHAN_CLEANUP',
+      target: String(openBreak.id),
+      metadata: {
+        source,
+        attendanceId: attendance.id,
+        attendanceStatus: attendance.status,
+        breakStartAt: openBreak.startAt.toISOString(),
+        endAt: cleanupEnd.toISOString(),
+        usedAttendanceClockOutAt: attendance.clockOutAt !== null,
+      },
+    });
+    // From the user's side this reads the same as an ordinary NOT_ON_BREAK.
     return {
       ok: false,
       code: 'NOT_ON_BREAK',
