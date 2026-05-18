@@ -275,21 +275,23 @@ export async function clockOutMember(
   memberId: number,
   source: AttendanceSource,
 ): Promise<ClockOutResult> {
-  // An open break means away, whether or not a session is open, and clocking out is refused.
+  // Someone currently away cannot clock out, whether or not a session is open. Letting a
   // clock-out through while a break is open leaves an orphan — status DONE with a break
   // whose endAt is null — after which both /back and /bye fail and the person is stuck.
   // This matches the web UI's canClockOut === 'WORKING' guard, and blocks Slack /bye the same way.
-  // Looking up by work date misses yesterday's row just after midnight, so this goes
-  // through the partial index instead, which is independent of the midnight boundary.
-  const openBreak = await prisma.attendanceBreak.findFirst({
-    where: {
-      endAt: null,
-      deletedAt: null,
-      attendance: { memberId, deletedAt: null },
-    },
+  //
+  // Why this does not test for an open break directly: attendance_breaks_open_unique is a
+  // partial unique on session_id, so one member can still hold several open breaks at once
+  // (notably the DONE-plus-open-break orphans left behind before that fix). A guard based on
+  // open breaks catches those old orphans too, and blocked an ordinary clock-out for someone
+  // who was not away at all.
+  // Reading attendance.status === ON_BREAK ignores midnight boundaries and excludes orphans,
+  // which are DONE, so it identifies only the case meant here: away right now.
+  const onBreakAttendance = await prisma.attendance.findFirst({
+    where: { memberId, status: 'ON_BREAK', deletedAt: null },
     select: { id: true },
   });
-  if (openBreak) {
+  if (onBreakAttendance) {
     return {
       ok: false,
       code: 'ON_BREAK',
