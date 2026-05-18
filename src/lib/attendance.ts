@@ -54,7 +54,7 @@ export type StartBreakResult =
     }
   | {
       ok: false;
-      code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'NO_OPEN_SESSION';
+      code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE';
       error: string;
     };
 
@@ -275,6 +275,28 @@ export async function clockOutMember(
   memberId: number,
   source: AttendanceSource,
 ): Promise<ClockOutResult> {
+  // An open break means away, whether or not a session is open, and clocking out is refused.
+  // clock-out through while a break is open leaves an orphan — status DONE with a break
+  // whose endAt is null — after which both /back and /bye fail and the person is stuck.
+  // This matches the web UI's canClockOut === 'WORKING' guard, and blocks Slack /bye the same way.
+  // Looking up by work date misses yesterday's row just after midnight, so this goes
+  // through the partial index instead, which is independent of the midnight boundary.
+  const openBreak = await prisma.attendanceBreak.findFirst({
+    where: {
+      endAt: null,
+      deletedAt: null,
+      attendance: { memberId, deletedAt: null },
+    },
+    select: { id: true },
+  });
+  if (openBreak) {
+    return {
+      ok: false,
+      code: 'ON_BREAK',
+      error: 'You are away. Come back before clocking out',
+    };
+  }
+
   const open = await prisma.attendanceSession.findFirst({
     where: {
       endAt: null,
@@ -285,18 +307,6 @@ export async function clockOutMember(
     include: { attendance: true },
   });
   if (!open) {
-    const today = todayKST();
-    const onBreak = await prisma.attendance.findFirst({
-      where: { memberId, workDate: today, deletedAt: null },
-      select: { status: true },
-    });
-    if (onBreak?.status === 'ON_BREAK') {
-      return {
-        ok: false,
-        code: 'ON_BREAK',
-        error: 'You are away. Come back before clocking out',
-      };
-    }
     return {
       ok: false,
       code: 'NO_OPEN_SESSION',
@@ -386,34 +396,34 @@ export async function startBreak(
   source: AttendanceSource,
   kind: BreakKind = 'break',
 ): Promise<StartBreakResult> {
-  const today = todayKST();
-  const attendance = await prisma.attendance.findFirst({
-    where: { memberId, workDate: today, deletedAt: null },
+  // Find the open session first and pull its attendance along with it.
+  // Looking the attendance up by workDate breaks just after midnight — clock in at 23:30,
+  // step away at 00:05 — because it asks for a D+1 row that does not exist and falls through
+  // to NOT_WORKING. A member has at most one open session (the attendance_sessions_open_unique
+  // partial index) and it is identifiable regardless of the midnight boundary, so we start there.
+  const open = await prisma.attendanceSession.findFirst({
+    where: {
+      endAt: null,
+      deletedAt: null,
+      attendance: { memberId, deletedAt: null },
+    },
+    orderBy: { startAt: 'desc' },
+    include: { attendance: true },
   });
-  if (!attendance || attendance.status === 'NOT_STARTED') {
+  if (!open) {
     return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
   }
+  const attendance = open.attendance;
   if (attendance.status === 'DONE') {
     return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
   }
   if (attendance.status === 'ON_BREAK') {
     return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
   }
-
-  const open = await prisma.attendanceSession.findFirst({
-    where: {
-      endAt: null,
-      deletedAt: null,
-      attendanceId: attendance.id,
-    },
-    orderBy: { startAt: 'desc' },
-  });
-  if (!open) {
-    return {
-      ok: false,
-      code: 'NO_OPEN_SESSION',
-      error: 'No work session is open',
-    };
+  // With an open session the status should be WORKING. Anything else is inconsistent
+  // (NOT_STARTED and friends), and we answer NOT_WORKING to stay on the safe side.
+  if (attendance.status !== 'WORKING') {
+    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
   }
 
   const at = new Date();
@@ -463,29 +473,31 @@ export async function endBreak(
   memberId: number,
   source: AttendanceSource,
 ): Promise<EndBreakResult> {
-  const today = todayKST();
-  const attendance = await prisma.attendance.findFirst({
-    where: { memberId, workDate: today, deletedAt: null },
+  // Find the open break first. Looking it up by workDate fails just after midnight, when
+  // coming back cannot find yesterday's row, so we identify it through the
+  // attendance_breaks_open_unique partial index instead, which is independent of the
+  // midnight boundary.
+  const openBreak = await prisma.attendanceBreak.findFirst({
+    where: {
+      endAt: null,
+      deletedAt: null,
+      attendance: { memberId, deletedAt: null },
+    },
+    orderBy: { startAt: 'desc' },
+    include: { attendance: true },
   });
-  if (!attendance || attendance.status !== 'ON_BREAK') {
+  if (!openBreak) {
     return {
       ok: false,
       code: 'NOT_ON_BREAK',
       error: 'You are not marked away',
     };
   }
-
-  const openBreak = await prisma.attendanceBreak.findFirst({
-    where: {
-      attendanceId: attendance.id,
-      endAt: null,
-      deletedAt: null,
-    },
-    orderBy: { startAt: 'desc' },
-  });
-  if (!openBreak) {
-    // The inconsistent case: the attendance says away but no break is actually open.
-    // From the user's side this reads the same as an ordinary not-on-a-break answer.
+  const attendance = openBreak.attendance;
+  if (attendance.status !== 'ON_BREAK') {
+    // The inconsistent case: an open break exists but the attendance does not say away
+    // An orphan left behind when a clock-out went through while someone was on a break.
+    // The status is not forced back; from the user's side this reads as an ordinary not-on-a-break answer.
     return {
       ok: false,
       code: 'NOT_ON_BREAK',
