@@ -108,15 +108,16 @@ model AttendanceSession {
 }
 
 model AttendanceBreak {
-  id           Int       @id @default(autoincrement())
-  attendanceId Int       @map("attendance_id")
-  sessionId    Int       @map("session_id")
-  startAt      DateTime  @map("start_at")
-  endAt        DateTime? @map("end_at")
-  kind         BreakKind @default(BREAK)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt      @map("updated_at")
-  deletedAt    DateTime?                  @map("deleted_at")
+  id                  Int       @id @default(autoincrement())
+  attendanceId        Int       @map("attendance_id")
+  sessionId           Int       @map("session_id")
+  startAt             DateTime  @map("start_at")
+  endAt               DateTime? @map("end_at")
+  kind                BreakKind @default(BREAK)
+  lunchReminderSentAt DateTime? @map("lunch_reminder_sent_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt      @map("updated_at")
+  deletedAt           DateTime?                  @map("deleted_at")
 
   attendance Attendance        @relation(fields: [attendanceId], references: [id])
   session    AttendanceSession @relation(fields: [sessionId], references: [id])
@@ -199,6 +200,7 @@ model AppSetting {
   id                            Int      @id @default(1)
   missingClockInNotifyEnabled   Boolean  @default(false) @map("missing_clockin_notify_enabled")
   missingClockOutNotifyEnabled  Boolean  @default(false) @map("missing_clockout_notify_enabled")
+  lunchReminderNotifyEnabled    Boolean  @default(false) @map("lunch_reminder_notify_enabled")
   updatedAt                     DateTime @updatedAt       @map("updated_at")
 
   @@map("app_settings")
