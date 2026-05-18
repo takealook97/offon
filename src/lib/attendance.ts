@@ -502,7 +502,11 @@ export async function endBreak(
     // both fail and the person cannot recover on their own. Closing the break at the recorded clock-out
     // breaks the deadlock. The stored worked and break minutes are already wrong,
     // but recomputing them is left to a separate admin step, and the audit log makes it traceable.
-    const cleanupEnd = attendance.clockOutAt ?? new Date();
+    // If the recorded clock-out were somehow earlier than the break start the duration would go negative,
+    // so it is clamped to the break start. Whether the clamp fired
+    // can be traced by comparing the two in the audit metadata.
+    const clockOutMs = attendance.clockOutAt?.getTime() ?? Date.now();
+    const cleanupEnd = new Date(Math.max(openBreak.startAt.getTime(), clockOutMs));
     await prisma.attendanceBreak.update({
       where: { id: openBreak.id },
       data: { endAt: cleanupEnd },
