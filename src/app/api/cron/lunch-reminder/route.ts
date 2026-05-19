@@ -9,7 +9,9 @@ import { checkCronAuth } from '@/lib/cron-auth';
 
 // Sends a one-off DM once an open meal break has run past the threshold.
 // Duplicates are prevented per break, by the column recording when it was sent.
-const LUNCH_REMINDER_MS = 65 * 60 * 1000;
+// Not registered as a platform cron, which allows only one run a day. An external scheduler
+// hits the endpoint every five minutes through the early afternoon.
+const LUNCH_REMINDER_MS = 60 * 60 * 1000;
 const MESSAGE = 'Your meal has been running for over an hour. Please come back.';
 
 export async function GET(req: NextRequest) {
