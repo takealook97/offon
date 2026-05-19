@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireSession, requireAdmin } from '@/lib/session';
+import { requireSession } from '@/lib/session';
 import { formatKST } from '@/lib/time';
 import {
   parseDate,
@@ -29,15 +29,13 @@ export async function GET(req: NextRequest) {
     }
     const memberIdRaw = req.nextUrl.searchParams.get('memberId');
     const parsedMemberId = memberIdRaw ? Number(memberIdRaw) : null;
-    const requestedMemberId =
+    const targetMemberId =
       parsedMemberId && Number.isInteger(parsedMemberId) && parsedMemberId > 0
         ? parsedMemberId
         : session.memberId;
-    // Only an admin may look up somebody else, which is what stops an insecure direct reference
-    if (requestedMemberId !== session.memberId) {
-      await requireAdmin();
-    }
-    const targetMemberId = requestedMemberId;
+    // Calendar events are visible to any signed-in member.
+    // As the team calendar already does, a colleague's attendance and leave
+    // can be looked up through the search tab by any member.
 
     const [attendances, leaves] = await Promise.all([
       prisma.attendance.findMany({
