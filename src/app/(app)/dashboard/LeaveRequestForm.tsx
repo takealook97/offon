@@ -3,16 +3,18 @@
 import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Info } from 'lucide-react';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import type { Matcher } from 'react-day-picker';
+import { Loader2, Info, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/cn';
 // The front end and the request route decide **weekends by the same rule**,
 // so both use the shared helpers in `@/lib/time`. That module depends on nothing but date-fns and
 // has no server-only imports, so it is safe to pull across the 'use client' boundary.
-// If the client and the server compute differently, the form offers a count the server then refuses,
-// The original is shared rather than copied locally.
 import { countBusinessDaysKST, isBusinessDayKSTDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
@@ -22,6 +24,66 @@ const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
   { value: 'HALF_DAY_AM', label: 'Morning' },
   { value: 'HALF_DAY_PM', label: 'Afternoon' },
 ];
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const toYmd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fromYmd = (s: string): Date | undefined =>
+  s ? new Date(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))) : undefined;
+
+function DateField({
+  value,
+  onChange,
+  minYmd,
+  holidays,
+}: {
+  value: string;
+  onChange: (ymd: string) => void;
+  minYmd: string;
+  holidays: ReadonlySet<string>;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = fromYmd(value);
+  const minDate = fromYmd(minYmd);
+
+  // Past dates, weekends and holidays cannot be picked, the same rule the server applies. Non-business days inside a range drop out of the count automatically.
+  const disabled: Matcher[] = [
+    ...(minDate ? [{ before: minDate }] : []),
+    (d: Date) => d.getDay() === 0 || d.getDay() === 6,
+    (d: Date) => holidays.has(toYmd(d)),
+  ];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 w-full min-w-0 justify-start gap-2 px-3 font-normal"
+        >
+          <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+          {value ? (
+            <span className="truncate">{format(selected!, 'yyyy-MM-dd (EEE)', { locale: ko })}</span>
+          ) : (
+            <span className="text-muted-foreground">Pick a date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={(d) => {
+            if (!d) return;
+            onChange(toYmd(d));
+            setOpen(false);
+          }}
+          defaultMonth={selected ?? minDate}
+          disabled={disabled}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function LeaveRequestForm({
   availableDays,
@@ -45,11 +107,9 @@ export function LeaveRequestForm({
 
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
-    // A half day is refused on a weekend or a holiday and worth half a day otherwise.
     if (type !== 'FULL_DAY') {
       return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
     }
-    // A full day needs both dates to count. Same rule as the server applies.
     if (!endDate) return 0;
     return countBusinessDaysKST(startDate, endDate, holidays);
   }, [type, startDate, endDate, holidays]);
@@ -57,13 +117,9 @@ export function LeaveRequestForm({
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  // Either end falling on a weekend or holiday is refused. Non-business days inside the range drop out of the count, as on the server.
-  const startIsNonBusiness =
-    !!startDate && !isBusinessDayKSTDateStr(startDate, holidays);
+  const startIsNonBusiness = !!startDate && !isBusinessDayKSTDateStr(startDate, holidays);
   const endIsNonBusiness =
-    type === 'FULL_DAY' &&
-    !!endDate &&
-    !isBusinessDayKSTDateStr(endDate, holidays);
+    type === 'FULL_DAY' && !!endDate && !isBusinessDayKSTDateStr(endDate, holidays);
   const canSubmit =
     !!startDate &&
     !missingEndDate &&
@@ -121,39 +177,23 @@ export function LeaveRequestForm({
       {type === 'FULL_DAY' ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="startDate">Start date</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              min={todayStr}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="h-11 w-full"
-            />
+            <Label>Start date</Label>
+            <DateField value={startDate} onChange={setStartDate} minYmd={todayStr} holidays={holidays} />
           </div>
           <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="endDate">End date</Label>
-            <Input
-              id="endDate"
-              type="date"
+            <Label>End date</Label>
+            <DateField
               value={endDate}
-              min={startDate || todayStr}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="h-11 w-full"
+              onChange={setEndDate}
+              minYmd={startDate || todayStr}
+              holidays={holidays}
             />
           </div>
         </div>
       ) : (
         <div className="space-y-1.5 sm:max-w-[16rem]">
-          <Label htmlFor="startDate">Date</Label>
-          <Input
-            id="startDate"
-            type="date"
-            value={startDate}
-            min={todayStr}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="h-11 w-full"
-          />
+          <Label>Date</Label>
+          <DateField value={startDate} onChange={setStartDate} minYmd={todayStr} holidays={holidays} />
         </div>
       )}
 
@@ -182,12 +222,8 @@ export function LeaveRequestForm({
               </>
             )}
           </p>
-          {missingEndDate && (
-            <p className="text-destructive">Pick an end date</p>
-          )}
-          {missingStartDate && (
-            <p className="text-destructive">Pick a start date</p>
-          )}
+          {missingEndDate && <p className="text-destructive">Pick an end date</p>}
+          {missingStartDate && <p className="text-destructive">Pick a start date</p>}
           {exceeds && <p className="text-destructive">That exceeds your available leave</p>}
           {invalidRange && <p className="text-destructive">The end date is before the start date</p>}
           {isPast && <p className="text-destructive">A date in the past cannot be requested</p>}
@@ -199,9 +235,7 @@ export function LeaveRequestForm({
             </p>
           )}
           {endIsNonBusiness && (
-            <p className="text-destructive">
-              The end date cannot be a weekend or a holiday
-            </p>
+            <p className="text-destructive">The end date cannot be a weekend or a holiday</p>
           )}
         </div>
       </div>
