@@ -111,6 +111,7 @@ export async function GET(req: NextRequest) {
             breakMinutes: dayBreakMinutes,
             attendanceStatus: dayStatus,
             isOpenSession: s.endAt === null,
+            sessionId: s.id,
           },
         });
       });

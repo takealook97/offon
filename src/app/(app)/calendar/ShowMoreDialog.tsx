@@ -2,12 +2,14 @@
 
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { Pencil } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { kstClipSegmentLabel } from '@/lib/time';
 import type { CalendarEvent, DailyAttendanceTotal } from '@/lib/api-types';
@@ -29,40 +31,52 @@ function formatMinutes(m: number): string {
   return `${mm}m`;
 }
 
-function eventClass(ev: UiEvent): string {
+type EventMeta = { typeLabel: string; dot: string };
+
+// The dot colours match the grid's event colours (rbc-event-* in globals.css), so the modal
+// and the calendar read as the same thing. The rows themselves stay neutral, like everything else.
+function eventMeta(ev: UiEvent): EventMeta {
   if (ev.resource.kind === 'ATTENDANCE') {
-    return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200';
+    return { typeLabel: 'Working', dot: 'bg-emerald-500' };
   }
   if (ev.resource.kind === 'LEAVE') {
-    if (ev.resource.leaveStatus === 'REQUESTED')
-      return 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-200';
-    if (ev.resource.leaveType === 'FULL_DAY')
-      return 'border-blue-500/40 bg-blue-500/15 text-blue-700 dark:text-blue-200';
-    return 'border-violet-500/40 bg-violet-500/15 text-violet-700 dark:text-violet-200';
+    const requested = ev.resource.leaveStatus === 'REQUESTED';
+    const full = ev.resource.leaveType === 'FULL_DAY';
+    const base = full ? 'Leave' : 'Half day';
+    return {
+      typeLabel: requested ? `${base} · pending` : base,
+      dot: requested ? 'bg-amber-500' : full ? 'bg-blue-500' : 'bg-violet-500',
+    };
   }
-  return 'border-red-500/40 bg-red-500/15 text-red-700 dark:text-red-200';
+  return { typeLabel: 'Missing', dot: 'bg-red-500' };
 }
 
-function AttendanceDaySummary({ summary }: { summary: DailyAttendanceTotal }) {
+function SummaryStats({ summary }: { summary: DailyAttendanceTotal }) {
   const { workedMinutes: worked, breakMinutes: brk } = summary;
   // Time on the clock is the worked total plus the breaks.
   const sessionSpan = worked + brk;
   return (
-    <li className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-0.5">
-      <div>
-        <span className="text-muted-foreground">Worked</span>{' '}
-        <span className="font-medium">{formatMinutes(sessionSpan)}</span>
-      </div>
-      <div>
-        <span className="text-muted-foreground">Away</span>{' '}
-        <span className="font-medium">{formatMinutes(brk)}</span>
-      </div>
-      <div className="my-1 border-t border-border/60" aria-hidden />
-      <div>
-        <span className="text-muted-foreground">Total</span>{' '}
-        <span className="font-medium">{formatMinutes(worked)}</span>
-      </div>
-    </li>
+    <div className="grid grid-cols-3 divide-x divide-border/60 rounded-lg border border-border/60 bg-muted/40 py-2.5">
+      <Stat label="Worked" value={formatMinutes(sessionSpan)} />
+      <Stat label="Away" value={formatMinutes(brk)} />
+      <Stat label="Total" value={formatMinutes(worked)} strong />
+    </div>
+  );
+}
+
+function Stat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="px-2 text-center">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          'mt-0.5 font-mono text-sm tabular-nums',
+          strong ? 'font-semibold text-foreground' : 'font-medium',
+        )}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -72,12 +86,16 @@ export function ShowMoreDialog({
   date,
   events,
   summary,
+  canEdit = false,
+  onEdit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   date: Date | null;
   events: UiEvent[];
   summary?: DailyAttendanceTotal;
+  canEdit?: boolean;
+  onEdit?: (sessionId: number) => void;
 }) {
   const dayKey = date ? format(date, 'yyyy-MM-dd') : null;
   const now = new Date();
@@ -85,45 +103,60 @@ export function ShowMoreDialog({
   const titleFor = (e: UiEvent): string => {
     if (e.resource.kind !== 'ATTENDANCE' || !dayKey) return e.title;
     const segEnd: Date | null = e.resource.isOpenSession ? null : e.end;
-    const { startLabel, endLabel, minutes } = kstClipSegmentLabel(
-      e.start,
-      segEnd,
-      dayKey,
-      { now },
-    );
+    const { startLabel, endLabel, minutes } = kstClipSegmentLabel(e.start, segEnd, dayKey, {
+      now,
+    });
     return `${startLabel} ~ ${endLabel} · ${formatMinutes(minutes)}`;
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">
-            {date ? format(date, 'EEEE, d MMMM yyyy', { locale: ko }) : ''}
+            {date ? format(date, 'MMonth dDay (EEEE)', { locale: ko }) : ''}
           </DialogTitle>
         </DialogHeader>
-        <ul className="max-h-[60vh] space-y-1.5 overflow-y-auto">
-          {events.length === 0 ? (
-            <li className="py-4 text-center text-sm text-muted-foreground">
-              Nothing on this day
-            </li>
-          ) : (
-            <>
-              {events.map((e) => (
-                <li
-                  key={e.id}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-xs font-medium',
-                    eventClass(e),
-                  )}
-                >
-                  {titleFor(e)}
-                </li>
-              ))}
-              {summary && <AttendanceDaySummary summary={summary} />}
-            </>
-          )}
-        </ul>
+
+        {events.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Nothing on this day</p>
+        ) : (
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+            <ul className="space-y-1.5">
+              {events.map((e) => {
+                const meta = eventMeta(e);
+                return (
+                  <li
+                    key={e.id}
+                    className="flex items-center gap-2.5 rounded-lg bg-muted/50 px-3 py-2"
+                  >
+                    <span
+                      className={cn('size-2 shrink-0 rounded-full', meta.dot)}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm tabular-nums">
+                      {titleFor(e)}
+                    </span>
+                    {canEdit &&
+                      e.resource.kind === 'ATTENDANCE' &&
+                      e.resource.sessionId != null && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onEdit?.(e.resource.sessionId!)}
+                          className="h-7 shrink-0 gap-1 px-2 text-xs"
+                        >
+                          <Pencil className="size-3.5" />
+                          Edit
+                        </Button>
+                      )}
+                  </li>
+                );
+              })}
+            </ul>
+            {summary && <SummaryStats summary={summary} />}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

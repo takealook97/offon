@@ -18,9 +18,12 @@ import type {
   DailyAttendanceTotal,
 } from '@/lib/api-types';
 // CalendarEvent stays imported because UiEvent.resource infers its type through it.
+import type { EditableSession } from '@/lib/attendance-edit';
 import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
+import { EditRequestDialog } from './EditRequestDialog';
+import { PendingEditRequests } from './PendingEditRequests';
 import {
   attendanceMinutesIn,
   formatMinutes,
@@ -92,6 +95,10 @@ export function CalendarView({ memberId }: { memberId?: number }) {
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
+  const [editSession, setEditSession] = useState<EditableSession | null>(null);
+  const [pendingRefresh, setPendingRefresh] = useState(0);
+  // Corrections and the pending list appear only on your own calendar, where no memberId is given.
+  const canEdit = !memberId;
 
   const range = useMemo(() => {
     const start = new Date(date);
@@ -183,6 +190,18 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     },
     [events],
   );
+
+  // Pressing correct in the modal loads the editable session and opens the correction dialog.
+  const openEdit = useCallback((sessionId: number) => {
+    setShowMore(null);
+    fetch(`/api/attendance/edit/session?id=${sessionId}`)
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; session?: EditableSession; error?: string }) => {
+        if (d?.ok && d.session) setEditSession(d.session);
+        else toast.error(d?.error ?? 'Could not load that session');
+      })
+      .catch(() => toast.error('Could not load that session'));
+  }, []);
 
   const handleCellClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -276,6 +295,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
       {viewMode === 'month' && (
         <WeeklySummary dailyTotals={dailyTotals} date={date} />
       )}
+      {canEdit && <PendingEditRequests refreshKey={pendingRefresh} />}
       <ShowMoreDialog
         open={!!showMore}
         onOpenChange={(v) => !v && setShowMore(null)}
@@ -284,7 +304,18 @@ export function CalendarView({ memberId }: { memberId?: number }) {
         summary={
           showMore ? dailyTotals[format(showMore.date, 'yyyy-MM-dd')] : undefined
         }
+        canEdit={canEdit}
+        onEdit={openEdit}
       />
+      {editSession && (
+        <EditRequestDialog
+          key={editSession.id}
+          session={editSession}
+          open
+          onOpenChange={(o) => !o && setEditSession(null)}
+          onDone={() => setPendingRefresh((x) => x + 1)}
+        />
+      )}
     </div>
   );
 }

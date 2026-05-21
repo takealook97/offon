@@ -22,7 +22,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', iconName: 'dashboard' },
   { href: '/calendar', label: 'Calendar', iconName: 'calendar' },
   { href: '/admin/members', label: 'Members', iconName: 'users', admin: true },
-  { href: '/admin/leaves', label: 'Leave Approve', iconName: 'clipboard', admin: true },
+  { href: '/admin/approvals', label: 'Approvals', iconName: 'clipboard', admin: true },
   { href: '/admin/settings', label: 'Settings', iconName: 'settings', admin: true },
 ];
 

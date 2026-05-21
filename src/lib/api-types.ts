@@ -18,6 +18,8 @@ export type CalendarEvent = {
     memberName?: string;
     /** Attendance events only. True for a session still running, with a null endAt. The client uses it to choose the midnight-clipped label. */
     isOpenSession?: boolean;
+    /** Attendance events only. The AttendanceSession id, used to open a correction. */
+    sessionId?: number;
   };
 };
 

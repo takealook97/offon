@@ -38,23 +38,32 @@ enum LeaveStatus {
   CANCELLED
 }
 
-model Member {
-  id                    Int       @id @default(autoincrement())
-  name                  String
-  email                 String?   @unique
-  slackId               String    @unique @map("slack_id")
-  position              String?
-  role                  Role      @default(EMPLOYEE)
-  excludeMissingNotify  Boolean   @default(false) @map("exclude_missing_notify")
-  createdAt             DateTime  @default(now())  @map("created_at")
-  updatedAt             DateTime  @updatedAt       @map("updated_at")
-  deletedAt             DateTime?                  @map("deleted_at")
+enum AttendanceEditStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
 
-  attendances    Attendance[]
-  leaveRequests  LeaveRequest[] @relation("Requester")
-  approvedLeaves LeaveRequest[] @relation("Approver")
-  leaveBalance   LeaveBalance?
-  loginCodes     LoginCode[]
+model Member {
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  email                String?   @unique
+  slackId              String    @unique @map("slack_id")
+  position             String?
+  role                 Role      @default(EMPLOYEE)
+  excludeMissingNotify Boolean   @default(false) @map("exclude_missing_notify")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
+
+  attendances      Attendance[]
+  leaveRequests    LeaveRequest[]          @relation("Requester")
+  approvedLeaves   LeaveRequest[]          @relation("Approver")
+  attEditRequests  AttendanceEditRequest[] @relation("AttEditRequester")
+  approvedAttEdits AttendanceEditRequest[] @relation("AttEditApprover")
+  leaveBalance     LeaveBalance?
+  loginCodes       LoginCode[]
 
   @@index([slackId])
   @@index([email])
@@ -62,20 +71,20 @@ model Member {
 }
 
 model Attendance {
-  id              Int              @id @default(autoincrement())
-  memberId        Int              @map("member_id")
-  workDate        DateTime         @db.Date @map("work_date")
-  clockInAt       DateTime?        @map("clock_in_at")
-  clockOutAt      DateTime?        @map("clock_out_at")
-  workedMinutes   Int              @default(0) @map("worked_minutes")
-  breakMinutes    Int              @default(0) @map("break_minutes")
-  overtimeMinutes Int              @default(0) @map("overtime_minutes")
-  status          AttendanceStatus @default(NOT_STARTED)
-  clockInReminderSentAt  DateTime? @map("clock_in_reminder_sent_at")
-  clockOutReminderSentAt DateTime? @map("clock_out_reminder_sent_at")
-  createdAt       DateTime         @default(now())  @map("created_at")
-  updatedAt       DateTime         @updatedAt       @map("updated_at")
-  deletedAt       DateTime?                         @map("deleted_at")
+  id                     Int              @id @default(autoincrement())
+  memberId               Int              @map("member_id")
+  workDate               DateTime         @map("work_date") @db.Date
+  clockInAt              DateTime?        @map("clock_in_at")
+  clockOutAt             DateTime?        @map("clock_out_at")
+  workedMinutes          Int              @default(0) @map("worked_minutes")
+  breakMinutes           Int              @default(0) @map("break_minutes")
+  overtimeMinutes        Int              @default(0) @map("overtime_minutes")
+  status                 AttendanceStatus @default(NOT_STARTED)
+  clockInReminderSentAt  DateTime?        @map("clock_in_reminder_sent_at")
+  clockOutReminderSentAt DateTime?        @map("clock_out_reminder_sent_at")
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+  deletedAt              DateTime?        @map("deleted_at")
 
   member   Member              @relation(fields: [memberId], references: [id])
   sessions AttendanceSession[]
@@ -92,11 +101,12 @@ model AttendanceSession {
   startAt      DateTime  @map("start_at")
   endAt        DateTime? @map("end_at")
   createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt      @map("updated_at")
-  deletedAt    DateTime?                  @map("deleted_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
-  attendance Attendance        @relation(fields: [attendanceId], references: [id])
-  breaks     AttendanceBreak[]
+  attendance   Attendance              @relation(fields: [attendanceId], references: [id])
+  breaks       AttendanceBreak[]
+  editRequests AttendanceEditRequest[]
 
   @@index([attendanceId])
   // A partial unique, written as raw SQL because the Prisma DSL cannot express one:
@@ -116,8 +126,8 @@ model AttendanceBreak {
   kind                BreakKind @default(BREAK)
   lunchReminderSentAt DateTime? @map("lunch_reminder_sent_at")
   createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt      @map("updated_at")
-  deletedAt           DateTime?                  @map("deleted_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
 
   attendance Attendance        @relation(fields: [attendanceId], references: [id])
   session    AttendanceSession @relation(fields: [sessionId], references: [id])
@@ -136,14 +146,14 @@ model LeaveRequest {
   id         Int         @id @default(autoincrement())
   memberId   Int         @map("member_id")
   type       LeaveType
-  startDate  DateTime    @db.Date @map("start_date")
-  endDate    DateTime    @db.Date @map("end_date")
+  startDate  DateTime    @map("start_date") @db.Date
+  endDate    DateTime    @map("end_date") @db.Date
   days       Decimal     @db.Decimal(4, 1)
   status     LeaveStatus @default(REQUESTED)
   approverId Int?        @map("approver_id")
-  createdAt  DateTime    @default(now())  @map("created_at")
-  updatedAt  DateTime    @updatedAt       @map("updated_at")
-  deletedAt  DateTime?                    @map("deleted_at")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  deletedAt  DateTime?   @map("deleted_at")
 
   member   Member  @relation("Requester", fields: [memberId], references: [id])
   approver Member? @relation("Approver", fields: [approverId], references: [id])
@@ -153,16 +163,46 @@ model LeaveRequest {
   @@map("leave_requests")
 }
 
+model AttendanceEditRequest {
+  id           Int                  @id @default(autoincrement())
+  memberId     Int                  @map("member_id")
+  sessionId    Int                  @map("session_id")
+  attendanceId Int                  @map("attendance_id")
+  approverId   Int?                 @map("approver_id")
+  status       AttendanceEditStatus @default(REQUESTED)
+  reason       String?
+  rejectReason String?              @map("reject_reason")
+  // {startAt, endAt, breaks:[...]} as UTC ISO strings. The snapshot is how it looked at request time; the proposal is what was asked for.
+  snapshot     Json
+  proposed     Json
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  deletedAt    DateTime?            @map("deleted_at")
+
+  member   Member            @relation("AttEditRequester", fields: [memberId], references: [id])
+  approver Member?           @relation("AttEditApprover", fields: [approverId], references: [id])
+  session  AttendanceSession @relation(fields: [sessionId], references: [id])
+
+  @@index([memberId, status])
+  @@index([status])
+  // A partial unique, raw SQL since the DSL cannot express one: at most one pending request per session
+  //   CREATE UNIQUE INDEX attendance_edit_requests_pending_unique
+  //     ON attendance_edit_requests (session_id)
+  //    WHERE status = 'REQUESTED' AND deleted_at IS NULL;
+  // → migration 20260520010000_attendance_edit_pending_unique
+  @@map("attendance_edit_requests")
+}
+
 model LeaveBalance {
   id           Int       @id @default(autoincrement())
   memberId     Int       @unique @map("member_id")
-  baseDays     Decimal   @db.Decimal(5, 1) @default(0) @map("base_days")
-  bonusDays    Decimal   @db.Decimal(5, 1) @default(0) @map("bonus_days")
-  usedDays     Decimal   @db.Decimal(5, 1) @default(0) @map("used_days")
+  baseDays     Decimal   @default(0) @map("base_days") @db.Decimal(5, 1)
+  bonusDays    Decimal   @default(0) @map("bonus_days") @db.Decimal(5, 1)
+  usedDays     Decimal   @default(0) @map("used_days") @db.Decimal(5, 1)
   rolloverYear Int       @map("rollover_year")
-  createdAt    DateTime  @default(now())  @map("created_at")
-  updatedAt    DateTime  @updatedAt       @map("updated_at")
-  deletedAt    DateTime?                  @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
   member Member @relation(fields: [memberId], references: [id])
 
@@ -170,14 +210,14 @@ model LeaveBalance {
 }
 
 model LoginCode {
-  id        Int      @id @default(autoincrement())
-  memberId  Int      @unique @map("member_id")
-  codeHash  String   @map("code_hash")
-  expiresAt DateTime @map("expires_at")
+  id        Int       @id @default(autoincrement())
+  memberId  Int       @unique @map("member_id")
+  codeHash  String    @map("code_hash")
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())  @map("created_at")
-  updatedAt DateTime @updatedAt       @map("updated_at")
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   member Member @relation(fields: [memberId], references: [id])
 
@@ -188,20 +228,20 @@ model Holiday {
   id        Int       @id @default(autoincrement())
   date      DateTime  @unique @db.Date
   name      String
-  createdAt DateTime  @default(now())  @map("created_at")
-  updatedAt DateTime  @updatedAt       @map("updated_at")
-  deletedAt DateTime?                  @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   @@index([date])
   @@map("holidays")
 }
 
 model AppSetting {
-  id                            Int      @id @default(1)
-  missingClockInNotifyEnabled   Boolean  @default(false) @map("missing_clockin_notify_enabled")
-  missingClockOutNotifyEnabled  Boolean  @default(false) @map("missing_clockout_notify_enabled")
-  lunchReminderNotifyEnabled    Boolean  @default(false) @map("lunch_reminder_notify_enabled")
-  updatedAt                     DateTime @updatedAt       @map("updated_at")
+  id                           Int      @id @default(1)
+  missingClockInNotifyEnabled  Boolean  @default(false) @map("missing_clockin_notify_enabled")
+  missingClockOutNotifyEnabled Boolean  @default(false) @map("missing_clockout_notify_enabled")
+  lunchReminderNotifyEnabled   Boolean  @default(false) @map("lunch_reminder_notify_enabled")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
 }
@@ -212,9 +252,9 @@ model AuditLog {
   action    String
   target    String?
   metadata  Json?
-  createdAt DateTime  @default(now())  @map("created_at")
-  updatedAt DateTime  @updatedAt       @map("updated_at")
-  deletedAt DateTime?                  @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   @@index([action, createdAt])
   @@map("audit_logs")

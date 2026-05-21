@@ -21,6 +21,25 @@ function kstShifted(d: Date = new Date()): Date {
   return new Date(d.getTime() + KST_OFFSET_MS);
 }
 
+/**
+ * Moves the shifted value's UTC fields, which hold the local wall clock, into the runtime's local fields.
+ * The formatter reads a Date in the local zone, so handing it the shifted value is right on a UTC runtime but
+ * is shifted again on a machine in the same zone. Going through this conversion,
+ * always formats the local wall clock. On a UTC runtime the behaviour is identical either way.
+ */
+function kstWallClock(d: Date): Date {
+  const s = kstShifted(d);
+  return new Date(
+    s.getUTCFullYear(),
+    s.getUTCMonth(),
+    s.getUTCDate(),
+    s.getUTCHours(),
+    s.getUTCMinutes(),
+    s.getUTCSeconds(),
+    s.getUTCMilliseconds(),
+  );
+}
+
 export function nowKST(): Date {
   return kstShifted();
 }
@@ -30,7 +49,7 @@ export function todayKST(): Date {
 }
 
 export function formatKST(d: Date, fmt = 'yyyy-MM-dd HH:mm'): string {
-  return fnsFormat(kstShifted(d), fmt, { locale: ko });
+  return fnsFormat(kstWallClock(d), fmt, { locale: ko });
 }
 
 export function weekRangeKST(ref: Date = nowKST()): { start: Date; end: Date } {
@@ -151,6 +170,28 @@ export function kstDayBoundsUtc(key: string): { start: Date; end: Date } {
   const start = new Date(Date.UTC(y, m - 1, d) - KST_OFFSET_MS);
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   return { start, end };
+}
+
+/**
+ * A wall-clock string to a UTC instant.
+ * `'2026-05-01T09:00'` or `'2026-05-01 09:00'` in the org timezone gives `2026-05-01T00:00:00Z`.
+ * Used to turn a datetime-local input, which carries no timezone, into an instant to store.
+ * Returns an Invalid Date on a malformed string; callers check with isNaN.
+ */
+export function kstWallToUtc(s: string): Date {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return new Date(NaN);
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const h = Number(m[4]);
+  const mi = Number(m[5]);
+  return new Date(Date.UTC(y, mo - 1, d, h, mi) - KST_OFFSET_MS);
+}
+
+/** A UTC instant to the `'yyyy-MM-ddTHH:mm'` wall clock a datetime-local input expects. */
+export function utcToKstWall(d: Date): string {
+  return fnsFormat(kstWallClock(d), "yyyy-MM-dd'T'HH:mm");
 }
 
 /** The day key after a given one. Month, year and leap-day boundaries are normalised automatically. */

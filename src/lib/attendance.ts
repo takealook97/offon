@@ -73,6 +73,55 @@ function toPrismaBreakKind(kind: BreakKind): 'BREAK' | 'LUNCH' {
 
 const STANDARD_MINUTES = 480;
 
+type SessionTimes = { startAt: Date; endAt: Date | null };
+type BreakTimes = { startAt: Date; endAt: Date | null };
+
+/**
+ * Worked, break and overtime minutes for one attendance row, plus the clock-in, the earliest start,
+ * and the clock-out, the latest closed end. Shared by closing out a day and by approving a correction.
+ * - Worked = sum of closed sessions minus sum of closed breaks, clamped at zero.
+ * - The status is left alone; that is the caller's job.
+ */
+export function computeAttendanceTotals(
+  sessions: SessionTimes[],
+  breaks: BreakTimes[],
+): {
+  workedMinutes: number;
+  breakMinutes: number;
+  overtimeMinutes: number;
+  clockInAt: Date | null;
+  clockOutAt: Date | null;
+} {
+  const closedSessions = sessions.filter((s) => s.endAt);
+  const sessionMin = closedSessions.reduce(
+    (sum, s) => sum + Math.floor((s.endAt!.getTime() - s.startAt.getTime()) / 60000),
+    0,
+  );
+  const breakMin = breaks
+    .filter((b) => b.endAt)
+    .reduce(
+      (sum, b) => sum + Math.floor((b.endAt!.getTime() - b.startAt.getTime()) / 60000),
+      0,
+    );
+  const worked = Math.max(0, sessionMin - breakMin);
+  const overtime = Math.max(0, worked - STANDARD_MINUTES);
+  const clockInAt = sessions.reduce<Date | null>(
+    (min, s) => (min === null || s.startAt < min ? s.startAt : min),
+    null,
+  );
+  const clockOutAt = closedSessions.reduce<Date | null>(
+    (max, s) => (max === null || s.endAt! > max ? s.endAt! : max),
+    null,
+  );
+  return {
+    workedMinutes: worked,
+    breakMinutes: breakMin,
+    overtimeMinutes: overtime,
+    clockInAt,
+    clockOutAt,
+  };
+}
+
 export async function notifyChannelIn(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
@@ -323,49 +372,26 @@ export async function clockOutMember(
       where: { id: open.id },
       data: { endAt: clockOut },
     });
-    const allSessions = await tx.attendanceSession.findMany({
-      where: { attendanceId: open.attendanceId, deletedAt: null },
-      select: { startAt: true, endAt: true },
-    });
-    const closedSessions = allSessions.filter((s) => s.endAt);
-    const sessionMin = closedSessions.reduce(
-      (sum, s) => sum + Math.floor((s.endAt!.getTime() - s.startAt.getTime()) / 60000),
-      0,
-    );
-
-    const closedBreaks = await tx.attendanceBreak.findMany({
-      where: {
-        attendanceId: open.attendanceId,
-        deletedAt: null,
-        endAt: { not: null },
-      },
-      select: { startAt: true, endAt: true },
-    });
-    const breakMin = closedBreaks.reduce(
-      (sum, b) => sum + Math.floor((b.endAt!.getTime() - b.startAt.getTime()) / 60000),
-      0,
-    );
-
-    const worked = Math.max(0, sessionMin - breakMin);
-    const overtime = Math.max(0, worked - STANDARD_MINUTES);
-
-    const minStart = allSessions.reduce<Date | null>(
-      (min, s) => (min === null || s.startAt < min ? s.startAt : min),
-      null,
-    );
-    const maxEnd = closedSessions.reduce<Date | null>(
-      (max, s) => (max === null || s.endAt! > max ? s.endAt! : max),
-      null,
-    );
+    const [allSessions, allBreaks] = await Promise.all([
+      tx.attendanceSession.findMany({
+        where: { attendanceId: open.attendanceId, deletedAt: null },
+        select: { startAt: true, endAt: true },
+      }),
+      tx.attendanceBreak.findMany({
+        where: { attendanceId: open.attendanceId, deletedAt: null },
+        select: { startAt: true, endAt: true },
+      }),
+    ]);
+    const totals = computeAttendanceTotals(allSessions, allBreaks);
 
     return tx.attendance.update({
       where: { id: open.attendanceId },
       data: {
-        clockInAt: minStart ?? open.attendance.clockInAt,
-        clockOutAt: maxEnd,
-        workedMinutes: worked,
-        breakMinutes: breakMin,
-        overtimeMinutes: overtime,
+        clockInAt: totals.clockInAt ?? open.attendance.clockInAt,
+        clockOutAt: totals.clockOutAt,
+        workedMinutes: totals.workedMinutes,
+        breakMinutes: totals.breakMinutes,
+        overtimeMinutes: totals.overtimeMinutes,
         status: 'DONE',
       },
     });
