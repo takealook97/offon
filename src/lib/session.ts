@@ -32,13 +32,18 @@ export async function requireAdmin(): Promise<SessionPayload> {
   return s;
 }
 
+const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 30; // 30 days
+
 export async function setSessionCookie(token: string) {
+  // Both a max age and an absolute expiry are set. Some Android browser stacks
+  // keep a cookie with an absolute expiry more reliably, which loses fewer sessions when a home-screen app is reopened.
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE_SEC,
+    expires: new Date(Date.now() + SESSION_MAX_AGE_SEC * 1000),
   });
 }
 
