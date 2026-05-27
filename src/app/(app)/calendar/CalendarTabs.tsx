@@ -6,19 +6,26 @@ import { cn } from '@/lib/cn';
 import { CalendarView } from './CalendarView';
 import { TeamCalendarView } from './TeamCalendarView';
 import { MemberSearch } from './MemberSearch';
+import { ExportButton } from './ExportButton';
 
 type Mode = 'personal' | 'team' | 'search';
 
-export function CalendarTabs() {
+export function CalendarTabs({ isAdmin }: { isAdmin: boolean }) {
   const [mode, setMode] = useState<Mode>('personal');
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex gap-1 rounded-md bg-muted p-0.5">
-          <TabButton label="My calendar" active={mode === 'personal'} onClick={() => setMode('personal')} />
-          <TabButton label="Team calendar" active={mode === 'team'} onClick={() => setMode('team')} />
-          <TabButton label="Search" active={mode === 'search'} onClick={() => setMode('search')} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex gap-1 rounded-md bg-muted p-0.5">
+            <TabButton label="My calendar" active={mode === 'personal'} onClick={() => setMode('personal')} />
+            <TabButton label="Team calendar" active={mode === 'team'} onClick={() => setMode('team')} />
+            {/* Searching for a colleague is admin-only */}
+            {isAdmin && (
+              <TabButton label="Search" active={mode === 'search'} onClick={() => setMode('search')} />
+            )}
+          </div>
+          <ExportButton isAdmin={isAdmin} />
         </div>
         {mode === 'personal' || mode === 'search' ? <PersonalLegend /> : <TeamLegend />}
       </div>

@@ -33,9 +33,11 @@ export async function GET(req: NextRequest) {
       parsedMemberId && Number.isInteger(parsedMemberId) && parsedMemberId > 0
         ? parsedMemberId
         : session.memberId;
-    // Calendar events are visible to any signed-in member.
-    // As the team calendar already does, a colleague's attendance and leave
-    // can be looked up through the search tab by any member.
+    // Anyone may see their own calendar. Seeing a colleague's attendance and leave is
+    // Admin-only, as the search is. Sharing leave across the team is handled by its own endpoint.
+    if (targetMemberId !== session.memberId && session.role !== 'ADMIN') {
+      return NextResponse.json({ ok: false, error: 'You do not have permission' }, { status: 403 });
+    }
 
     const [attendances, leaves] = await Promise.all([
       prisma.attendance.findMany({
