@@ -9,14 +9,10 @@ import {
 import { getHolidaySet } from './holidays';
 import { clippedDailyTotals, type SourceAttendance } from './calendar-aggregation';
 
-/** The standard working minutes for an ordinary weekday. */
+/** The standard working minutes for one weekday. */
 const STANDARD_DAY_MINUTES = 480;
-/** The Friday baseline, an hour shorter because the day ends early. */
-const FRIDAY_DAY_MINUTES = 420;
-/** The default half-day credit. */
+/** The half-day credit. */
 const HALF_DAY_CREDIT_MINUTES = 240;
-/** The Friday afternoon half-day credit, shorter because Friday afternoons end early. */
-const FRIDAY_PM_HALF_DAY_CREDIT_MINUTES = 180;
 /** The first month this feature was live. Nothing exists before it. */
 const FEATURE_START_YEAR = 2026;
 const FEATURE_START_MONTH = 5;
@@ -92,16 +88,6 @@ type FetchedLeave = { type: PrismaLeaveType; startDate: Date; endDate: Date };
 /** The day key before a given one. */
 function prevDayKey(key: string): string {
   return new Date(Date.parse(`${key}T00:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
-}
-
-/** Whether a calendar date is a Friday. Weekdays are timezone-independent, so this reads at midnight UTC. */
-function isFridayKey(key: string): boolean {
-  return new Date(`${key}T00:00:00Z`).getUTCDay() === 5;
-}
-
-/** The baseline minutes for a day: shorter on a Friday, a full day otherwise. */
-function standardMinutesFor(key: string): number {
-  return isFridayKey(key) ? FRIDAY_DAY_MINUTES : STANDARD_DAY_MINUTES;
 }
 
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
@@ -221,18 +207,12 @@ function computeReport(
     const gross = net + brk;
     const leaveType = leaveMap.get(key);
     const isHoliday = !isBusinessDayKSTDateStr(key, holidays);
-    const standard = standardMinutesFor(key);
 
     let sum: number;
     if (leaveType === 'FULL_DAY') {
-      sum = standard; // a full day of leave is worth that day's baseline
+      sum = STANDARD_DAY_MINUTES; // Full day Leave = 8Time
     } else if (leaveType === 'HALF_DAY_AM' || leaveType === 'HALF_DAY_PM') {
-      // The half-day credit, with a shorter one for a Friday afternoon, since Fridays end an hour early.
-      const credit =
-        leaveType === 'HALF_DAY_PM' && isFridayKey(key)
-          ? FRIDAY_PM_HALF_DAY_CREDIT_MINUTES
-          : HALF_DAY_CREDIT_MINUTES;
-      sum = net + credit;
+      sum = net + HALF_DAY_CREDIT_MINUTES; // a half day is net work plus the credit
     } else {
       sum = net;
     }
@@ -241,7 +221,7 @@ function computeReport(
       holidaySum += sum;
     } else {
       weekdaySum += sum;
-      baselineMinutes += standard;
+      baselineMinutes += STANDARD_DAY_MINUTES;
     }
 
     rows.push({
