@@ -31,13 +31,16 @@ export function MemberSearch() {
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return members.slice(0, 8);
-    return members
-      .filter(
-        (m) =>
-          m.name.toLowerCase().includes(q) ||
-          (m.position ?? '').toLowerCase().includes(q),
-      )
+    const filtered = q
+      ? members.filter(
+          (m) =>
+            m.name.toLowerCase().includes(q) ||
+            (m.position ?? '').toLowerCase().includes(q),
+        )
+      : members;
+    // Sorted by name using the locale's collation, showing the first eight.
+    return [...filtered]
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
       .slice(0, 8);
   }, [members, query]);
 
