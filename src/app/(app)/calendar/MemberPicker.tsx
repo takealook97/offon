@@ -60,6 +60,9 @@ export function MemberPicker({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter is ignored while an input method is still composing a character. Without that, the
+    // half-formed character commits right after choose() clears the query and is appended to it.
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlight((i) => Math.min(matches.length - 1, i + 1));
