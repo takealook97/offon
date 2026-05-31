@@ -7,11 +7,6 @@ export const dynamic = 'force-dynamic';
 export default async function MembersPage() {
   await requireAdmin();
   const members = await prisma.member.findMany({
-    orderBy: [
-      { deletedAt: { sort: 'asc', nulls: 'first' } },
-      { role: 'desc' },
-      { name: 'asc' },
-    ],
     include: { leaveBalance: true },
   });
 
@@ -28,6 +23,19 @@ export default async function MembersPage() {
     bonusDays: m.leaveBalance ? Number(m.leaveBalance.bonusDays) : 0,
     usedDays: m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0,
   }));
+
+  // Grouped: active admins, then active employees, then anyone deactivated.
+  // Within each group, sorted by name using the locale's collation. The database's own
+  // collation does not order non-Latin names correctly, so localeCompare does it here.
+  const groupRank = (m: MemberRow): number => {
+    if (!m.active) return 2;
+    return m.role === 'ADMIN' ? 0 : 1;
+  };
+  rows.sort((a, b) => {
+    const g = groupRank(a) - groupRank(b);
+    if (g !== 0) return g;
+    return a.name.localeCompare(b.name, 'ko');
+  });
 
   return (
     <div className="space-y-6">

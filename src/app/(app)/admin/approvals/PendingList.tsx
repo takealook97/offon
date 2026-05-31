@@ -52,14 +52,13 @@ function LeaveCard({ row }: { row: LeaveRow }) {
     <Card>
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 gap-3">
-          <Avatar name={row.name} />
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"
                 className="border-blue-500/40 text-blue-700 dark:text-blue-300"
               >
-                Leave
+                {row.days === 0.5 ? row.typeLabel : 'Leave'}
               </Badge>
               <span className="font-medium">{row.name}</span>
               {row.position && (
@@ -69,7 +68,7 @@ function LeaveCard({ row }: { row: LeaveRow }) {
             <p className="text-sm text-muted-foreground">
               <span className="font-mono tabular-nums">{row.range}</span>
               <span className="mx-1.5 text-border">·</span>
-              {row.typeLabel} · {row.days}d
+              {row.days}Day
             </p>
           </div>
         </div>
@@ -84,7 +83,6 @@ function AttCard({ row }: { row: AttRow }) {
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-center gap-2">
-          <Avatar name={row.name} />
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <Badge
@@ -120,13 +118,5 @@ function AttCard({ row }: { row: AttRow }) {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function Avatar({ name }: { name: string }) {
-  return (
-    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
-      {name.slice(0, 1)}
-    </span>
   );
 }
