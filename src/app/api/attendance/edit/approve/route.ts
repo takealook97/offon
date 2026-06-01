@@ -5,7 +5,11 @@ import { requireAdmin } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { computeAttendanceTotals } from '@/lib/attendance';
-import { asTimeline } from '@/lib/attendance-edit';
+import {
+  asTimeline,
+  buildTimelineFromSession,
+  timelinesEqualAtMinute,
+} from '@/lib/attendance-edit';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
@@ -27,14 +31,72 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'That request was already handled' }, { status: 400 });
     }
 
-    const session = await prisma.attendanceSession.findFirst({
+    // The session and any break can change after the request, so the live state is re-read just before approving.
+    // The proposal was built from the snapshot taken at request time, so a clash with the live state is refused.
+    const liveSession = await prisma.attendanceSession.findFirst({
       where: { id: target.sessionId, deletedAt: null },
-      select: { id: true },
+      include: {
+        breaks: {
+          where: { deletedAt: null },
+          orderBy: { startAt: 'asc' },
+          select: { startAt: true, endAt: true },
+        },
+      },
     });
-    if (!session) {
+    if (!liveSession) {
       return NextResponse.json(
         { ok: false, error: 'That session no longer exists' },
         { status: 404 },
+      );
+    }
+
+    // Refuse while a break is still open. Approving anyway would have the break-rebuild
+    // below soft-delete the open row, leaving the attendance stuck at ON_BREAK with the
+    // employee unable to either come back or clock out.
+    if (liveSession.breaks.some((b) => !b.endAt)) {
+      await logAudit({
+        actorId: admin.memberId,
+        action: 'ATTENDANCE_EDIT_APPROVE_BLOCKED',
+        target: String(target.id),
+        metadata: {
+          reason: 'open_break',
+          sessionId: target.sessionId,
+          memberId: target.memberId,
+        },
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'They are away right now. Try again once they are back',
+        },
+        { status: 409 },
+      );
+    }
+
+    // Refuses when the session has changed since the snapshot: a clock-out, a new break, and so on.
+    // Overwriting outright would erase things the person never saw: a clock-out, a new break.
+    const currentTimeline = buildTimelineFromSession(
+      { startAt: liveSession.startAt, endAt: liveSession.endAt },
+      liveSession.breaks,
+    );
+    const snapshot = asTimeline(target.snapshot);
+    if (!timelinesEqualAtMinute(snapshot, currentTimeline)) {
+      await logAudit({
+        actorId: admin.memberId,
+        action: 'ATTENDANCE_EDIT_APPROVE_BLOCKED',
+        target: String(target.id),
+        metadata: {
+          reason: 'snapshot_drift',
+          sessionId: target.sessionId,
+          memberId: target.memberId,
+        },
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Their attendance changed after this request, so it can no longer be approved. Ask them to request it again.',
+        },
+        { status: 409 },
       );
     }
 
@@ -50,6 +112,7 @@ export async function POST(req: NextRequest) {
         },
       });
       // Every existing break is soft-deleted and recreated closed, from the proposal.
+      // The guard above guarantees none was open, so nobody ends up stuck on a break.
       await tx.attendanceBreak.updateMany({
         where: { sessionId: target.sessionId, deletedAt: null },
         data: { deletedAt: new Date() },
@@ -76,6 +139,10 @@ export async function POST(req: NextRequest) {
         }),
       ]);
       const totals = computeAttendanceTotals(allSessions, allBreaks);
+      // The guard above guarantees no break is open, so the status follows purely from the session end.
+      // A proposal that fills in a clock-out moves the status to done, which keeps the row consistent.
+      const hasOpenSession = allSessions.some((s) => !s.endAt);
+      const nextStatus: 'WORKING' | 'DONE' = hasOpenSession ? 'WORKING' : 'DONE';
       await tx.attendance.update({
         where: { id: target.attendanceId },
         data: {
@@ -84,6 +151,7 @@ export async function POST(req: NextRequest) {
           workedMinutes: totals.workedMinutes,
           breakMinutes: totals.breakMinutes,
           overtimeMinutes: totals.overtimeMinutes,
+          status: nextStatus,
         },
       });
       await tx.attendanceEditRequest.update({
