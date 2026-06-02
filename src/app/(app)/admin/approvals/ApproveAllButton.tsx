@@ -1,27 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 export type ApproveAllItem = { kind: 'leave' | 'att'; id: number };
 
 export function ApproveAllButton({ items }: { items: ApproveAllItem[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [open, setOpen] = useState(false);
-
-  if (items.length === 0) return null;
 
   const run = () =>
     start(async () => {
@@ -45,50 +34,26 @@ export function ApproveAllButton({ items }: { items: ApproveAllItem[] }) {
           }
         }),
       );
-      const okCount = results.filter((r) => r.ok).length;
-      const failCount = results.length - okCount;
-      const firstError = results.find((r) => !r.ok)?.error;
-      if (failCount === 0) {
-        toast.success(`All ${okCount} approved`);
-      } else if (okCount === 0) {
-        toast.error(firstError ?? `${failCount} could not be approved`);
-      } else {
-        toast.warning(`${okCount} approved · ${failCount} failed${firstError ? ` (${firstError})` : ''}`);
+      const failed = results.filter((r) => !r.ok);
+      // Success shows as the list emptying, so only failures are announced.
+      if (failed.length > 0) {
+        toast.error(
+          `${failed.length} refused${failed[0].error ? ` (${failed[0].error})` : ''}`,
+        );
       }
-      setOpen(false);
       router.refresh();
     });
 
   return (
-    <>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => setOpen(true)}
-        disabled={pending}
-        className="ml-auto gap-1.5"
-      >
-        <CheckCheck className="size-4" />
-        Approve all
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Approve all</DialogTitle>
-            <DialogDescription>
-              Approves all {items.length} waiting. Anything where someone is away, or where the record changed after the request, may be refused automatically.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
-              Cancelled
-            </Button>
-            <Button onClick={run} disabled={pending}>
-              {pending ? 'Approving…' : `Approve ${items.length}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={run}
+      disabled={pending || items.length === 0}
+      className="ml-auto gap-1.5"
+    >
+      <CheckCheck className="size-4" />
+      Approve all
+    </Button>
   );
 }
