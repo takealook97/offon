@@ -5,6 +5,7 @@ import { asTimeline, formatTimelineSummary } from '@/lib/attendance-edit';
 import { Badge } from '@/components/ui/badge';
 import { PendingList, type PendingRow } from './PendingList';
 import { RecentApprovals, type RecentItem } from './RecentApprovals';
+import { ApproveAllButton, type ApproveAllItem } from './ApproveAllButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,8 @@ export default async function ApprovalsPage() {
     };
   });
   const rows: PendingRow[] = [...leaveTmp, ...attTmp].sort((a, b) => a.at - b.at).map((x) => x.row);
+  // The (kind, id) pairs the approve-all button submits, in the same order as the list.
+  const approveAllItems: ApproveAllItem[] = rows.map((r) => ({ kind: r.kind, id: r.id }));
 
   // Recently handled leave and corrections merged into one list, most recently updated first, capped at twenty.
   const leaveRecentTmp = leaveRecent.map((l) => ({
@@ -123,6 +126,7 @@ export default async function ApprovalsPage() {
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-muted-foreground">Waiting</h2>
           {rows.length > 0 && <Badge variant="secondary">{rows.length}</Badge>}
+          <ApproveAllButton items={approveAllItems} />
         </div>
         <PendingList rows={rows} />
       </section>
