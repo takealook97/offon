@@ -53,7 +53,10 @@ export type MemberRow = {
   active: boolean;
   baseDays: number;
   bonusDays: number;
+  // Approved leave that ended before today: the part actually taken.
   usedDays: number;
+  // Approved leave ending today or later: already out of the balance but not yet taken.
+  scheduledDays: number;
 };
 
 function safe(n: number): number {
@@ -61,7 +64,9 @@ function safe(n: number): number {
 }
 
 function remaining(m: MemberRow): number {
-  return safe(m.baseDays) + safe(m.bonusDays) - safe(m.usedDays);
+  return (
+    safe(m.baseDays) + safe(m.bonusDays) - safe(m.usedDays) - safe(m.scheduledDays)
+  );
 }
 
 export function MembersPanel({ rows }: { rows: MemberRow[] }) {
@@ -84,6 +89,7 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead className="w-[72px]">Base</TableHead>
               <TableHead className="w-[72px]">Add</TableHead>
               <TableHead className="w-[72px]">Used</TableHead>
+              <TableHead className="w-[80px]">UsedScheduled</TableHead>
               <TableHead className="w-[72px]">Remaining</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[48px]" />
@@ -112,6 +118,9 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 </TableCell>
                 <TableCell className="w-[72px] font-mono text-sm tabular-nums text-muted-foreground">
                   {safe(m.usedDays)}
+                </TableCell>
+                <TableCell className="w-[80px] font-mono text-sm tabular-nums text-muted-foreground">
+                  {safe(m.scheduledDays)}
                 </TableCell>
                 <TableCell className="w-[72px] font-mono text-sm font-medium tabular-nums">
                   {remaining(m)}
@@ -152,13 +161,15 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               </div>
               <RowActions member={m} />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs">
+            <div className="mt-3 flex items-center justify-between gap-2 text-xs">
               <span className="text-muted-foreground">
                 Base <span className="font-mono tabular-nums">{safe(m.baseDays)}</span>
                 <span className="mx-1.5">·</span>
                 Add <span className="font-mono tabular-nums">{safe(m.bonusDays)}</span>
                 <span className="mx-1.5">·</span>
                 Used <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
+                <span className="mx-1.5">·</span>
+                UsedScheduled <span className="font-mono tabular-nums">{safe(m.scheduledDays)}</span>
               </span>
               <span className="font-mono font-medium tabular-nums">Remaining {remaining(m)}Day</span>
             </div>
@@ -385,7 +396,11 @@ function EditDialog({
     bonusDays: member.bonusDays,
   });
 
-  const remainingPreview = safe(form.baseDays) + safe(form.bonusDays) - safe(member.usedDays);
+  const remainingPreview =
+    safe(form.baseDays) +
+    safe(form.bonusDays) -
+    safe(member.usedDays) -
+    safe(member.scheduledDays);
 
   const save = () =>
     start(async () => {
@@ -492,7 +507,7 @@ function EditDialog({
 
           <div className="rounded-md border border-border/60 bg-muted/30 p-3">
             <Label className="text-xs text-muted-foreground">Leave</Label>
-            <div className="mt-2 grid gap-3 sm:grid-cols-4">
+            <div className="mt-2 grid gap-3 sm:grid-cols-5">
               <Field label="Base (days)">
                 <Input
                   type="number"
@@ -522,6 +537,15 @@ function EditDialog({
                 <Input
                   type="number"
                   value={safe(member.usedDays)}
+                  disabled
+                  className="bg-muted font-mono tabular-nums"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">UsedScheduled (days)</Label>
+                <Input
+                  type="number"
+                  value={safe(member.scheduledDays)}
                   disabled
                   className="bg-muted font-mono tabular-nums"
                 />

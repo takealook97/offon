@@ -59,6 +59,11 @@ export default async function DashboardPage() {
   const holidayFrom = `${year}-01-01`;
   const holidayTo = `${year + 1}-12-31`;
 
+  // The cutoff for leave already committed: approved leave ending on or after today.
+  // leave_requests.endDate is a @db.Date at midnight UTC, so the comparison value matches that shape.
+  const [ty, tm, td] = todayStr.split('-').map(Number);
+  const todayUtcDate = new Date(Date.UTC(ty, tm - 1, td));
+
   // Loads attendance with its sessions and breaks over a range one day wider on each side,
   // so the week total, the month total and today's clip can all be computed in one pass.
   // The extra day catches a session that crossed midnight and is anchored to a row outside the range.
@@ -75,6 +80,7 @@ export default async function DashboardPage() {
     activeOpenRow,
     balance,
     pending,
+    scheduled,
     holidayRows,
   ] = await Promise.all([
     prisma.member.findFirst({
@@ -123,6 +129,15 @@ export default async function DashboardPage() {
     prisma.leaveBalance.findFirst({ where: { memberId: session.memberId, deletedAt: null } }),
     prisma.leaveRequest.aggregate({
       where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
+      _sum: { days: true },
+    }),
+    prisma.leaveRequest.aggregate({
+      where: {
+        memberId: session.memberId,
+        status: 'APPROVED',
+        deletedAt: null,
+        endDate: { gte: todayUtcDate },
+      },
       _sum: { days: true },
     }),
     listHolidays({ from: holidayFrom, to: holidayTo }),
@@ -226,6 +241,8 @@ export default async function DashboardPage() {
   const bonusDays = balance ? safe(Number(balance.bonusDays)) : 0;
   const usedDays = balance ? safe(Number(balance.usedDays)) : 0;
   const pendingDays = pending._sum.days ? safe(Number(pending._sum.days)) : 0;
+  const scheduledDays = scheduled._sum.days ? safe(Number(scheduled._sum.days)) : 0;
+  const consumedDays = Math.max(0, usedDays - scheduledDays);
   const totalDays = baseDays + bonusDays;
   const remainingDays = totalDays - usedDays;
   const availableDays = remainingDays - pendingDays;
@@ -297,7 +314,7 @@ export default async function DashboardPage() {
           label="Leave remaining"
           value={`${remainingDays}Day`}
           sub={
-            `base ${baseDays} · bonus ${bonusDays} · used ${usedDays}` +
+            `base ${baseDays} · bonus ${bonusDays} · used ${consumedDays} · scheduled ${scheduledDays}` +
             (pendingDays > 0 ? ` · ${pendingDays} pending` : '')
           }
         />

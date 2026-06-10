@@ -1,28 +1,56 @@
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
+import { kstDayKey } from '@/lib/time';
 import { MembersPanel, type MemberRow } from './MembersPanel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MembersPage() {
   await requireAdmin();
-  const members = await prisma.member.findMany({
-    include: { leaveBalance: true },
-  });
 
-  const rows: MemberRow[] = members.map((m) => ({
-    id: m.id,
-    name: m.name,
-    email: m.email,
-    slackId: m.slackId,
-    position: m.position,
-    role: m.role,
-    excludeMissingNotify: m.excludeMissingNotify,
-    active: m.deletedAt === null,
-    baseDays: m.leaveBalance ? Number(m.leaveBalance.baseDays) : 0,
-    bonusDays: m.leaveBalance ? Number(m.leaveBalance.bonusDays) : 0,
-    usedDays: m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0,
-  }));
+  // leave_requests.endDate is a @db.Date, midnight UTC of the calendar date.
+  // Today's local date is turned into the same shape so the two compare directly.
+  const todayStr = kstDayKey(new Date());
+  const [ty, tm, td] = todayStr.split('-').map(Number);
+  const todayUtc = new Date(Date.UTC(ty, tm - 1, td));
+
+  const [members, scheduledRows] = await Promise.all([
+    prisma.member.findMany({ include: { leaveBalance: true } }),
+    prisma.leaveRequest.groupBy({
+      by: ['memberId'],
+      where: {
+        status: 'APPROVED',
+        deletedAt: null,
+        endDate: { gte: todayUtc },
+      },
+      _sum: { days: true },
+    }),
+  ]);
+
+  const scheduledByMember = new Map<number, number>();
+  for (const s of scheduledRows) {
+    scheduledByMember.set(s.memberId, Number(s._sum.days ?? 0));
+  }
+
+  const rows: MemberRow[] = members.map((m) => {
+    const usedTotal = m.leaveBalance ? Number(m.leaveBalance.usedDays) : 0;
+    const scheduled = scheduledByMember.get(m.id) ?? 0;
+    const consumed = Math.max(0, usedTotal - scheduled);
+    return {
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      slackId: m.slackId,
+      position: m.position,
+      role: m.role,
+      excludeMissingNotify: m.excludeMissingNotify,
+      active: m.deletedAt === null,
+      baseDays: m.leaveBalance ? Number(m.leaveBalance.baseDays) : 0,
+      bonusDays: m.leaveBalance ? Number(m.leaveBalance.bonusDays) : 0,
+      usedDays: consumed,
+      scheduledDays: scheduled,
+    };
+  });
 
   // Grouped: active admins, then active employees, then anyone deactivated.
   // Within each group, sorted by name using the locale's collation. The database's own
