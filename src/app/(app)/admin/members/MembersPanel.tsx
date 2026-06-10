@@ -88,8 +88,8 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
               <TableHead>Role</TableHead>
               <TableHead className="w-[72px]">Base</TableHead>
               <TableHead className="w-[72px]">Add</TableHead>
+              <TableHead className="w-[72px]">Scheduled</TableHead>
               <TableHead className="w-[72px]">Used</TableHead>
-              <TableHead className="w-[80px]">UsedScheduled</TableHead>
               <TableHead className="w-[72px]">Remaining</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[48px]" />
@@ -117,10 +117,10 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                   {safe(m.bonusDays)}
                 </TableCell>
                 <TableCell className="w-[72px] font-mono text-sm tabular-nums text-muted-foreground">
-                  {safe(m.usedDays)}
-                </TableCell>
-                <TableCell className="w-[80px] font-mono text-sm tabular-nums text-muted-foreground">
                   {safe(m.scheduledDays)}
+                </TableCell>
+                <TableCell className="w-[72px] font-mono text-sm tabular-nums text-muted-foreground">
+                  {safe(m.usedDays)}
                 </TableCell>
                 <TableCell className="w-[72px] font-mono text-sm font-medium tabular-nums">
                   {remaining(m)}
@@ -167,9 +167,9 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                 <span className="mx-1.5">·</span>
                 Add <span className="font-mono tabular-nums">{safe(m.bonusDays)}</span>
                 <span className="mx-1.5">·</span>
-                Used <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
+                Scheduled <span className="font-mono tabular-nums">{safe(m.scheduledDays)}</span>
                 <span className="mx-1.5">·</span>
-                UsedScheduled <span className="font-mono tabular-nums">{safe(m.scheduledDays)}</span>
+                Used <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
               </span>
               <span className="font-mono font-medium tabular-nums">Remaining {remaining(m)}Day</span>
             </div>
@@ -533,19 +533,19 @@ function EditDialog({
                 />
               </Field>
               <div className="space-y-1.5">
-                <Label className="text-xs">Used (days)</Label>
+                <Label className="text-xs">Scheduled (days)</Label>
                 <Input
                   type="number"
-                  value={safe(member.usedDays)}
+                  value={safe(member.scheduledDays)}
                   disabled
                   className="bg-muted font-mono tabular-nums"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">UsedScheduled (days)</Label>
+                <Label className="text-xs">Used (days)</Label>
                 <Input
                   type="number"
-                  value={safe(member.scheduledDays)}
+                  value={safe(member.usedDays)}
                   disabled
                   className="bg-muted font-mono tabular-nums"
                 />

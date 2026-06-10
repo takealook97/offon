@@ -314,7 +314,7 @@ export default async function DashboardPage() {
           label="Leave remaining"
           value={`${remainingDays}Day`}
           sub={
-            `base ${baseDays} · bonus ${bonusDays} · used ${consumedDays} · scheduled ${scheduledDays}` +
+            `base ${baseDays} · bonus ${bonusDays} · scheduled ${scheduledDays} · used ${consumedDays}` +
             (pendingDays > 0 ? ` · ${pendingDays} pending` : '')
           }
         />
