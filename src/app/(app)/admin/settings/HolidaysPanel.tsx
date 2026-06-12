@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import {
   CalendarDays,
   Plus,
@@ -20,6 +22,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type Holiday = { id: number; date: string; name: string };
 
@@ -34,6 +38,18 @@ function weekdayOf(dateStr: string): string {
   return KO_WEEKDAY[dow] ?? '';
 }
 
+const pad = (n: number) => String(n).padStart(2, '0');
+const toYmd = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fromYmd = (s: string): Date | undefined =>
+  s
+    ? new Date(
+        Number(s.slice(0, 4)),
+        Number(s.slice(5, 7)) - 1,
+        Number(s.slice(8, 10)),
+      )
+    : undefined;
+
 export function HolidaysPanel({ initial }: Props) {
   const [holidays, setHolidays] = useState<Holiday[]>(initial);
   const [date, setDate] = useState('');
@@ -41,6 +57,13 @@ export function HolidaysPanel({ initial }: Props) {
   const [adding, startAdd] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewYear, setViewYear] = useState<number>(() => new Date().getFullYear());
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const existingDates = useMemo(
+    () => new Set(holidays.map((h) => h.date)),
+    [holidays],
+  );
+  const selectedDate = fromYmd(date);
 
   const yearItems = useMemo(
     () =>
@@ -113,16 +136,41 @@ export function HolidaysPanel({ initial }: Props) {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[160px_1fr_auto]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[200px_1fr_auto]">
           <div className="space-y-1.5">
             <Label htmlFor="holiday-date">Date</Label>
-            <Input
-              id="holiday-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-10"
-            />
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="holiday-date"
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-full min-w-0 justify-start gap-2 px-3 font-normal"
+                >
+                  <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+                  {selectedDate ? (
+                    <span className="truncate">
+                      {format(selectedDate, 'yyyy-MM-dd (EEE)', { locale: ko })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Pick a date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    setDate(toYmd(d));
+                    setPickerOpen(false);
+                  }}
+                  defaultMonth={selectedDate}
+                  disabled={(d) => existingDates.has(toYmd(d))}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="holiday-name">Name</Label>
