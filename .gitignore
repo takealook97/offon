@@ -56,4 +56,8 @@ scripts/oneoff/
 
 # agent orchestration workspace
 _workspace/
+_workspace_prev/
 backups/
+
+# use pnpm lockfile only
+package-lock.json
