@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}`,
+        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}.`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

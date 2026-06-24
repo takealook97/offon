@@ -61,8 +61,8 @@ export async function GET(req: NextRequest) {
       try {
         const msg =
           a.status === 'ON_BREAK'
-            ? 'You are still marked away. Please come back before clocking out'
-            : 'There is no clock-out recorded yet. Please clock out';
+            ? 'You are still marked away. Please come back before clocking out.'
+            : 'No clock-out on record as of 19:00. Please clock out.';
         await sendDm(a.member.slackId, msg);
         await prisma.attendance.update({
           where: { id: a.id },

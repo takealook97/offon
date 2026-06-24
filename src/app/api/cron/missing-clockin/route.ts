@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     if (!settings.missingClockInNotifyEnabled) continue;
 
     try {
-      await sendDm(m.slackId, 'There is no clock-in recorded yet. Please take a look');
+      await sendDm(m.slackId, 'No clock-in on record as of 10:00. Please take a look.');
       await prisma.attendance.update({
         where: { id: upserted.id },
         data: { clockInReminderSentAt: new Date() },
