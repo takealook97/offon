@@ -1,14 +1,22 @@
 'use client';
 
-import { Coffee, LogIn, LogOut, Undo2 } from 'lucide-react';
+import { Coffee, Power, Undo2, UtensilsCrossed } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/cn';
 
 type Status = 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
 
-export function AttendanceActions({ status }: { status: Status }) {
+export function AttendanceActions({
+  status,
+  lunchEndsAt,
+}: {
+  status: Status;
+  /** When a meal in progress ends, as a UTC ISO string. Its presence means a meal is running. */
+  lunchEndsAt?: string | null;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -24,48 +32,99 @@ export function AttendanceActions({ status }: { status: Status }) {
       router.refresh();
     });
 
-  const canClockIn = status === 'NOT_STARTED' || status === 'DONE' || status === 'MISSING';
-  const canClockOut = status === 'WORKING';
-  const canToggleBreak = status === 'WORKING' || status === 'ON_BREAK';
+  const isOnLunch = !!lunchEndsAt;
+  // The meal end is a snapshot from the server render and may already have passed before the next refresh.
+  // The server already allows clocking out and stepping away by then, so this is measured again at click time.
+  const lunchOngoing = () =>
+    !!lunchEndsAt && new Date(lunchEndsAt).getTime() > Date.now();
   const isOnBreak = status === 'ON_BREAK';
+  const isWorking = status === 'WORKING';
+  // One toggle for clocking in and out. It reads as on while working, including breaks and meals.
+  const isOn = isWorking || isOnBreak;
+
+  const remainingLunchMin = () =>
+    Math.max(1, Math.ceil((new Date(lunchEndsAt!).getTime() - Date.now()) / 60_000));
+
+  // Come back from a break, or wait out a meal, before clocking out. The server enforces the same.
+  // Disabling it swallows the click and hides the reason, so it stays pressable and explains.
+  const onToggle = () => {
+    if (lunchOngoing()) {
+      toast.info(`You cannot clock out during a meal. It ends by itself in ${remainingLunchMin()} minutes.`);
+      return;
+    }
+    if (isOnBreak) {
+      toast.info('You cannot clock out while away. Come back first.');
+      return;
+    }
+    if (isOn) {
+      call('/api/attendance/clock-out', 'Clocked out');
+      return;
+    }
+    call('/api/attendance/clock-in', 'Clocked in');
+  };
+
+  const onLunch = () => {
+    // There is nothing to come back from on a meal. Pressing it sends no request and just says how long is left.
+    if (lunchOngoing()) {
+      toast.info(`It ends by itself in ${remainingLunchMin()} minutes.`);
+      return;
+    }
+    call('/api/attendance/lunch', 'Meal started');
+  };
+
+  const onBreakToggle = () => {
+    if (lunchOngoing()) {
+      toast.info(`That cannot be used during a meal. It ends by itself in ${remainingLunchMin()} minutes.`);
+      return;
+    }
+    if (isOnBreak) {
+      call('/api/attendance/back', 'Welcome back');
+      return;
+    }
+    call('/api/attendance/break', 'Marked away');
+  };
 
   return (
     <div className="flex flex-row gap-2">
       <Button
         type="button"
         size="lg"
-        disabled={pending || !canClockIn}
-        onClick={() => call('/api/attendance/clock-in', 'Clocked in')}
-        className="h-11 flex-1 gap-2"
+        variant={isOn ? 'default' : 'outline'}
+        disabled={pending}
+        onClick={onToggle}
+        aria-pressed={isOn}
+        className={cn(
+          'h-11 flex-1 gap-2',
+          isOn && 'bg-emerald-600 text-white hover:bg-emerald-600/90',
+        )}
       >
-        <LogIn className="size-4" />
-        Clock in
+        <Power className="size-4" />
+        {isOn ? 'Clock out' : 'Clock in'}
+      </Button>
+      <Button
+        type="button"
+        size="lg"
+        variant={isOnLunch ? 'default' : 'outline'}
+        disabled={pending || (!isWorking && !isOnLunch)}
+        onClick={onLunch}
+        className={cn(
+          'h-11 flex-1 gap-2',
+          isOnLunch && 'bg-orange-500 text-white hover:bg-orange-500/90',
+        )}
+      >
+        <UtensilsCrossed className="size-4" />
+        {isOnLunch ? 'On a meal' : 'Meal'}
       </Button>
       <Button
         type="button"
         size="lg"
         variant={isOnBreak ? 'default' : 'outline'}
-        disabled={pending || !canToggleBreak}
-        onClick={() =>
-          isOnBreak
-            ? call('/api/attendance/back', 'Welcome back')
-            : call('/api/attendance/break', 'Marked away')
-        }
+        disabled={pending || !(isWorking || isOnBreak)}
+        onClick={onBreakToggle}
         className="h-11 flex-1 gap-2"
       >
         {isOnBreak ? <Undo2 className="size-4" /> : <Coffee className="size-4" />}
         {isOnBreak ? 'Back' : 'Away'}
-      </Button>
-      <Button
-        type="button"
-        size="lg"
-        variant="outline"
-        disabled={pending || !canClockOut}
-        onClick={() => call('/api/attendance/clock-out', 'Clocked out')}
-        className="h-11 flex-1 gap-2"
-      >
-        <LogOut className="size-4" />
-        Clock out
       </Button>
     </div>
   );
