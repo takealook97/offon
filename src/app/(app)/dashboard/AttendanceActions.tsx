@@ -122,7 +122,7 @@ export function AttendanceActions({
         className={cn(BTN, isOnLunch && BLOCKED)}
       >
         <UtensilsCrossed className={ICON} />
-        <span className="truncate">Meal</span>
+        <span className="truncate">{isOnLunch ? 'On meal' : 'Meal'}</span>
       </Button>
       <Button
         type="button"
