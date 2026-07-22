@@ -670,18 +670,35 @@ export async function scheduleAutoBack(
     );
     if (!scheduled) return false;
     try {
-      // Why the update is conditional on the row still being a live meal: the Slack path defers this,
-      // an approved correction can soft-delete the original break and swap in a new row in that window.
-      // Updating by id alone stamps the identifier onto a deleted row, leaving a notice nobody can revoke,
-      // It would clash with the new row's own schedule and send two return notices.
-      const { count } = await prisma.attendanceBreak.updateMany({
-        where: { id: breakId, deletedAt: null, kind: 'LUNCH' },
-        data: {
-          autoBackMessageId: scheduled.scheduledMessageId,
-          autoBackChannelId: scheduled.channelId,
-        },
+      // The id is stored inside the session lock. The Slack path defers this scheduling with after(),
+      // an approved correction can replace the original break in that window, and a conditional update
+      // alone lets this order slip through: the approval reads the break, we store the id, it deletes the row
+      // That order slips through and both the old and the new notice go out.
+      // Taking the same session-row lock the approval takes serialises the two updates.
+      const saved = await prisma.$transaction(async (tx) => {
+        // sessionId survives the row being deleted, so it is safe to lock on.
+        const owner = await tx.attendanceBreak.findUnique({
+          where: { id: breakId },
+          select: { sessionId: true },
+        });
+        if (!owner) return false;
+        await lockSession(tx, owner.sessionId);
+        // Re-check after the lock: if the approval committed first, this row is already soft-deleted.
+        const live = await tx.attendanceBreak.findFirst({
+          where: { id: breakId, deletedAt: null, kind: 'LUNCH' },
+          select: { id: true },
+        });
+        if (!live) return false;
+        await tx.attendanceBreak.update({
+          where: { id: breakId },
+          data: {
+            autoBackMessageId: scheduled.scheduledMessageId,
+            autoBackChannelId: scheduled.channelId,
+          },
+        });
+        return true;
       });
-      if (count === 0) {
+      if (!saved) {
         // The row we meant to update is gone, so this scheduled message has no owner. Cancel it now.
         await cancelScheduledChannel(scheduled.channelId, scheduled.scheduledMessageId);
         await logAudit({
