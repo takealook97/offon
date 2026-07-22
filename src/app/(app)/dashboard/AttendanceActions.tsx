@@ -5,11 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/cn';
 
 type Status = 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
 
 // Tighter padding and gaps, so on a narrow screen the icon and spacing do not crowd out the label.
 const BTN = 'h-11 w-full min-w-0 gap-1.5 px-2 sm:gap-2 sm:px-4';
+// A button that cannot be used right now. Truly disabling it swallows the click and leaves
+// no way to say why, so it only looks disabled and the click still fires a toast explaining.
+const BLOCKED = 'opacity-50';
 const ICON = 'size-4 shrink-0';
 
 export function AttendanceActions({
@@ -44,6 +48,8 @@ export function AttendanceActions({
   const isWorking = status === 'WORKING';
   // One toggle for clocking in and out. It reads as on while working, including breaks and meals.
   const isOn = isWorking || isOnBreak;
+  // Clocking out waits for a break to end, or for a meal to finish.
+  const toggleBlocked = isOnBreak || isOnLunch;
 
   const remainingLunchMin = () =>
     Math.max(1, Math.ceil((new Date(lunchEndsAt!).getTime() - Date.now()) / 60_000));
@@ -98,7 +104,8 @@ export function AttendanceActions({
         disabled={pending}
         onClick={onToggle}
         aria-pressed={isOn}
-        className={BTN}
+        aria-disabled={toggleBlocked}
+        className={cn(BTN, toggleBlocked && BLOCKED)}
       >
         {isOn ? <LogOut className={ICON} /> : <LogIn className={ICON} />}
         <span className="truncate">{isOn ? 'Clock out' : 'Clock in'}</span>
@@ -106,10 +113,11 @@ export function AttendanceActions({
       <Button
         type="button"
         size="lg"
-        variant={isOnLunch ? 'default' : 'outline'}
+        variant="outline"
         disabled={pending || (!isWorking && !isOnLunch)}
         onClick={onLunch}
-        className={BTN}
+        aria-disabled={isOnLunch}
+        className={cn(BTN, isOnLunch && BLOCKED)}
       >
         <UtensilsCrossed className={ICON} />
         <span className="truncate">Meal</span>
@@ -120,7 +128,8 @@ export function AttendanceActions({
         variant={isOnBreak ? 'default' : 'outline'}
         disabled={pending || !(isWorking || isOnBreak)}
         onClick={onBreakToggle}
-        className={BTN}
+        aria-disabled={isOnLunch}
+        className={cn(BTN, isOnLunch && BLOCKED)}
       >
         {isOnBreak ? <Undo2 className={ICON} /> : <Coffee className={ICON} />}
         <span className="truncate">{isOnBreak ? 'Back' : 'Away'}</span>
