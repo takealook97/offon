@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
 import { AttendanceActions } from './AttendanceActions';
 import { BreakDuration } from './BreakDuration';
+import { LunchDuration } from './LunchDuration';
 import { LeaveRequestForm } from './LeaveRequestForm';
 import { MyLeavesCard } from './MyLeavesCard';
 
@@ -102,7 +103,7 @@ export default async function DashboardPage() {
         breaks: {
           where: { deletedAt: null },
           orderBy: { startAt: 'asc' },
-          select: { startAt: true, endAt: true },
+          select: { startAt: true, endAt: true, kind: true },
         },
       },
     }),
@@ -122,7 +123,7 @@ export default async function DashboardPage() {
         breaks: {
           where: { deletedAt: null },
           orderBy: { startAt: 'asc' },
-          select: { startAt: true, endAt: true },
+          select: { startAt: true, endAt: true, kind: true },
         },
       },
     }),
@@ -203,6 +204,18 @@ export default async function DashboardPage() {
   const breakStartedAt =
     onBreakRow?.breaks.find((b) => b.endAt === null)?.startAt.toISOString() ?? null;
 
+  // A meal leaves the status at working, so if a meal break's end has not arrived yet,
+  // being on a meal is derived from it. Clocking out is blocked during one, so such a break only exists on an active day.
+  const ongoingLunch =
+    allRows
+      .flatMap((r) => r.breaks)
+      .find(
+        (b) => b.kind === 'LUNCH' && b.endAt !== null && b.endAt.getTime() > now.getTime(),
+      ) ?? null;
+  const isOnLunch = !!ongoingLunch;
+  const lunchStartedAt = ongoingLunch?.startAt.toISOString() ?? null;
+  const lunchEndsAt = ongoingLunch?.endAt?.toISOString() ?? null;
+
   // The clock-in label prefers today's own value, falling back to midnight when today's worked time came from a session that crossed it.
   let clockInLabel: string;
   if (todayRow?.clockInAt) {
@@ -266,7 +279,9 @@ export default async function DashboardPage() {
               <CalendarClock className="size-3.5" /> Today
             </CardDescription>
             <CardTitle className="text-xl">
-              {status === 'DONE'
+              {isOnLunch
+                ? 'On meal'
+                : status === 'DONE'
                 ? 'Clocked out'
                 : status === 'WORKING'
                 ? 'Working'
@@ -277,21 +292,26 @@ export default async function DashboardPage() {
                 : 'Not started'}
             </CardTitle>
           </div>
-          <AttendanceStatusBadge status={status} breakStartedAt={breakStartedAt} />
+          <AttendanceStatusBadge
+            status={status}
+            breakStartedAt={breakStartedAt}
+            lunchStartedAt={lunchStartedAt}
+            lunchEndsAt={lunchEndsAt}
+          />
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
             <ClockSlot label="Clock in" value={clockInLabel} />
             <ClockSlot
-              label={isOnBreak ? 'Away' : 'Clock out'}
-              value={isOnBreak ? 'In progress' : clockOutLabel}
+              label={isOnLunch ? 'Meal' : isOnBreak ? 'Away' : 'Clock out'}
+              value={isOnLunch || isOnBreak ? 'In progress' : clockOutLabel}
             />
             <ClockSlot
               label="Worked"
               value={hasClockIn ? formatMinutes(todayWorked) : '—'}
             />
           </div>
-          <AttendanceActions status={status} />
+          <AttendanceActions status={status} lunchEndsAt={lunchEndsAt} />
           <SessionTimeline sessions={sessions} />
         </CardContent>
       </Card>
@@ -378,10 +398,22 @@ function StatCard({
 function AttendanceStatusBadge({
   status,
   breakStartedAt,
+  lunchStartedAt,
+  lunchEndsAt,
 }: {
   status: 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
   breakStartedAt?: string | null;
+  lunchStartedAt?: string | null;
+  lunchEndsAt?: string | null;
 }) {
+  // A meal does not change the stored status, so it is checked before the away state.
+  if (lunchStartedAt && lunchEndsAt)
+    return (
+      <Badge variant="outline" className="border-orange-500/40 text-orange-700 dark:text-orange-300">
+        <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-orange-500" />
+        <LunchDuration startedAt={lunchStartedAt} endsAt={lunchEndsAt} />
+      </Badge>
+    );
   if (status === 'WORKING')
     return (
       <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">

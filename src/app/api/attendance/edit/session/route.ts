@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
         breaks: {
           where: { deletedAt: null },
           orderBy: { startAt: 'asc' },
-          select: { startAt: true, endAt: true },
+          select: { startAt: true, endAt: true, kind: true },
         },
       },
     });

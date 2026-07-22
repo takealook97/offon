@@ -125,6 +125,12 @@ model AttendanceBreak {
   endAt               DateTime? @map("end_at")
   kind                BreakKind @default(BREAK)
   lunchReminderSentAt DateTime? @map("lunch_reminder_sent_at")
+  // Meals only: the id of the return notice scheduled in Slack for when the meal ends.
+  // If the meal is cut short, by leaving early for instance, this is what cancels it.
+  // The channel column holds the channel from the scheduling response, always an id.
+  // (SLACK_OFFON_CHANNEL may be a name such as '#offon', but cancelling requires an id.)
+  autoBackMessageId   String?   @map("auto_back_message_id")
+  autoBackChannelId   String?   @map("auto_back_channel_id")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
   deletedAt           DateTime? @map("deleted_at")

@@ -1,19 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/session';
-import { startBreak, type BreakKind } from '@/lib/attendance';
-import { formatKST } from '@/lib/time';
-
-// A break starting around midday is classified as lunch, so that
-// the Slack announcement takes the same form as the meal command produces.
-function pickKindForNow(): BreakKind {
-  const kstHour = Number(formatKST(new Date(), 'H'));
-  return kstHour >= 11 && kstHour < 15 ? 'lunch' : 'break';
-}
+import { startBreak } from '@/lib/attendance';
 
 export async function POST() {
   try {
     const session = await requireSession();
-    const result = await startBreak(session.memberId, 'web', pickKindForNow());
+    // Meals have their own endpoint, so nothing here guesses at one from the time of day.
+    const result = await startBreak(session.memberId, 'web');
     if (!result.ok) {
       return NextResponse.json(
         { ok: false, error: result.error },

@@ -1,14 +1,25 @@
 import { z } from 'zod';
 import { formatKST, kstDayKey, kstWallToUtc, utcToKstWall } from './time';
 
+/** What kind of break is being edited. Older stored JSON may not carry this, so a missing value reads as BREAK. */
+export type EditBreakKind = 'BREAK' | 'LUNCH';
+
+/** The fixed meal length. Must match the constant in src/lib/attendance.ts. */
+export const LUNCH_MINUTES = 60;
+
+export function normalizeBreakKind(kind: unknown): EditBreakKind {
+  return kind === 'LUNCH' ? 'LUNCH' : 'BREAK';
+}
+
 /**
  * The normalised timeline, as stored and displayed. Every time is a UTC ISO string.
- * A null end means the session is still running. Editing does not distinguish meals from breaks.
+ * A null endAt means the session is still running.
+ * A meal ends at its start plus the fixed length, or at the clock-out if that comes first.
  */
 export type EditTimeline = {
   startAt: string;
   endAt: string | null;
-  breaks: { startAt: string; endAt: string }[];
+  breaks: { startAt: string; endAt: string; kind: EditBreakKind }[];
 };
 
 const WALL = z
@@ -21,14 +32,23 @@ export const EditRequestBody = z.object({
   reason: z.string().max(500).optional(),
   clockIn: WALL,
   clockOut: WALL.nullable().optional(),
-  breaks: z.array(z.object({ start: WALL, end: WALL })).max(20),
+  // A meal's end is not taken from the client; the server recomputes it from the start plus the fixed length.
+  breaks: z
+    .array(
+      z.object({
+        start: WALL,
+        end: WALL,
+        kind: z.enum(['BREAK', 'LUNCH']).optional(),
+      }),
+    )
+    .max(20),
 });
 export type EditRequestBody = z.infer<typeof EditRequestBody>;
 
 export type TimelineInput = {
   clockIn: string;
   clockOut?: string | null;
-  breaks: { start: string; end: string }[];
+  breaks: { start: string; end: string; kind?: EditBreakKind }[];
 };
 
 /** A session shaped for the correction dialog. Times are wall clock; a null clockOut means still running. */
@@ -37,13 +57,13 @@ export type EditableSession = {
   dateLabel: string;
   clockIn: string;
   clockOut: string | null;
-  breaks: { start: string; end: string }[];
+  breaks: { start: string; end: string; kind: EditBreakKind }[];
 };
 
 /** A stored session plus its closed breaks, shaped into an EditableSession on the server. */
 export function buildEditableSession(
   session: { id: number; startAt: Date; endAt: Date | null },
-  breaks: { startAt: Date; endAt: Date | null }[],
+  breaks: { startAt: Date; endAt: Date | null; kind?: string }[],
 ): EditableSession {
   return {
     id: session.id,
@@ -52,7 +72,11 @@ export function buildEditableSession(
     clockOut: session.endAt ? utcToKstWall(session.endAt) : null,
     breaks: breaks
       .filter((b) => b.endAt)
-      .map((b) => ({ start: utcToKstWall(b.startAt), end: utcToKstWall(b.endAt!) })),
+      .map((b) => ({
+        start: utcToKstWall(b.startAt),
+        end: utcToKstWall(b.endAt!),
+        kind: normalizeBreakKind(b.kind),
+      })),
   };
 }
 
@@ -61,6 +85,8 @@ export function buildEditableSession(
  * Used unchanged by the front end, for immediate feedback, and by the back end, as the trust boundary.
  * The rules: clock-in before clock-out where there is one; nothing in the future; a break starts before it ends;
  *       breaks sit inside [clock-in, clock-out or now], sorted and non-overlapping.
+ * A meal takes no end from the input; it is derived as start plus the fixed length, or the clock-out if earlier,
+ * A meal in progress may legitimately end in the future, so the no-future rule is not applied to its end.
  */
 export function buildAndValidateTimeline(
   input: TimelineInput,
@@ -89,31 +115,45 @@ export function buildAndValidateTimeline(
   }
 
   const upper = end ?? now; // the ceiling for breaks: the clock-out, or now
-  const parsed = input.breaks.map((b) => ({
-    s: kstWallToUtc(b.start),
-    e: kstWallToUtc(b.end),
-  }));
-  for (const b of parsed) {
-    if (Number.isNaN(b.s.getTime()) || Number.isNaN(b.e.getTime())) {
-      return { ok: false, error: 'The break time is not in a valid format' };
+  const parsed: { s: Date; e: Date; kind: EditBreakKind }[] = [];
+  for (const b of input.breaks) {
+    const kind = normalizeBreakKind(b.kind);
+    const label = kind === 'LUNCH' ? 'Meal' : 'Away';
+    const s = kstWallToUtc(b.start);
+    // A meal ends at its start plus the fixed length, never at an input value; it only moves.
+    // Why it is not trimmed to the clock-out: its length would jump around on every unrelated edit,
+    // such as correcting a clock-out. Anything out of range is reported as an error below.
+    const e =
+      kind === 'LUNCH'
+        ? new Date(s.getTime() + LUNCH_MINUTES * 60_000)
+        : kstWallToUtc(b.end);
+    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
+      return { ok: false, error: `The ${label} time is not in a valid format` };
     }
-    if (b.s.getTime() >= b.e.getTime()) {
-      return { ok: false, error: 'A break has to end after it starts' };
+    if (s.getTime() >= e.getTime()) {
+      return { ok: false, error: `${label} has to end after it starts` };
     }
-    if (b.s.getTime() < start.getTime() || b.e.getTime() > upper.getTime()) {
+    // A meal still running may end in the future, so with no clock-out the ceiling is checked
+    // against its start. With a clock-out, the whole meal has to fit inside the working span.
+    const overUpper =
+      kind === 'LUNCH' && !end
+        ? s.getTime() > upper.getTime()
+        : e.getTime() > upper.getTime();
+    if (s.getTime() < start.getTime() || overUpper) {
       return {
         ok: false,
         error: end
-          ? 'A break has to fall between the clock-in and the clock-out'
-          : 'A break has to fall between the clock-in and now',
+          ? `${label} has to fall between the clock-in and the clock-out`
+          : `${label} has to fall between the clock-in and now`,
       };
     }
+    parsed.push({ s, e, kind });
   }
 
   const sorted = [...parsed].sort((a, b) => a.s.getTime() - b.s.getTime());
   for (let i = 1; i < sorted.length; i += 1) {
     if (sorted[i].s.getTime() < sorted[i - 1].e.getTime()) {
-      return { ok: false, error: 'The breaks overlap each other' };
+      return { ok: false, error: 'Away and meal periods overlap' };
     }
   }
 
@@ -125,6 +165,7 @@ export function buildAndValidateTimeline(
       breaks: sorted.map((b) => ({
         startAt: b.s.toISOString(),
         endAt: b.e.toISOString(),
+        kind: b.kind,
       })),
     },
   };
@@ -133,7 +174,7 @@ export function buildAndValidateTimeline(
 /** A stored session and its breaks as a snapshot timeline. Only closed breaks; a running session has a null endAt. */
 export function buildTimelineFromSession(
   session: { startAt: Date; endAt: Date | null },
-  breaks: { startAt: Date; endAt: Date | null }[],
+  breaks: { startAt: Date; endAt: Date | null; kind?: string }[],
 ): EditTimeline {
   return {
     startAt: session.startAt.toISOString(),
@@ -143,6 +184,7 @@ export function buildTimelineFromSession(
       .map((b) => ({
         startAt: b.startAt.toISOString(),
         endAt: b.endAt!.toISOString(),
+        kind: normalizeBreakKind(b.kind),
       })),
   };
 }
@@ -162,7 +204,11 @@ export function timelinesEqualAtMinute(a: EditTimeline, b: EditTimeline): boolea
     JSON.stringify({
       startAt: minute(t.startAt),
       endAt: t.endAt ? minute(t.endAt) : null,
-      breaks: t.breaks.map((x) => ({ startAt: minute(x.startAt), endAt: minute(x.endAt) })),
+      breaks: t.breaks.map((x) => ({
+        startAt: minute(x.startAt),
+        endAt: minute(x.endAt),
+        kind: normalizeBreakKind(x.kind),
+      })),
     });
   return norm(a) === norm(b);
 }
@@ -194,7 +240,11 @@ export function formatTimelineSummary(t: EditTimeline): string {
   const inLabel = timeLabel(base, t.startAt);
   const outLabel = t.endAt ? timeLabel(base, t.endAt) : 'In progress';
   const breaks = t.breaks
-    .map((b) => `Away ${timeLabel(base, b.startAt)} ~ ${timeLabel(base, b.endAt)}`)
+    .map(
+      (b) =>
+        `${normalizeBreakKind(b.kind) === 'LUNCH' ? 'Meal' : 'Away'} ` +
+        `${timeLabel(base, b.startAt)} ~ ${timeLabel(base, b.endAt)}`,
+    )
     .join(', ');
   return `In ${inLabel} · Out ${outLabel}${breaks ? ` · ${breaks}` : ''}`;
 }

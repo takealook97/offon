@@ -157,7 +157,11 @@ export function countBusinessDaysKST(
  * Daily totals are clipped at local midnight, so every day-key conversion goes through here.
  */
 export function kstDayKey(d: Date): string {
-  return fnsFormat(kstShifted(d), 'yyyy-MM-dd');
+  // Passing the shifted Date straight in has the formatter read it in the runtime's local zone,
+  // shifting it again, so the day key lands a day off and totals attach to the wrong date.
+  // Going through the wall-clock conversion, as the formatter does, makes this independent of the runtime timezone.
+  // On a UTC runtime the behaviour is identical either way.
+  return fnsFormat(kstWallClock(d), 'yyyy-MM-dd');
 }
 
 /**

@@ -44,7 +44,10 @@ function resolveSegmentEnd(
   status: AttendanceStatus,
   now: Date,
 ): Date | null {
-  if (segEnd) return segEnd;
+  // A meal is stored with its end already fixed in the future. Counting it as-is would
+  // deduct time that has not passed yet and throw off the running total, so it is clamped
+  // to now. Spans already in the past are unaffected.
+  if (segEnd) return segEnd.getTime() > now.getTime() ? now : segEnd;
   if (status === 'WORKING' || status === 'ON_BREAK') return now;
   return null;
 }

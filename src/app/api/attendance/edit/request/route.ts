@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         breaks: {
           where: { deletedAt: null },
           orderBy: { startAt: 'asc' },
-          select: { startAt: true, endAt: true },
+          select: { startAt: true, endAt: true, kind: true },
         },
       },
     });
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     }
     // A session still running can have its clock-in and breaks corrected.
     // The one exception is someone away right now, who is asked to come back first.
+    // A meal is a closed break with its end already fixed, so it does not trip this; even one in progress can be edited or removed.
     if (target.breaks.some((b) => !b.endAt)) {
       return NextResponse.json(
         { ok: false, error: 'A correction cannot be requested while you are away. Try again once you are back' },
