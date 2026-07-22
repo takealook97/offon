@@ -53,10 +53,38 @@ await prisma.$transaction(async (tx) => {
 ```
 Slack calls go **outside** the transaction. An external API failing must not roll back the database.
 
+## Serialising races: lock the row, then check again
+
+A check made **outside** a transaction guarantees nothing against concurrent requests.
+If another request commits between the check and the write, both get through.
+
+```ts
+await prisma.$transaction(async (tx) => {
+  await tx.$queryRaw`SELECT id FROM attendance_sessions WHERE id = ${sessionId} FOR UPDATE`;
+  // Re-read and re-decide after taking the lock. The lock does not re-run the earlier check.
+  const live = await tx.attendanceSession.findFirst({ where: { id: sessionId, deletedAt: null } });
+  if (!live || live.endAt) return { code: 'NOT_WORKING' as const };
+  ...
+});
+```
+
+- This only means anything if **every** path touching the same thing locks the same row.
+  In attendance, clocking out, stepping away, starting a meal and approving a correction all lock the session row.
+- Lock in one consistent order: session, then attendance or break. Crossing that order deadlocks.
+- **Do not over-trust a partial unique index.** The one covering open breaks
+  is conditioned on a null end, so it gives no protection at all to rows whose end is filled in, which is every meal.
+- Never call an external API inside a transaction. Do it after the commit, and
+  and when storing the result, take the lock again and confirm the row is still there.
+
 ## Migrations
 - **Locally**: `prisma migrate dev` creates the migration, applies it and regenerates the client.
 - **In production**: run `prisma migrate deploy` with the production connection string. The build only runs `prisma generate`.
 - Run `prisma generate` after any schema change so the types follow.
+- **Migration first, then the code.** Deploying code that reads a column which does not exist yet
+  turns every path through it into a 500. The reverse is harmless, since nothing reads it yet.
+- **A migration that backfills data cannot be undone.** Old code keeps producing that data
+  right until the deploy lands, so pick a window when little of it is being created and
+  Keep the gap between the migration and the deploy short.
 
 ## Indexes
 - Index foreign keys and anything filtered on often.

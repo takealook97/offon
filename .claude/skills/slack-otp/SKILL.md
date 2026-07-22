@@ -11,7 +11,8 @@ description: The Slack integration - sign-in codes by DM, leave notices, missing
 - Node's own `crypto` for the six-digit number
 
 ## Environment
-- `SLACK_BOT_TOKEN` — the bot user OAuth token. Needs `chat:write` and `im:write`.
+- `SLACK_BOT_TOKEN` — the bot user OAuth token. Needs `chat:write`, `im:write` and `commands`.
+- `SLACK_OFFON_CHANNEL` — where clock-ins, meals and breaks are announced. Unset, they are skipped silently.
 - `OTP_PEPPER` — a random secret mixed into every code before hashing.
 
 ## Generating a code (`src/lib/otp.ts`)
@@ -47,6 +48,29 @@ export async function sendDm(slackUserId: string, text: string) {
 }
 ```
 
+## Scheduled messages (`scheduleChannel` / `cancelScheduledChannel`)
+
+When something has to be sent at a future time, use Slack's scheduling rather than adding a cron.
+A cron that runs once a day cannot poll for this, and Slack's scheduling works with the
+works with the scope already granted, so no reinstall is needed.
+
+```ts
+const scheduled = await scheduleChannel(channel, text, postAt); // → {channelId, scheduledMessageId} | null
+await cancelScheduledChannel(scheduled.channelId, scheduled.scheduledMessageId);
+```
+
+What has to hold:
+- **Store the returned channel id and cancel with it.** The configured channel may be a name,
+  but cancelling requires a channel id. The `channel` in the response is always an id.
+- **If storing the identifier fails, cancel the scheduled message at once.** Otherwise it is orphaned and can never be cancelled.
+- **Slack refuses to cancel anything due within 60 seconds.** Scheduling a replacement without checking whether the cancel succeeded means
+  the same message goes out twice. That is why the cancel helper returns a boolean.
+- **When storing the identifier on a row, confirm inside a lock that the row is still there.**
+  The Slack path defers scheduling, and an approved correction can replace the row in that window.
+
+The meal return notice uses this,
+in `src/lib/attendance.ts`, storing its identifiers on the break row.
+
 ## The sign-in flow
 
 ### POST /api/auth/request-code
@@ -76,6 +100,28 @@ export async function sendDm(slackUserId: string, text: string) {
 | Leave rejected | the requester | that their leave was rejected |
 | Missing clock-in | the person | that no clock-in is recorded yet |
 | Missing clock-out | the person | that no clock-out is recorded yet |
+
+### Channel announcements (`SLACK_OFFON_CHANNEL`)
+
+The first line is the timestamp and the second the message. The web sends it directly from attendance.ts,
+A slash command has three seconds to acknowledge, so the route defers this until afterwards.
+
+| Event | Message |
+|--------|------|
+| Clock in | that they clocked in |
+| Clock out | that they clocked out |
+| Meal | that they went for a meal |
+| Away | that they stepped away |
+| Back | that they are back |
+
+The wording for coming back is built in one place and shared by returning from a break, sent immediately, and a meal ending, scheduled in advance.
+The channel must not be able to tell the two apart, so do not split them.
+
+### Slash commands
+
+Clocking in, clocking out, starting a meal, stepping away and coming back.
+A meal has no coming-back command; asking to come back from one answers with when it ends.
+While a meal is running, clocking out and stepping away are both refused.
 
 ## Rate limit (`src/lib/rateLimit.ts`)
 ```ts

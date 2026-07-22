@@ -10,3 +10,4 @@
 | Date | Change | Area | Why |
 |------|----------|------|------|
 | 2026-04-20 | Initial setup | Everything | Started the MVP |
+| 2026-07-22 | Split meals out of breaks, with a fixed length and an automatic return | Attendance | The old meal was a midday break with different wording, not a feature of its own |

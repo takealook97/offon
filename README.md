@@ -6,9 +6,10 @@ Employees clock in/out, take breaks, and request leave or attendance corrections
 
 ## Features
 
-- **Attendance** — Clock in / clock out, breaks and lunch, multiple work sessions per day (handles crossing midnight). Worked / break / overtime minutes are computed automatically.
+- **Attendance** — Clock in / clock out, away‑from‑desk breaks, meals, and multiple work sessions per day (handles crossing midnight). Worked / break / overtime minutes are computed automatically.
+- **Meals** — A meal is fixed at 60 minutes: starting one records a closed break ending an hour later, so the return happens by the clock with no second action and no scheduled job. Clocking out and starting a break are blocked until it ends. The channel is notified on the way out, and the matching return notice is scheduled with Slack for the end instant.
 - **Leave** — Full‑day and half‑day (AM/PM) requests with business‑day counting that excludes weekends and holidays, leave‑balance tracking, and approve / reject / cancel flows.
-- **Attendance correction requests** — Employees can request edits to their own clock‑in/out and break times (entered from the calendar). Managers approve, and the session + daily totals are recalculated. In‑progress (not yet clocked out) sessions can be edited too.
+- **Attendance correction requests** — Employees can request edits to their own clock‑in/out, break, and meal times (entered from the calendar). A meal's start moves freely while its end stays an hour after it, and deleting an in‑progress meal is how one gets called off. Managers approve, and the session + daily totals are recalculated. In‑progress (not yet clocked out) sessions can be edited too.
 - **Calendar** — Month view (`react-big-calendar`) of personal attendance/leave, team leave, and per‑member search. A day modal opens the correction dialog; pending requests are listed with a cancel action.
 - **Approvals hub** — A single admin page lists pending leave and attendance‑edit requests together for one‑place approval.
 - **Slack integration** — OTP login via Slack DM, slash commands, and DM/channel notifications for clock events, leave, and attendance‑edit request/approval/rejection.
@@ -92,7 +93,7 @@ Login codes, notifications, and slash commands all run through a Slack app you c
 
 1. **Create the app** — go to <https://api.slack.com/apps> → *Create New App* → *From scratch*, and choose your workspace.
 2. **Bot token scopes** — *OAuth & Permissions* → *Bot Token Scopes*, add:
-   - `chat:write` — post messages (DMs and channel announcements)
+   - `chat:write` — post messages (DMs and channel announcements), and schedule the meal‑return notice
    - `im:write` — open a DM channel with a user (login codes & notifications)
    - `commands` — slash commands
 
@@ -104,9 +105,9 @@ Login codes, notifications, and slash commands all run through a Slack app you c
    |---------|--------|
    | `/hi` | Clock in |
    | `/bye` | Clock out |
-   | `/lunch` | Start lunch |
-   | `/break` | Start break |
-   | `/back` | Return from break |
+   | `/lunch` | Start a meal (60 minutes, returns on its own) |
+   | `/break` | Start an away‑from‑desk break |
+   | `/back` | Return from a break |
 
    Slash commands need a public HTTPS URL, so they work once deployed (for local testing, expose your dev server with a tunnel and use that URL).
 5. **Announcement channel** — invite the bot to the channel used for clock‑event announcements (`/invite @your-bot`), then copy that channel's ID into `SLACK_OFFON_CHANNEL`.
