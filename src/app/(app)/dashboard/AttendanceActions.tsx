@@ -1,11 +1,10 @@
 'use client';
 
-import { Coffee, Power, Undo2, UtensilsCrossed } from 'lucide-react';
+import { Coffee, LogIn, LogOut, Undo2, UtensilsCrossed } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/cn';
 
 type Status = 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
 
@@ -89,16 +88,13 @@ export function AttendanceActions({
       <Button
         type="button"
         size="lg"
-        variant={isOn ? 'default' : 'outline'}
+        variant={isOn ? 'outline' : 'default'}
         disabled={pending}
         onClick={onToggle}
         aria-pressed={isOn}
-        className={cn(
-          'h-11 flex-1 gap-2',
-          isOn && 'bg-emerald-600 text-white hover:bg-emerald-600/90',
-        )}
+        className="h-11 flex-1 gap-2"
       >
-        <Power className="size-4" />
+        {isOn ? <LogOut className="size-4" /> : <LogIn className="size-4" />}
         {isOn ? 'Clock out' : 'Clock in'}
       </Button>
       <Button
@@ -107,10 +103,7 @@ export function AttendanceActions({
         variant={isOnLunch ? 'default' : 'outline'}
         disabled={pending || (!isWorking && !isOnLunch)}
         onClick={onLunch}
-        className={cn(
-          'h-11 flex-1 gap-2',
-          isOnLunch && 'bg-orange-500 text-white hover:bg-orange-500/90',
-        )}
+        className="h-11 flex-1 gap-2"
       >
         <UtensilsCrossed className="size-4" />
         {isOnLunch ? 'On a meal' : 'Meal'}
