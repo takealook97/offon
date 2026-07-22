@@ -409,8 +409,8 @@ function AttendanceStatusBadge({
   // A meal does not change the stored status, so it is checked before the away state.
   if (lunchStartedAt && lunchEndsAt)
     return (
-      <Badge variant="outline" className="border-orange-500/40 text-orange-700 dark:text-orange-300">
-        <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-orange-500" />
+      <Badge variant="outline" className="border-violet-500/40 text-violet-700 dark:text-violet-300">
+        <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-violet-500" />
         <LunchDuration startedAt={lunchStartedAt} endsAt={lunchEndsAt} />
       </Badge>
     );
