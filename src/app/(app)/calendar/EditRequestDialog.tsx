@@ -24,7 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { buildAndValidateTimeline, type EditableSession } from '@/lib/attendance-edit';
+import {
+  LUNCH_MINUTES,
+  buildAndValidateTimeline,
+  type EditableSession,
+} from '@/lib/attendance-edit';
 
 type BreakDraft = { start: string; end: string }; // 'yyyy-MM-ddTHH:mm'
 
@@ -57,6 +61,11 @@ function wallToLocal(v: string): Date {
     Number(v.slice(14, 16)),
   );
 }
+/** A meal always ends at its start plus the fixed length. It cannot be set directly, only moved. */
+function lunchEndWall(startWall: string): string {
+  return toWall(new Date(wallToLocal(startWall).getTime() + LUNCH_MINUTES * 60_000));
+}
+
 function atTime(v: string, h: number, m: number): Date {
   return new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, Number(v.slice(8, 10)), h, m);
 }
@@ -190,7 +199,13 @@ export function EditRequestDialog({
   const [pending, start] = useTransition();
   const [clockIn, setClockIn] = useState(session.clockIn);
   const [clockOut, setClockOut] = useState<string | null>(session.clockOut);
-  const [breaks, setBreaks] = useState<BreakDraft[]>(session.breaks);
+  // Breaks and meals follow different editing rules — a meal's end is fixed — so their state is kept apart.
+  const initialBreaks = session.breaks.filter((b) => b.kind !== 'LUNCH');
+  const initialLunches = session.breaks.filter((b) => b.kind === 'LUNCH').map((b) => b.start);
+  const [breaks, setBreaks] = useState<BreakDraft[]>(
+    initialBreaks.map(({ start: s, end }) => ({ start: s, end })),
+  );
+  const [lunches, setLunches] = useState<string[]>(initialLunches);
 
   const addBreak = () =>
     setBreaks((prev) => [...prev, { start: clockIn, end: clockOut ?? toWall(new Date()) }]);
@@ -198,16 +213,40 @@ export function EditRequestDialog({
   const updateBreak = (i: number, patch: Partial<BreakDraft>) =>
     setBreaks((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
 
+  // The whole meal has to fit inside the working span, the same rule the server applies.
+  // So the latest it can start is the clock-out less its length, and if that falls before the clock-in there is no room.
+  const lunchStartMax = () => {
+    const co = clockOut ? wallToLocal(clockOut) : null;
+    return co ? new Date(co.getTime() - LUNCH_MINUTES * 60_000) : new Date();
+  };
+  const canAddLunch = wallToLocal(clockIn).getTime() <= lunchStartMax().getTime();
+  const addLunch = () => setLunches((prev) => [...prev, clockIn]);
+  const removeLunch = (i: number) => setLunches((prev) => prev.filter((_, idx) => idx !== i));
+  const updateLunch = (i: number, v: string) =>
+    setLunches((prev) => prev.map((s, idx) => (idx === i ? v : s)));
+
   const submit = () => {
     const unchanged =
       clockIn === session.clockIn &&
       clockOut === session.clockOut &&
-      JSON.stringify(breaks) === JSON.stringify(session.breaks);
+      JSON.stringify(breaks) === JSON.stringify(initialBreaks.map(({ start: s, end }) => ({ start: s, end }))) &&
+      JSON.stringify(lunches) === JSON.stringify(initialLunches);
     if (unchanged) {
       toast.error('Nothing changed');
       return;
     }
-    const payload = { clockIn, clockOut, breaks };
+    const payload = {
+      clockIn,
+      clockOut,
+      breaks: [
+        ...breaks.map((b) => ({ ...b, kind: 'BREAK' as const })),
+        ...lunches.map((s) => ({
+          start: s,
+          end: lunchEndWall(s),
+          kind: 'LUNCH' as const,
+        })),
+      ],
+    };
     const check = buildAndValidateTimeline(payload);
     if (!check.ok) {
       toast.error(check.error);
@@ -275,6 +314,66 @@ export function EditRequestDialog({
               <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
                 Still running — it can be corrected after clocking out
               </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Meal</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={addLunch}
+                disabled={!canAddLunch}
+                className="h-7 gap-1 text-xs"
+              >
+                <Plus className="size-3.5" />
+                Add
+              </Button>
+            </div>
+            {lunches.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {canAddLunch
+                  ? 'No meal'
+                  : `The working span is shorter than ${LUNCH_MINUTES} minutes, so a meal will not fit`}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {lunches.map((s, i) => (
+                  <div key={i} className="space-y-2 rounded-lg border border-border/60 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Meal {i + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeLunch(i)}
+                        className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="size-3.5" />
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Start</Label>
+                      <DateTimePicker
+                        value={s}
+                        onChange={(v) => updateLunch(i, v)}
+                        minDate={startOfDay(ci)}
+                        maxDate={startOfDay(lunchStartMax())}
+                        min={ci}
+                        max={lunchStartMax()}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Ends {lunchEndWall(s).slice(11)} · fixed at {LUNCH_MINUTES}m
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

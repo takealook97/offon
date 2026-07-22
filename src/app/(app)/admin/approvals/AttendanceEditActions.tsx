@@ -17,12 +17,18 @@ export function AttendanceEditActions({ id }: { id: number }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        warning?: string;
+      };
       if (!res.ok || !data.ok) {
         toast.error(data.error ?? 'That did not work');
         return;
       }
       toast.success(okMsg);
+      // The attendance change landed but the scheduled Slack notice is out of step, so the admin is told as well.
+      if (data.warning) toast.warning(data.warning);
       router.refresh();
     });
 
