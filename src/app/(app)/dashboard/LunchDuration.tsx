@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react';
 function format(elapsedMin: number): string {
   const h = Math.floor(elapsedMin / 60);
   const m = elapsedMin % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m into a meal`;
-  if (h > 0) return `${h}h into a meal`;
-  return `${m}m into a meal`;
+  if (h > 0 && m > 0) return `${h}h ${m}m On meal`;
+  if (h > 0) return `${h}h On meal`;
+  return `${m}m On meal`;
 }
 
 /**

@@ -280,7 +280,7 @@ export default async function DashboardPage() {
             </CardDescription>
             <CardTitle className="text-xl">
               {isOnLunch
-                ? 'On a meal'
+                ? 'On meal'
                 : status === 'DONE'
                 ? 'Clocked out'
                 : status === 'WORKING'

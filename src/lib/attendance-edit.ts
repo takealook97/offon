@@ -153,7 +153,7 @@ export function buildAndValidateTimeline(
   const sorted = [...parsed].sort((a, b) => a.s.getTime() - b.s.getTime());
   for (let i = 1; i < sorted.length; i += 1) {
     if (sorted[i].s.getTime() < sorted[i - 1].e.getTime()) {
-      return { ok: false, error: 'The breaks and meals overlap each other' };
+      return { ok: false, error: 'Away and meal periods overlap' };
     }
   }
 
