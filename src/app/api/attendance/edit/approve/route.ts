@@ -239,15 +239,20 @@ export async function POST(req: NextRequest) {
         );
         if (!ok) autoBackWarning = 'Could not schedule the automatic return notice';
       }
-    } else if (outcome.pendingLunches.length > 0) {
-      autoBackWarning = 'Could not cancel the existing return notice, so nothing was rescheduled';
+    } else {
+      // A failed cancel is reported whether or not anything was rescheduled. Deleting a meal outright leaves
+      // nothing to reschedule but keeps the old message alive, so a notice for a meal that is gone still lands.
+      autoBackWarning =
+        outcome.pendingLunches.length > 0
+          ? 'Could not cancel the existing return notice, so nothing was rescheduled'
+          : 'Could not cancel the return notice for a deleted meal; it may still go out';
       await logAudit({
         actorId: admin.memberId,
-        action: 'LUNCH_AUTO_BACK_RESCHEDULE_SKIPPED',
+        action: 'LUNCH_AUTO_BACK_CANCEL_FAILED',
         target: String(target.id),
         metadata: {
           reason: 'stale_cancel_failed',
-          skipped: outcome.pendingLunches.map((l) => l.id),
+          skippedReschedule: outcome.pendingLunches.map((l) => l.id),
         },
       });
     }

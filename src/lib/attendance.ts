@@ -670,13 +670,28 @@ export async function scheduleAutoBack(
     );
     if (!scheduled) return false;
     try {
-      await prisma.attendanceBreak.update({
-        where: { id: breakId },
+      // Why the update is conditional on the row still being a live meal: the Slack path defers this,
+      // an approved correction can soft-delete the original break and swap in a new row in that window.
+      // Updating by id alone stamps the identifier onto a deleted row, leaving a notice nobody can revoke,
+      // It would clash with the new row's own schedule and send two return notices.
+      const { count } = await prisma.attendanceBreak.updateMany({
+        where: { id: breakId, deletedAt: null, kind: 'LUNCH' },
         data: {
           autoBackMessageId: scheduled.scheduledMessageId,
           autoBackChannelId: scheduled.channelId,
         },
       });
+      if (count === 0) {
+        // The row we meant to update is gone, so this scheduled message has no owner. Cancel it now.
+        await cancelScheduledChannel(scheduled.channelId, scheduled.scheduledMessageId);
+        await logAudit({
+          actorId,
+          action: 'LUNCH_AUTO_BACK_ORPHAN_CANCELLED',
+          target: String(breakId),
+          metadata: { scheduledMessageId: scheduled.scheduledMessageId },
+        });
+        return false;
+      }
     } catch (err) {
       // Without the stored id the scheduled message can never be cancelled. Undo it now.
       await cancelScheduledChannel(scheduled.channelId, scheduled.scheduledMessageId).catch(
