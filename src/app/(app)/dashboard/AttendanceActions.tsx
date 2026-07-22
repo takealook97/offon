@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 
 type Status = 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
 
+// Tighter padding and gaps, so on a narrow screen the icon and spacing do not crowd out the label.
+const BTN = 'h-11 w-full min-w-0 gap-1.5 px-2 sm:gap-2 sm:px-4';
+const ICON = 'size-4 shrink-0';
+
 export function AttendanceActions({
   status,
   lunchEndsAt,
@@ -84,7 +88,9 @@ export function AttendanceActions({
   };
 
   return (
-    <div className="flex flex-row gap-2">
+    // A three-column grid sizes each cell equally regardless of what is inside.
+    // With flex-1 the min-width:auto default kept a long label from shrinking below its own content width.
+    <div className="grid grid-cols-3 gap-2">
       <Button
         type="button"
         size="lg"
@@ -92,10 +98,10 @@ export function AttendanceActions({
         disabled={pending}
         onClick={onToggle}
         aria-pressed={isOn}
-        className="h-11 flex-1 gap-2"
+        className={BTN}
       >
-        {isOn ? <LogOut className="size-4" /> : <LogIn className="size-4" />}
-        {isOn ? 'Clock out' : 'Clock in'}
+        {isOn ? <LogOut className={ICON} /> : <LogIn className={ICON} />}
+        <span className="truncate">{isOn ? 'Clock out' : 'Clock in'}</span>
       </Button>
       <Button
         type="button"
@@ -103,10 +109,10 @@ export function AttendanceActions({
         variant={isOnLunch ? 'default' : 'outline'}
         disabled={pending || (!isWorking && !isOnLunch)}
         onClick={onLunch}
-        className="h-11 flex-1 gap-2"
+        className={BTN}
       >
-        <UtensilsCrossed className="size-4" />
-        {isOnLunch ? 'On a meal' : 'Meal'}
+        <UtensilsCrossed className={ICON} />
+        <span className="truncate">Meal</span>
       </Button>
       <Button
         type="button"
@@ -114,10 +120,10 @@ export function AttendanceActions({
         variant={isOnBreak ? 'default' : 'outline'}
         disabled={pending || !(isWorking || isOnBreak)}
         onClick={onBreakToggle}
-        className="h-11 flex-1 gap-2"
+        className={BTN}
       >
-        {isOnBreak ? <Undo2 className="size-4" /> : <Coffee className="size-4" />}
-        {isOnBreak ? 'Back' : 'Away'}
+        {isOnBreak ? <Undo2 className={ICON} /> : <Coffee className={ICON} />}
+        <span className="truncate">{isOnBreak ? 'Back' : 'Away'}</span>
       </Button>
     </div>
   );
