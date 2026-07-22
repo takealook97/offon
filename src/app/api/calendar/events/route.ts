@@ -87,8 +87,10 @@ export async function GET(req: NextRequest) {
         return sum + Math.max(0, Math.floor((endAt.getTime() - s.startAt.getTime()) / 60000));
       }, 0);
       const breakSpanMin = a.breaks.reduce((sum, b) => {
-        const endAt = b.endAt ?? (dayStatus === 'ON_BREAK' ? now : null);
-        if (!endAt) return sum;
+        // A meal in progress ends in the future, so it is clamped to now rather than counting time that has not passed.
+        const raw = b.endAt ?? (dayStatus === 'ON_BREAK' ? now : null);
+        if (!raw) return sum;
+        const endAt = raw.getTime() > now.getTime() ? now : raw;
         return sum + Math.max(0, Math.floor((endAt.getTime() - b.startAt.getTime()) / 60000));
       }, 0);
       const dayWorkedMinutes =
