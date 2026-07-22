@@ -3,7 +3,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { formatKST, todayKST } from './time';
 import { logAudit } from './audit';
-import { sendChannel } from './slack';
+import { sendChannel, scheduleChannel, cancelScheduledChannel } from './slack';
+import { LUNCH_MINUTES } from './attendance-edit';
 
 const OPEN_SESSION_UNIQUE_INDEX = 'attendance_sessions_open_unique';
 const OPEN_BREAK_UNIQUE_INDEX = 'attendance_breaks_open_unique';
@@ -40,9 +41,7 @@ export type ClockInResult =
 
 export type ClockOutResult =
   | { ok: true; attendance: Attendance; at: Date; memberName: string | null }
-  | { ok: false; code: 'NO_OPEN_SESSION' | 'ON_BREAK'; error: string };
-
-export type BreakKind = 'lunch' | 'break';
+  | { ok: false; code: 'NO_OPEN_SESSION' | 'ON_BREAK' | 'ON_LUNCH'; error: string };
 
 export type StartBreakResult =
   | {
@@ -50,11 +49,10 @@ export type StartBreakResult =
       attendance: Attendance;
       at: Date;
       memberName: string | null;
-      kind: BreakKind;
     }
   | {
       ok: false;
-      code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE';
+      code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH';
       error: string;
     };
 
@@ -66,12 +64,93 @@ export type EndBreakResult =
       error: string;
     };
 
-// Maps the stored enum to the external interface
-function toPrismaBreakKind(kind: BreakKind): 'BREAK' | 'LUNCH' {
-  return kind === 'lunch' ? 'LUNCH' : 'BREAK';
-}
+export type StartLunchResult =
+  | {
+      ok: true;
+      attendance: Attendance;
+      at: Date;
+      endsAt: Date;
+      /** The id of the meal break just created. The Slack path uses it to defer scheduling the return notice with after(). */
+      breakId: number;
+      memberName: string | null;
+    }
+  | {
+      ok: false;
+      code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH';
+      error: string;
+    };
 
 const STANDARD_MINUTES = 480;
+
+/**
+ * The fixed length of a meal. A meal is stored with its end time already decided, so
+ * there is nothing to come back from: once the time passes, work resumes on its own with
+ * no job to run. Attendance corrections derive from the same value, so it lives in one place.
+ */
+export { LUNCH_MINUTES } from './attendance-edit';
+
+/** A meal is in progress when its end time has not yet arrived. */
+function lunchInProgressWhere(now: Date) {
+  return { kind: 'LUNCH' as const, deletedAt: null, endAt: { gt: now } };
+}
+
+type Tx = Prisma.TransactionClient;
+
+/**
+ * Locks the session row so that changes to it happen one at a time.
+ * Checks made outside a transaction cannot stop concurrent requests. If a meal and a clock-out overlap,
+ * both pass their checks and leave a finished session carrying a meal in the future and a scheduled notice.
+ * After taking this lock you must re-read and re-check the state; the lock does not re-run the checks.
+ */
+export async function lockSession(tx: Tx, sessionId: number): Promise<void> {
+  await tx.$queryRaw`SELECT id FROM attendance_sessions WHERE id = ${sessionId} FOR UPDATE`;
+}
+
+/**
+ * The re-check after the lock: the session is still open, the status is working and no meal is running.
+ * Shared by starting a break and starting a meal, which must exclude each other.
+ */
+async function revalidateWorkingSession(
+  tx: Tx,
+  sessionId: number,
+  now: Date,
+): Promise<
+  | { ok: true; attendance: Attendance }
+  | { ok: false; code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH' }
+> {
+  const live = await tx.attendanceSession.findFirst({
+    where: { id: sessionId, deletedAt: null },
+    include: { attendance: true },
+  });
+  // A filled endAt means a clock-out committed while we were waiting for the lock.
+  if (!live || live.endAt) return { ok: false, code: 'NOT_WORKING' };
+  const attendance = live.attendance;
+  if (attendance.status === 'DONE') return { ok: false, code: 'ALREADY_DONE' };
+  if (attendance.status === 'ON_BREAK') return { ok: false, code: 'ALREADY_ON_BREAK' };
+  if (attendance.status !== 'WORKING') return { ok: false, code: 'NOT_WORKING' };
+  const ongoingLunch = await tx.attendanceBreak.findFirst({
+    where: { attendanceId: attendance.id, ...lunchInProgressWhere(now) },
+    select: { id: true },
+  });
+  if (ongoingLunch) return { ok: false, code: 'ON_LUNCH' };
+  return { ok: true, attendance };
+}
+
+/** The meal this member is currently on, if any. Used to word the reply. */
+export async function findOngoingLunch(
+  memberId: number,
+  now: Date = new Date(),
+): Promise<{ startAt: Date; endAt: Date } | null> {
+  const row = await prisma.attendanceBreak.findFirst({
+    where: {
+      ...lunchInProgressWhere(now),
+      attendance: { memberId, deletedAt: null },
+    },
+    orderBy: { startAt: 'desc' },
+    select: { startAt: true, endAt: true },
+  });
+  return row?.endAt ? { startAt: row.startAt, endAt: row.endAt } : null;
+}
 
 type SessionTimes = { startAt: Date; endAt: Date | null };
 type BreakTimes = { startAt: Date; endAt: Date | null };
@@ -182,10 +261,15 @@ export async function notifyChannelBreak(name: string, at: Date, memberId: numbe
   }
 }
 
+/** The wording of a return notice. Shared by the immediate one (coming back from a break) and the scheduled one (a meal ending on its own). */
+function buildBackText(name: string, at: Date): string {
+  return `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} is back\u25b6\ufe0f`;
+}
+
 export async function notifyChannelBack(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} is back\u25b6\ufe0f`;
+  const text = buildBackText(name, at);
   try {
     await sendChannel(channel, text);
   } catch (err) {
@@ -367,11 +451,29 @@ export async function clockOutMember(
 
   const clockOut = new Date();
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
+    // Re-checked after the lock. A meal or a break can commit between the earlier check and this transaction,
+    // Trusting the unlocked check produces states like clocked out while still eating.
+    await lockSession(tx, open.id);
+    const live = await tx.attendanceSession.findFirst({
+      where: { id: open.id, deletedAt: null },
+      include: { attendance: true },
+    });
+    if (!live || live.endAt) return { code: 'NO_OPEN_SESSION' as const };
+    if (live.attendance.status === 'ON_BREAK') return { code: 'ON_BREAK' as const };
+    // No clocking out mid-meal. Its end and its scheduled return notice are already fixed, so
+    // allowing it would leave the worked time and the notice disagreeing. Cancelling a meal is done by deleting it in a correction.
+    const ongoingLunch = await tx.attendanceBreak.findFirst({
+      where: { attendanceId: open.attendanceId, ...lunchInProgressWhere(clockOut) },
+      select: { id: true },
+    });
+    if (ongoingLunch) return { code: 'ON_LUNCH' as const };
+
     await tx.attendanceSession.update({
       where: { id: open.id },
       data: { endAt: clockOut },
     });
+
     const [allSessions, allBreaks] = await Promise.all([
       tx.attendanceSession.findMany({
         where: { attendanceId: open.attendanceId, deletedAt: null },
@@ -384,7 +486,7 @@ export async function clockOutMember(
     ]);
     const totals = computeAttendanceTotals(allSessions, allBreaks);
 
-    return tx.attendance.update({
+    const row = await tx.attendance.update({
       where: { id: open.attendanceId },
       data: {
         clockInAt: totals.clockInAt ?? open.attendance.clockInAt,
@@ -395,7 +497,31 @@ export async function clockOutMember(
         status: 'DONE',
       },
     });
+    return { updated: row };
   });
+
+  if ('code' in outcome) {
+    if (outcome.code === 'ON_BREAK') {
+      return {
+        ok: false,
+        code: 'ON_BREAK',
+        error: 'You are away. Come back before clocking out',
+      };
+    }
+    if (outcome.code === 'ON_LUNCH') {
+      return {
+        ok: false,
+        code: 'ON_LUNCH',
+        error: 'You are on a meal. Clock out once it ends',
+      };
+    }
+    return {
+      ok: false,
+      code: 'NO_OPEN_SESSION',
+      error: 'No work session is open',
+    };
+  }
+  const updated = outcome.updated;
 
   await logAudit({
     actorId: memberId,
@@ -419,10 +545,13 @@ export async function clockOutMember(
   return { ok: true, attendance: updated, at: clockOut, memberName: name };
 }
 
+/**
+ * Starts a break: creates an open break with no end time, closed later by endBreak().
+ * Meals have a fixed end and are a separate thing, created by startLunch() instead.
+ */
 export async function startBreak(
   memberId: number,
   source: AttendanceSource,
-  kind: BreakKind = 'break',
 ): Promise<StartBreakResult> {
   // Find the open session first and pull its attendance along with it.
   // Looking the attendance up by workDate breaks just after midnight — clock in at 23:30,
@@ -455,21 +584,32 @@ export async function startBreak(
   }
 
   const at = new Date();
-  let updated: Attendance;
+  let outcome:
+    | { updated: Attendance }
+    | { code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH' };
   try {
-    updated = await prisma.$transaction(async (tx) => {
+    outcome = await prisma.$transaction(async (tx) => {
+      // A meal leaves the status at working, so the guard above does not catch it.
+      // A break overlapping a meal would subtract the same minutes twice, so this takes the same session
+      // Taking the lock and deciding again from the post-lock state makes the two paths exclusive.
+      // Checks outside the lock let a break and a meal both through at once.
+      await lockSession(tx, open.id);
+      const live = await revalidateWorkingSession(tx, open.id, at);
+      if (!live.ok) return { code: live.code };
+
       await tx.attendanceBreak.create({
         data: {
-          attendanceId: attendance.id,
+          attendanceId: live.attendance.id,
           sessionId: open.id,
           startAt: at,
-          kind: toPrismaBreakKind(kind),
+          kind: 'BREAK',
         },
       });
-      return tx.attendance.update({
-        where: { id: attendance.id },
+      const row = await tx.attendance.update({
+        where: { id: live.attendance.id },
         data: { status: 'ON_BREAK' },
       });
+      return { updated: row };
     });
   } catch (e) {
     if (isOpenBreakConflict(e)) {
@@ -477,12 +617,25 @@ export async function startBreak(
     }
     throw e;
   }
+  if ('code' in outcome) {
+    if (outcome.code === 'ON_LUNCH') {
+      return { ok: false, code: 'ON_LUNCH', error: 'That cannot be used while you are on a meal' };
+    }
+    if (outcome.code === 'ALREADY_ON_BREAK') {
+      return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
+    }
+    if (outcome.code === 'ALREADY_DONE') {
+      return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+    }
+    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+  }
+  const updated = outcome.updated;
 
   await logAudit({
     actorId: memberId,
     action: 'BREAK_START',
     target: String(updated.id),
-    metadata: { source, kind, at: at.toISOString() },
+    metadata: { source, at: at.toISOString() },
   });
 
   const m = await prisma.member.findFirst({
@@ -491,10 +644,197 @@ export async function startBreak(
   });
   const name = m?.name ?? null;
   if (source === 'web' && name) {
-    if (kind === 'lunch') await notifyChannelLunch(name, at, memberId);
-    else await notifyChannelBreak(name, at, memberId);
+    await notifyChannelBreak(name, at, memberId);
   }
-  return { ok: true, attendance: updated, at, memberName: name, kind };
+  return { ok: true, attendance: updated, at, memberName: name };
+}
+
+/**
+ * Schedules the Slack return notice for when the meal ends, and stores its id.
+ * A failure leaves the attendance state itself consistent, so callers carry on and only record it in the audit log.
+ */
+export async function scheduleAutoBack(
+  breakId: number,
+  memberName: string | null,
+  endsAt: Date,
+  actorId: number,
+): Promise<boolean> {
+  const channel = process.env.SLACK_OFFON_CHANNEL;
+  // No channel configured, or no name to announce: there was nothing to send, so this is not a failure.
+  if (!channel || !memberName) return true;
+  try {
+    const scheduled = await scheduleChannel(
+      channel,
+      buildBackText(memberName, endsAt),
+      endsAt,
+    );
+    if (!scheduled) return false;
+    try {
+      await prisma.attendanceBreak.update({
+        where: { id: breakId },
+        data: {
+          autoBackMessageId: scheduled.scheduledMessageId,
+          autoBackChannelId: scheduled.channelId,
+        },
+      });
+    } catch (err) {
+      // Without the stored id the scheduled message can never be cancelled. Undo it now.
+      await cancelScheduledChannel(scheduled.channelId, scheduled.scheduledMessageId).catch(
+        () => {},
+      );
+      throw err;
+    }
+  } catch (err) {
+    await logAudit({
+      actorId,
+      action: 'SLACK_SEND_FAIL',
+      metadata: { stage: 'lunch_auto_back_schedule', error: String(err) },
+    });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Cancels a scheduled return notice, for when the meal is edited or deleted and it would be orphaned.
+ * Slack refuses to cancel anything due within 60 seconds, so this can fail.
+ * Swallowing a failure would let the caller believe it succeeded, schedule a replacement and send two notices,
+ * so this reports whether everything was cancelled. False means an old notice is still live.
+ */
+export async function cancelAutoBack(
+  targets: { autoBackChannelId: string | null; autoBackMessageId: string | null }[],
+  actorId: number,
+): Promise<boolean> {
+  let allCancelled = true;
+  for (const t of targets) {
+    if (!t.autoBackChannelId || !t.autoBackMessageId) continue;
+    try {
+      await cancelScheduledChannel(t.autoBackChannelId, t.autoBackMessageId);
+    } catch (err) {
+      allCancelled = false;
+      await logAudit({
+        actorId,
+        action: 'SLACK_SEND_FAIL',
+        metadata: {
+          stage: 'lunch_auto_back_cancel',
+          scheduledMessageId: t.autoBackMessageId,
+          error: String(err),
+        },
+      });
+    }
+  }
+  return allCancelled;
+}
+
+/**
+ * Starts a meal. Unlike a break, there is nothing to come back from.
+ * Pressing it creates a closed break of start plus the fixed meal length, and leaves the status
+ * at working. Work therefore resumes on its own once the time passes,
+ * with no job to run, and since no break is left open there is no way to get stuck.
+ * Being on a meal is derived from now falling before its end.
+ * The only thing scheduled is the Slack return notice for when it ends.
+ */
+export async function startLunch(
+  memberId: number,
+  source: AttendanceSource,
+): Promise<StartLunchResult> {
+  // Looked up by open session for the reason given in startBreak: the midnight boundary.
+  const open = await prisma.attendanceSession.findFirst({
+    where: {
+      endAt: null,
+      deletedAt: null,
+      attendance: { memberId, deletedAt: null },
+    },
+    orderBy: { startAt: 'desc' },
+    include: { attendance: true },
+  });
+  if (!open) {
+    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+  }
+  const attendance = open.attendance;
+  if (attendance.status === 'DONE') {
+    return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+  }
+  if (attendance.status === 'ON_BREAK') {
+    return {
+      ok: false,
+      code: 'ALREADY_ON_BREAK',
+      error: 'That cannot be used while you are away',
+    };
+  }
+  if (attendance.status !== 'WORKING') {
+    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+  }
+
+  const at = new Date();
+  const endsAt = new Date(at.getTime() + LUNCH_MINUTES * 60_000);
+
+  // Several meals a day are fine, lunch and dinner, so the count is not capped; only overlapping ones are refused.
+  // A meal row has its end filled in, so the index covering rows with a null end
+  // gets no protection from it. If a double-click, a second tab, or the web and Slack at once slip past and
+  // two are created, an hour is wrongly deducted and two return notices go out.
+  // A clock-out or a break can also commit between that check and this transaction, so after locking the row
+  // it confirms again that the session is still open and still working.
+  const outcome = await prisma.$transaction(async (tx) => {
+    await lockSession(tx, open.id);
+    const live = await revalidateWorkingSession(tx, open.id, at);
+    if (!live.ok) return { code: live.code };
+    const row = await tx.attendanceBreak.create({
+      data: {
+        attendanceId: live.attendance.id,
+        sessionId: open.id,
+        startAt: at,
+        endAt: endsAt,
+        kind: 'LUNCH',
+      },
+      select: { id: true },
+    });
+    return { created: row, attendance: live.attendance };
+  });
+  if ('code' in outcome) {
+    if (outcome.code === 'ON_LUNCH') {
+      return { ok: false, code: 'ON_LUNCH', error: 'You are already on a meal' };
+    }
+    if (outcome.code === 'ALREADY_ON_BREAK') {
+      return {
+        ok: false,
+        code: 'ALREADY_ON_BREAK',
+        error: 'That cannot be used while you are away',
+      };
+    }
+    if (outcome.code === 'ALREADY_DONE') {
+      return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+    }
+    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+  }
+  const created = outcome.created;
+
+  await logAudit({
+    actorId: memberId,
+    action: 'LUNCH_START',
+    target: String(attendance.id),
+    metadata: { source, at: at.toISOString(), endsAt: endsAt.toISOString() },
+  });
+
+  const m = await prisma.member.findFirst({
+    where: { id: memberId, deletedAt: null },
+    select: { name: true },
+  });
+  const name = m?.name ?? null;
+
+  if (source === 'web') {
+    // A Slack slash command has a three-second budget to acknowledge, so the caller defers this with after().
+    await scheduleAutoBack(created.id, name, endsAt, memberId);
+    if (name) await notifyChannelLunch(name, at, memberId);
+  }
+  return {
+    ok: true,
+    attendance: outcome.attendance,
+    at,
+    endsAt,
+    breakId: created.id,
+    memberName: name,
+  };
 }
 
 export async function endBreak(
