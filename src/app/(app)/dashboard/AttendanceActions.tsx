@@ -14,7 +14,9 @@ const BTN = 'h-11 w-full min-w-0 gap-1.5 px-2 sm:gap-2 sm:px-4';
 // A button that cannot be used right now. Truly disabling it swallows the click and leaves
 // no way to say why, so it only looks disabled and the click still fires a toast explaining.
 const BLOCKED = 'opacity-50';
-const ICON = 'size-4 shrink-0';
+// The icon is hidden on mobile. Once the three cells became equal each is about 88px, and
+// after padding, icon and gap only around 50px is left for the label, which truncated it.
+const ICON = 'hidden size-4 shrink-0 sm:block';
 
 export function AttendanceActions({
   status,
