@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import {
   formatKST,
+  kstDayBoundsUtc,
   kstDayKey,
   monthRangeKST,
   todayKST,
@@ -15,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
 import { AttendanceActions } from './AttendanceActions';
+import { RangeWorked, RangeWorkedDays, TodayWorked, type LiveRow } from './LiveWorked';
 import { BreakDuration } from './BreakDuration';
 import { LunchDuration } from './LunchDuration';
 import { LeaveRequestForm } from './LeaveRequestForm';
@@ -23,14 +25,6 @@ import { MyLeavesCard } from './MyLeavesCard';
 type SessionLite = { startAt: Date; endAt: Date | null };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function formatMinutes(m: number): string {
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h > 0 && mm > 0) return `${h}h ${mm}m`;
-  if (h > 0) return `${h}h`;
-  return `${mm}m`;
-}
 
 function sumMinutesInRange(
   totals: Record<string, DailyAttendanceTotal>,
@@ -178,6 +172,38 @@ export default async function DashboardPage() {
   const weekDaysWorked = countWorkedDays(week.start, week.end);
   const monthDaysWorked = countWorkedDays(month.start, month.end);
 
+  // The browser recomputes today every minute, so it is subtracted from the server total and passed as a base.
+  // Today always falls inside this week and this month, so subtracting is exact.
+  const todayWorkedDay = todayWorked > 0 ? 1 : 0;
+  const weekBaseMinutes = weekTotal - todayWorked;
+  const monthBaseMinutes = monthTotal - todayWorked;
+  const weekBaseDays = weekDaysWorked - todayWorkedDay;
+  const monthBaseDays = monthDaysWorked - todayWorkedDay;
+
+  // Only rows touching today go to the client, including yesterday's session if it crossed midnight.
+  const todayBounds = kstDayBoundsUtc(todayKey);
+  const touchesToday = (segments: { startAt: Date; endAt: Date | null }[]) =>
+    segments.some((seg) => {
+      const segEnd = seg.endAt ?? now;
+      return (
+        seg.startAt.getTime() < todayBounds.end.getTime() &&
+        segEnd.getTime() > todayBounds.start.getTime()
+      );
+    });
+  const liveRows: LiveRow[] = allRows
+    .filter((r) => touchesToday(r.sessions) || touchesToday(r.breaks))
+    .map((r) => ({
+      status: r.status,
+      sessions: r.sessions.map((x) => ({
+        startAt: x.startAt.toISOString(),
+        endAt: x.endAt ? x.endAt.toISOString() : null,
+      })),
+      breaks: r.breaks.map((x) => ({
+        startAt: x.startAt.toISOString(),
+        endAt: x.endAt ? x.endAt.toISOString() : null,
+      })),
+    }));
+
   // Data for the \"today\" card.
   const todayRow =
     allRows.find((r) => kstDayKey(r.workDate) === todayKey) ?? null;
@@ -308,7 +334,7 @@ export default async function DashboardPage() {
             />
             <ClockSlot
               label="Worked"
-              value={hasClockIn ? formatMinutes(todayWorked) : '—'}
+              value={<TodayWorked rows={liveRows} dayKey={todayKey} hasClockIn={hasClockIn} />}
             />
           </div>
           <AttendanceActions status={status} lunchEndsAt={lunchEndsAt} />
@@ -320,14 +346,21 @@ export default async function DashboardPage() {
         <StatCard
           icon={Clock3}
           label="This week"
-          value={formatMinutes(weekTotal)}
-          sub={weekDaysWorked > 0 ? `${weekDaysWorked}Day Working` : 'No records'}
+          value={<RangeWorked rows={liveRows} dayKey={todayKey} baseMinutes={weekBaseMinutes} />}
+          sub={
+            <RangeWorkedDays
+              rows={liveRows}
+              dayKey={todayKey}
+              baseDays={weekBaseDays}
+              emptyLabel="No records"
+            />
+          }
         />
         <StatCard
           icon={Calendar}
           label="This month"
-          value={formatMinutes(monthTotal)}
-          sub={`${monthDaysWorked}Day Working`}
+          value={<RangeWorked rows={liveRows} dayKey={todayKey} baseMinutes={monthBaseMinutes} />}
+          sub={<RangeWorkedDays rows={liveRows} dayKey={todayKey} baseDays={monthBaseDays} />}
         />
         <StatCard
           icon={CalendarCheck}
@@ -361,7 +394,7 @@ export default async function DashboardPage() {
   );
 }
 
-function ClockSlot({ label, value }: { label: string; value: string }) {
+function ClockSlot({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -378,8 +411,8 @@ function StatCard({
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  value: string;
-  sub?: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
 }) {
   return (
     <Card>
