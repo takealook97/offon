@@ -13,8 +13,8 @@ import {
 import {
   asTimeline,
   buildTimelineFromSession,
+  mergeAttendanceEditTimeline,
   normalizeBreakKind,
-  timelinesEqualAtMinute,
 } from '@/lib/attendance-edit';
 
 const Body = z.object({ id: z.coerce.number().int() });
@@ -69,15 +69,18 @@ export async function POST(req: NextRequest) {
       // the status stuck as away, with the person able neither to come back nor to clock out.
       if (liveSession.breaks.some((b) => !b.endAt)) return { code: 'OPEN_BREAK' as const };
 
-      // Refuses when the session has changed since the snapshot: a clock-out, a new meal or a new break.
-      // Overwriting it outright would erase something the person never saw.
+      // Whatever happened legitimately since the request is kept, and only the fields the requester
+      // actually changed are merged in. Where the same field or break changed differently on both sides,
+      // Rather than guess which should win, the approval is blocked.
       const currentTimeline = buildTimelineFromSession(
         { startAt: liveSession.startAt, endAt: liveSession.endAt },
         liveSession.breaks,
       );
-      if (!timelinesEqualAtMinute(snapshot, currentTimeline)) {
-        return { code: 'DRIFT' as const };
+      const merged = mergeAttendanceEditTimeline(snapshot, proposed, currentTimeline);
+      if (!merged.ok) {
+        return { code: 'DRIFT' as const, conflicts: merged.conflicts };
       }
+      const approved = merged.timeline;
 
       // A meal still running has a Slack return notice scheduled. Deleting and recreating the break rows
       // Deleting and recreating would orphan it, so unchanged times carry the id straight to the new row
@@ -101,20 +104,20 @@ export async function POST(req: NextRequest) {
 
       await tx.attendanceSession.update({
         where: { id: target.sessionId },
-        // A null end in the proposal means the session is still running, so it stays open.
+        // A clock-out the request did not touch keeps whatever the live value was at approval.
         data: {
-          startAt: new Date(proposed.startAt),
-          endAt: proposed.endAt ? new Date(proposed.endAt) : null,
+          startAt: new Date(approved.startAt),
+          endAt: approved.endAt ? new Date(approved.endAt) : null,
         },
       });
-      // Every existing break is soft-deleted and recreated closed, from the proposal.
+      // Every existing break is soft-deleted and recreated closed, from the merged result.
       // The guard above guarantees none was open, so nobody ends up stuck on a break.
       await tx.attendanceBreak.updateMany({
         where: { sessionId: target.sessionId, deletedAt: null },
         data: { deletedAt: new Date() },
       });
       const pendingLunches: { id: number; endAt: Date }[] = [];
-      for (const b of proposed.breaks) {
+      for (const b of approved.breaks) {
         const kind = normalizeBreakKind(b.kind);
         const startAt = new Date(b.startAt);
         const endAt = new Date(b.endAt);
@@ -191,7 +194,12 @@ export async function POST(req: NextRequest) {
         actorId: admin.memberId,
         action: 'ATTENDANCE_EDIT_APPROVE_BLOCKED',
         target: String(target.id),
-        metadata: { reason, sessionId: target.sessionId, memberId: target.memberId },
+        metadata: {
+          reason,
+          sessionId: target.sessionId,
+          memberId: target.memberId,
+          ...('conflicts' in outcome ? { conflicts: outcome.conflicts } : {}),
+        },
       });
       return NextResponse.json(
         {

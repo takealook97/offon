@@ -213,6 +213,162 @@ export function timelinesEqualAtMinute(a: EditTimeline, b: EditTimeline): boolea
   return norm(a) === norm(b);
 }
 
+export type TimelineMergeConflict = 'startAt' | 'endAt' | 'breaks' | 'range';
+
+export type TimelineMergeResult =
+  | { ok: true; timeline: EditTimeline }
+  | { ok: false; conflicts: TimelineMergeConflict[] };
+
+const isoMinute = (iso: string) => iso.slice(0, 16);
+const nullableIsoMinute = (iso: string | null) => (iso ? isoMinute(iso) : null);
+
+function mergeScalar(
+  base: string | null,
+  proposed: string | null,
+  live: string | null,
+): { ok: true; value: string | null } | { ok: false } {
+  const baseMinute = nullableIsoMinute(base);
+  const proposedMinute = nullableIsoMinute(proposed);
+  const liveMinute = nullableIsoMinute(live);
+
+  // Anything the request left alone keeps whatever happened since, such as a clock-out.
+  if (proposedMinute === baseMinute) return { ok: true, value: live };
+  // If the live value is unchanged, take the request's change.
+  if (liveMinute === baseMinute) return { ok: true, value: proposed };
+  // Both changed to the same result, so this is not a conflict. Take the request's value.
+  if (proposedMinute === liveMinute) return { ok: true, value: proposed };
+  return { ok: false };
+}
+
+function breakKey(b: EditTimeline['breaks'][number]): string {
+  return `${isoMinute(b.startAt)}|${isoMinute(b.endAt)}|${normalizeBreakKind(b.kind)}`;
+}
+
+function breakCounts(breaks: EditTimeline['breaks']): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const b of breaks) {
+    const key = breakKey(b);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function sameBreaksAtMinute(
+  a: EditTimeline['breaks'],
+  b: EditTimeline['breaks'],
+): boolean {
+  if (a.length !== b.length) return false;
+  const counts = breakCounts(a);
+  for (const item of b) {
+    const key = breakKey(item);
+    const left = counts.get(key) ?? 0;
+    if (left === 0) return false;
+    if (left === 1) counts.delete(key);
+    else counts.set(key, left - 1);
+  }
+  return counts.size === 0;
+}
+
+function subtractBreaks(
+  source: EditTimeline['breaks'],
+  subtract: EditTimeline['breaks'],
+): EditTimeline['breaks'] | null {
+  const remaining = breakCounts(subtract);
+  const extras: EditTimeline['breaks'] = [];
+  for (const item of source) {
+    const key = breakKey(item);
+    const left = remaining.get(key) ?? 0;
+    if (left === 0) extras.push(item);
+    else if (left === 1) remaining.delete(key);
+    else remaining.set(key, left - 1);
+  }
+  return remaining.size === 0 ? extras : null;
+}
+
+function mergeBreaks(
+  base: EditTimeline['breaks'],
+  proposed: EditTimeline['breaks'],
+  live: EditTimeline['breaks'],
+): EditTimeline['breaks'] | null {
+  if (sameBreaksAtMinute(proposed, base)) return live;
+  if (sameBreaksAtMinute(live, base)) return proposed;
+  if (sameBreaksAtMinute(proposed, live)) return proposed;
+
+  // When both changed: if the live side still holds the original breaks and has only added
+  // new ones, the request's change merges safely. If an original break was edited or removed,
+  // we do not guess which change should win and report a conflict instead.
+  const liveAdditions = subtractBreaks(live, base);
+  if (!liveAdditions) return null;
+
+  // The same break added on both sides is kept once.
+  const proposedAdditions = subtractBreaks(proposed, base) ?? proposed;
+  const unmatchedProposedAdditions = breakCounts(proposedAdditions);
+  const additionsToKeep: EditTimeline['breaks'] = [];
+  for (const item of liveAdditions) {
+    const key = breakKey(item);
+    const left = unmatchedProposedAdditions.get(key) ?? 0;
+    if (left === 0) additionsToKeep.push(item);
+    else if (left === 1) unmatchedProposedAdditions.delete(key);
+    else unmatchedProposedAdditions.set(key, left - 1);
+  }
+
+  return [...proposed, ...additionsToKeep].sort(
+    (a, b) => Date.parse(a.startAt) - Date.parse(b.startAt),
+  );
+}
+
+function timelineRangeIsValid(timeline: EditTimeline): boolean {
+  const startAt = Date.parse(timeline.startAt);
+  const endAt = timeline.endAt ? Date.parse(timeline.endAt) : null;
+  if (!Number.isFinite(startAt) || (endAt !== null && !Number.isFinite(endAt))) return false;
+  if (endAt !== null && startAt >= endAt) return false;
+
+  let previousEnd = startAt;
+  for (const b of timeline.breaks) {
+    const breakStart = Date.parse(b.startAt);
+    const breakEnd = Date.parse(b.endAt);
+    if (!Number.isFinite(breakStart) || !Number.isFinite(breakEnd)) return false;
+    if (breakStart < startAt || breakStart >= breakEnd) return false;
+    if (endAt !== null && breakEnd > endAt) return false;
+    if (breakStart < previousEnd) return false;
+    previousEnd = breakEnd;
+  }
+  return true;
+}
+
+/**
+ * Merges the original as it was at request time, the proposed change, and the live value at approval.
+ *
+ * - Clock-in and clock-out fields the request did not touch keep the live value.
+ * - If the request did not touch breaks, every meal and break added since is kept.
+ * - Even when both sides changed breaks, the request merges as long as the live side
+ *   only added records and left the originals alone.
+ * - The same field, or the same original break, changed differently is a conflict, as is an overlapping merge.
+ */
+export function mergeAttendanceEditTimeline(
+  base: EditTimeline,
+  proposed: EditTimeline,
+  live: EditTimeline,
+): TimelineMergeResult {
+  const conflicts: TimelineMergeConflict[] = [];
+  const startAt = mergeScalar(base.startAt, proposed.startAt, live.startAt);
+  const endAt = mergeScalar(base.endAt, proposed.endAt, live.endAt);
+  const breaks = mergeBreaks(base.breaks, proposed.breaks, live.breaks);
+
+  if (!startAt.ok) conflicts.push('startAt');
+  if (!endAt.ok) conflicts.push('endAt');
+  if (!breaks) conflicts.push('breaks');
+  if (!startAt.ok || !endAt.ok || !breaks) return { ok: false, conflicts };
+
+  const timeline: EditTimeline = {
+    startAt: startAt.value!,
+    endAt: endAt.value,
+    breaks,
+  };
+  if (!timelineRangeIsValid(timeline)) return { ok: false, conflicts: ['range'] };
+  return { ok: true, timeline };
+}
+
 /** The date label, taken from the session start. Shown once, separately from the summary line. */
 export function formatTimelineDate(t: EditTimeline): string {
   return formatKST(new Date(t.startAt), 'yyyy-MM-dd (EEE)');
