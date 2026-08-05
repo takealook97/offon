@@ -711,21 +711,23 @@
   .rbc-rooms .rbc-time-header {
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 6;
     background: var(--card);
   }
-  /* The time gutter follows through a horizontal scroll. */
+  /* The time gutter follows through a horizontal one.
+     It has to stack above the day columns. At the same level the columns win, coming later
+     in the DOM, and the grid lines running beneath them show through the gutter. */
   .rbc-rooms .rbc-time-gutter {
     position: sticky;
     left: 0;
-    z-index: 4;
+    z-index: 5;
     background: var(--card);
   }
   /* The empty corner where the two meet belongs to both, so it sits above everything. */
   .rbc-rooms .rbc-time-header-gutter {
     position: sticky;
     left: 0;
-    z-index: 6;
+    z-index: 7;
     background: var(--card);
   }
 }
