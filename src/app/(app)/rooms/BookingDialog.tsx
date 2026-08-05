@@ -266,6 +266,17 @@ export function BookingDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="booking-title">Subject</Label>
+            <Input
+              id="booking-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={100}
+              placeholder="e.g. Sprint retro"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Type</Label>
             <div className="flex gap-1.5">
               {MEETING_TYPES.map((t) => (
@@ -287,17 +298,6 @@ export function BookingDialog({
                 </Button>
               ))}
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="booking-title">Subject</Label>
-            <Input
-              id="booking-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={100}
-              placeholder="e.g. Sprint retro"
-            />
           </div>
 
           <div className="space-y-1.5">

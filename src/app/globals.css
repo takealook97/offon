@@ -613,9 +613,12 @@
   display: none;
 }
 /* The horizontal margins go, so an event fills its column. The library's default and the
-   override both left space on the right only, which made events look misaligned. */
+   previous override both left space on the right only, which made events look misaligned
+   in their column. The stacking order is raised above the current-time line, so that line
+   does not cut across a booking and eat into its title. */
 .rbc-rooms .rbc-day-slot .rbc-events-container {
   margin-right: 0;
+  z-index: 4;
 }
 
 .rbc-rooms .rbc-day-slot .rbc-event {
@@ -644,6 +647,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The current-time line is a hint about where you are, nothing more. Since it now sits
+   under the bookings, it is also thinner and paler, so it does not fight the grid. */
+.rbc-rooms .rbc-current-time-indicator {
+  height: 1px;
+  background: color-mix(in oklab, var(--primary) 65%, transparent);
 }
 
 /* The area being dragged out */

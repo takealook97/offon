@@ -203,11 +203,13 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       }
 
       // A click gives RBC a single ten-minute slot, so widen it to the default length.
-      // A drag keeps the range chosen, unless the start moved, in which case the default length applies.
-      const dragged = slot.action === 'select' && toWall(slot.start) === startWall;
-      const endWall = dragged
-        ? toWall(slot.end)
-        : defaultEndWall(startWall, DEFAULT_BOOKING_MINUTES);
+      // A drag keeps the end it produced. Even when the start is pulled forward to now, an end
+      // after that is used as-is, so the remaining part of a range dragged from the past is not thrown away.
+      const draggedEnd = slot.action === 'select' ? toWall(slot.end) : null;
+      const endWall =
+        draggedEnd && draggedEnd > startWall
+          ? draggedEnd
+          : defaultEndWall(startWall, DEFAULT_BOOKING_MINUTES);
       openDraft(startWall, endWall);
     },
     [rooms.length, openDraft],

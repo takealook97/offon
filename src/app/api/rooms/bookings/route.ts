@@ -9,6 +9,7 @@ import {
   allMembersActive,
   bookingInclude,
   findRoomConflict,
+  scheduleBookingReminders,
   toBookingDTO,
 } from '@/lib/room-booking-server';
 
@@ -134,6 +135,10 @@ export async function POST(req: NextRequest) {
       target: String(created.id),
       metadata: { roomId, type, title, start, end, memberIds: uniqueMemberIds },
     });
+
+    // Schedules the pre-meeting DM. It calls an external API, so it runs outside the transaction, and a failure
+    // The booking is already confirmed, so this never blocks the response; it only writes to the audit log.
+    await scheduleBookingReminders(created.id);
 
     return NextResponse.json({ ok: true, id: created.id });
   } catch (e) {

@@ -75,8 +75,9 @@ model Member {
   leaveBalance     LeaveBalance?
   loginCodes       LoginCode[]
 
-  roomBookings         RoomBooking[]         @relation("RoomBookingOrganizer")
-  roomBookingAttendees RoomBookingAttendee[] @relation("RoomBookingAttendee")
+  roomBookings         RoomBooking[]          @relation("RoomBookingOrganizer")
+  roomBookingAttendees RoomBookingAttendee[]  @relation("RoomBookingAttendee")
+  roomBookingReminders RoomBookingReminder[]  @relation("RoomBookingReminder")
 
   @@index([slackId])
   @@index([email])
@@ -298,6 +299,7 @@ model RoomBooking {
   room      MeetingRoom           @relation(fields: [roomId], references: [id])
   member    Member                @relation("RoomBookingOrganizer", fields: [memberId], references: [id])
   attendees RoomBookingAttendee[]
+  reminders RoomBookingReminder[]
 
   @@index([roomId, startAt])
   @@index([memberId, startAt])
@@ -319,6 +321,28 @@ model RoomBookingAttendee {
   @@unique([bookingId, memberId])
   @@index([memberId])
   @@map("room_booking_attendees")
+}
+
+model RoomBookingReminder {
+  id Int @id @default(autoincrement())
+  bookingId Int @map("booking_id")
+  memberId  Int @map("member_id")
+  /// The Slack DM channel id, passed straight to the cancel call.
+  channelId String @map("channel_id")
+  /// The scheduled message id Slack returned.
+  scheduledMessageId String   @map("scheduled_message_id")
+  /// When it is due to be sent, shortly before the meeting. Kept for diagnosis and recomputation.
+  postAt             DateTime @map("post_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  booking RoomBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  member  Member      @relation("RoomBookingReminder", fields: [memberId], references: [id])
+
+  // A link row, so there is no soft delete. When a booking changes, these are torn down and set again.
+  @@unique([bookingId, memberId])
+  @@index([bookingId])
+  @@map("room_booking_reminders")
 }
 
 model AuditLog {

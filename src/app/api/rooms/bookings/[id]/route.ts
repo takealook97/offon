@@ -4,7 +4,12 @@ import { requireSession } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
 import { kstWallToUtc, utcToKstWall } from '@/lib/time';
 import { RoomBookingPatchBody, validateBookingRange } from '@/lib/room-booking';
-import { allMembersActive, findRoomConflict } from '@/lib/room-booking-server';
+import {
+  allMembersActive,
+  cancelBookingReminders,
+  findRoomConflict,
+  scheduleBookingReminders,
+} from '@/lib/room-booking-server';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -158,6 +163,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       },
     });
 
+    // Both the time and the attendees may have changed, so the scheduled reminders are cleared and set again.
+    await cancelBookingReminders(target.id);
+    await scheduleBookingReminders(target.id);
+
     return NextResponse.json({ ok: true, id: target.id });
   } catch (e) {
     if (e instanceof Response) return e;
@@ -178,6 +187,9 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       where: { id: target.id },
       data: { status: 'CANCELLED' },
     });
+
+    // Clears the scheduled messages so no reminder goes out for a meeting that was called off.
+    await cancelBookingReminders(target.id);
 
     await logAudit({
       actorId: session.memberId,

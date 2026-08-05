@@ -48,6 +48,21 @@ export async function scheduleChannel(
   return { channelId, scheduledMessageId };
 }
 
+/**
+ * Schedules a DM for a future time. It opens the DM channel and hands it to scheduleChannel.
+ * This is how a pre-meeting reminder is sent without a cron.
+ */
+export async function scheduleDm(
+  slackUserId: string,
+  text: string,
+  postAt: Date,
+): Promise<ScheduledChannelMessage | null> {
+  const open = await getClient().conversations.open({ users: slackUserId });
+  const channel = open.channel?.id;
+  if (!channel) throw new Error(`could not open a Slack DM channel for ${slackUserId}`);
+  return scheduleChannel(channel, text, postAt);
+}
+
 /** Cancels a scheduled message. Slack refuses to cancel anything due within 60 seconds, so this can fail. */
 export async function cancelScheduledChannel(
   channelId: string,

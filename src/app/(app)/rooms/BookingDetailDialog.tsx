@@ -87,6 +87,7 @@ export function BookingDetailDialog({
         </DialogHeader>
 
         <div className="space-y-2">
+          <Row label="Subject">{booking.title}</Row>
           <Row label="Type">{MEETING_TYPE_LABEL[booking.type]}</Row>
           <Row label="Organizer">{booking.organizer.name}</Row>
           {booking.attendees.length > 0 && (
