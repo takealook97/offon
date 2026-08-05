@@ -356,15 +356,14 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
         </p>
       ) : (
         // On mobile all seven days stay and the grid scrolls sideways (.rbc-rooms-scroll in
-        <div className="rbc-rooms-scroll">
+        // globals.css). The height belongs to the scroll wrapper: on mobile it has to own both
+        // axes, or the sticky time gutter will not follow horizontal movement.
+        <div className="rbc-rooms-scroll h-[calc(100svh-260px)] min-h-[520px]">
           <div
             ref={gridRef}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            className={cn(
-              'rbc-rooms h-[calc(100svh-260px)] min-h-[520px] transition-opacity',
-              loading && 'opacity-70',
-            )}
+            className={cn('rbc-rooms h-full transition-opacity', loading && 'opacity-70')}
             // Used to draw the closing-time label (:last-child::after in globals.css),
             // because RBC labels only the start of each group and so omits the last hour.
             style={
@@ -404,7 +403,6 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
               eventPropGetter={eventPropGetter}
               dayPropGetter={dayPropGetter}
               messages={CALENDAR_MESSAGES}
-              style={{ height: '100%' }}
             />
           </div>
         </div>

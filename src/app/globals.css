@@ -679,20 +679,53 @@
    are separate DOM, so keeping them moving together means putting a minimum width on the
    view and wrapping the outside in a horizontal scroller. The toolbar sits outside the
    calendar and is not caught up in it. */
+/* The calendar fills whatever height the scroll wrapper sets; on a narrow screen that is released below. */
+.rbc-rooms .rbc-calendar {
+  height: 100%;
+}
+
 @media (max-width: 640px) {
+  /* Pinning the time gutter to the left needs one element owning both axes. By default the
+     content area owns the vertical scroll, which makes it the reference for anything sticky
+     inside it, and horizontal movement happening outside cannot be followed. So the vertical
+     scroll is handed to the outer wrapper too, and the weekday row is pinned to the top. */
   .rbc-rooms-scroll {
-    overflow-x: auto;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
   }
+  .rbc-rooms,
+  .rbc-rooms .rbc-calendar {
+    height: auto;
+  }
+  /* Both of these have to release their overflow for sticky to resolve against the outer
+     wrapper. With the library's defaults left in place, the reference stays inside them and
+     sticky is inert in a box that never scrolls. */
   .rbc-rooms .rbc-time-view {
     min-width: 640px;
+    overflow: visible;
   }
-  /* The time gutter is pinned left so it does not scroll away horizontally. */
-  .rbc-rooms .rbc-time-gutter,
+  .rbc-rooms .rbc-time-content {
+    overflow: visible;
+  }
+  /* The weekday row follows through a vertical scroll. */
+  .rbc-rooms .rbc-time-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--card);
+  }
+  /* The time gutter follows through a horizontal scroll. */
+  .rbc-rooms .rbc-time-gutter {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    background: var(--card);
+  }
+  /* The empty corner where the two meet belongs to both, so it sits above everything. */
   .rbc-rooms .rbc-time-header-gutter {
     position: sticky;
     left: 0;
-    z-index: 3;
+    z-index: 6;
     background: var(--card);
   }
 }
