@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 import { logAudit } from './audit';
-import { cancelScheduledChannel, scheduleDm } from './slack';
+import { cancelScheduledChannel, scheduleDm, sendDm } from './slack';
 import { formatKST } from './time';
 import { MEETING_TYPE_LABEL } from './room-booking';
 import type { RoomBookingDTO } from './api-types';
@@ -127,6 +127,89 @@ export async function cancelBookingReminders(bookingId: number): Promise<void> {
   await prisma.roomBookingReminder.deleteMany({ where: { bookingId } });
 }
 
+const notifyInclude = {
+  member: { select: { id: true, name: true, slackId: true, deletedAt: true } },
+  attendees: {
+    include: {
+      member: { select: { id: true, name: true, slackId: true, deletedAt: true } },
+    },
+  },
+} as const;
+
+type NotifiableBooking = {
+  title: string;
+  type: 'INTERNAL' | 'EXTERNAL';
+  startAt: Date;
+  endAt: Date;
+  member: { id: number; name: string; slackId: string; deletedAt: Date | null };
+  attendees: {
+    member: { id: number; name: string; slackId: string; deletedAt: Date | null };
+  }[];
+};
+
+/** Loads the confirmed booking a reminder is for, or null if it was cancelled or deleted. */
+async function loadNotifiableBooking(bookingId: number) {
+  return prisma.roomBooking.findFirst({
+    where: { id: bookingId, status: 'CONFIRMED', deletedAt: null },
+    include: notifyInclude,
+  });
+}
+
+/**
+ * Who receives the DM: the organiser and the attendees. The organiser is included because they are in the meeting,
+ * and because a booking with no attendees still needs a reminder. People who have left are dropped.
+ */
+function notifyTargets(booking: NotifiableBooking) {
+  return [booking.member, ...booking.attendees.map((a) => a.member)].filter(
+    (m, idx, all) => m.deletedAt === null && all.findIndex((x) => x.id === m.id) === idx,
+  );
+}
+
+/** Builds the detail lines in one place so both notices word things the same way. */
+function bookingDetailLines(booking: NotifiableBooking): string[] {
+  const attendeeNames = booking.attendees.map((a) => a.member.name);
+  return [
+    `- Subject : ${booking.title}`,
+    `- Type : ${MEETING_TYPE_LABEL[booking.type]}`,
+    `- Attendees: ${attendeeNames.length > 0 ? attendeeNames.join(', ') : 'none'}`,
+  ];
+}
+
+/** Formats a booking's date and time range for display. */
+function bookingWhen(booking: NotifiableBooking): string {
+  const date = formatKST(booking.startAt, 'yyyy-MM-dd (EEE)');
+  return `${date} ${formatKST(booking.startAt, 'a h:mm')} ~ ${formatKST(booking.endAt, 'a h:mm')}`;
+}
+
+/**
+ * DMs the organiser and attendees the moment a booking is made.
+ *
+ * Unlike the pre-meeting reminder this goes out now, so there is no scheduled message and nothing
+ * to cancel later, so no record is kept. A Slack failure must not block the booking, so it only reaches the audit log.
+ */
+export async function notifyBookingCreated(bookingId: number): Promise<void> {
+  const booking = await loadNotifiableBooking(bookingId);
+  if (!booking) return;
+
+  const text = [
+    'A meeting has been booked. Please take a look.',
+    bookingWhen(booking),
+    ...bookingDetailLines(booking),
+  ].join('\n');
+
+  await Promise.all(
+    notifyTargets(booking).map((m) =>
+      sendDm(m.slackId, text).catch((err) =>
+        logAudit({
+          action: 'SLACK_SEND_FAIL',
+          target: String(bookingId),
+          metadata: { stage: 'room_booking_created', memberId: m.id, error: String(err) },
+        }),
+      ),
+    ),
+  );
+}
+
 /**
  * Schedules the pre-meeting DM for the organiser and every attendee.
  *
@@ -136,36 +219,19 @@ export async function cancelBookingReminders(bookingId: number): Promise<void> {
  * the past. A Slack failure must not block the booking, so errors only reach the audit log.
  */
 export async function scheduleBookingReminders(bookingId: number): Promise<void> {
-  const booking = await prisma.roomBooking.findFirst({
-    where: { id: bookingId, status: 'CONFIRMED', deletedAt: null },
-    include: {
-      room: { select: { name: true } },
-      member: { select: { id: true, name: true, slackId: true, deletedAt: true } },
-      attendees: {
-        include: {
-          member: { select: { id: true, name: true, slackId: true, deletedAt: true } },
-        },
-      },
-    },
-  });
+  const booking = await loadNotifiableBooking(bookingId);
   if (!booking) return;
 
   const postAt = new Date(booking.startAt.getTime() - REMINDER_LEAD_MINUTES * 60_000);
   if (postAt.getTime() <= Date.now()) return;
 
-  const attendeeNames = booking.attendees.map((a) => a.member.name);
   const text = [
     `Your meeting starts in ${REMINDER_LEAD_MINUTES} minutes.`,
-    '',
-    `- Subject : ${booking.title}`,
-    `- Type : ${MEETING_TYPE_LABEL[booking.type]}`,
-    `- Attendees: ${attendeeNames.length > 0 ? attendeeNames.join(', ') : 'none'}`,
+    bookingWhen(booking),
+    ...bookingDetailLines(booking),
   ].join('\n');
 
-  // The organiser is reminded of their own meeting, so a booking with no attendees still reminds someone.
-  const targets = [booking.member, ...booking.attendees.map((a) => a.member)].filter(
-    (m, idx, all) => m.deletedAt === null && all.findIndex((x) => x.id === m.id) === idx,
-  );
+  const targets = notifyTargets(booking);
 
   const scheduled = await Promise.all(
     targets.map(async (m) => {
