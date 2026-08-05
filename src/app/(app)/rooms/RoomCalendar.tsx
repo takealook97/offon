@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { Calendar, Views, type SlotInfo } from 'react-big-calendar';
-import { addWeeks, endOfWeek, format, getDay, startOfWeek } from 'date-fns';
+import { addDays, addWeeks, endOfWeek, format, getDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import { CALENDAR_MESSAGES, WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
@@ -41,6 +41,17 @@ const MIN_TIME = new Date(1970, 0, 1, ROOM_OPEN_MINUTES / 60, 0, 0);
 const MAX_TIME = new Date(1970, 0, 1, ROOM_CLOSE_MINUTES / 60, 0, 0);
 /** step x timeslots = 60 minutes. A group is exactly an hour, so the gutter is labelled only on the hour. */
 const SLOTS_PER_GROUP = 60 / ROOM_STEP_MINUTES;
+
+/**
+ * Where a touch stops being a tap and becomes a press-and-drag, in milliseconds.
+ * It has to match the library's own threshold, which clears its long-press timer on touchend, so
+ * Letting go inside this window runs only our tap handling; holding past it runs only the library's
+ * drag selection. If the two numbers disagree, one touch either opens the dialog twice or not at all.
+ */
+const LONG_PRESS_MS = 400;
+
+/** Move further than this and it is a scroll, not a tap (px). */
+const TAP_SLOP_PX = 10;
 
 type UiBooking = {
   id: number;
@@ -85,6 +96,9 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
    * Radix closes on pointerdown while RBC listens for mousedown. The overlay is already
    * gone in between, so RBC's elementFromPoint check finds the calendar cell underneath.
    */
+  /** The calendar root that tap coordinates are resolved against to get a date and time. */
+  const gridRef = useRef<HTMLDivElement>(null);
+
   const reopenBlockedUntil = useRef(0);
   const closeDialogs = useCallback(() => {
     reopenBlockedUntil.current = Date.now() + 300;
@@ -199,43 +213,121 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
     [slots],
   );
 
-  const handleSelectSlot = useCallback(
-    (slot: SlotInfo) => {
+  /**
+   * Opens the booking dialog at the chosen start. Past days are refused; a past slot on
+   * today is pulled forward to the next ten-minute boundary. The exact time can be adjusted
+   * in the dialog, so the click itself is not blocked.
+   */
+  const openFromSlot = useCallback(
+    (startWall: string, draggedEnd: string | null) => {
       if (rooms.length === 0) return;
       // Ignore this if it is the click that just dismissed the dialog leaking through.
       if (Date.now() < reopenBlockedUntil.current) return;
-      const now = new Date();
-      const day = wallDate(toWall(slot.start));
-      const today = wallDate(toWall(now));
 
+      const now = new Date();
+      const day = wallDate(startWall);
+      const today = wallDate(toWall(now));
       if (day < today) {
         toast.error('A date in the past cannot be booked');
         return;
       }
 
-      // A past slot on today is not refused. The start is pulled forward to the next
-      // ten-minute boundary and the dialog opens, where the exact time can be chosen.
-      let startWall = toWall(slot.start);
-      if (day === today && startWall < toWall(now)) {
+      let start = startWall;
+      if (day === today && start < toWall(now)) {
         const bumped = Math.max(nextStepMinutes(now), ROOM_OPEN_MINUTES);
         if (bumped >= ROOM_CLOSE_MINUTES) {
           toast.error('There is no bookable time left today');
           return;
         }
-        startWall = toWallString(day, bumped);
+        start = toWallString(day, bumped);
       }
 
-      // A click gives RBC a single ten-minute slot, so widen it to the default length.
-      // A drag keeps the end it produced. Even when the start is pulled forward to now, an end
+      // Keep the end the drag produced. Even when the start is pulled forward to now, an end
       // after that is used as-is, so the remaining part of a range dragged from the past is not thrown away.
-      const draggedEnd = slot.action === 'select' ? toWall(slot.end) : null;
-      const endWall =
-        draggedEnd && draggedEnd > startWall
+      const end =
+        draggedEnd && draggedEnd > start
           ? draggedEnd
-          : defaultEndWall(startWall, DEFAULT_BOOKING_MINUTES);
-      openDraft(startWall, endWall);
+          : defaultEndWall(start, DEFAULT_BOOKING_MINUTES);
+      openDraft(start, end);
     },
     [rooms.length, openDraft],
+  );
+
+  const handleSelectSlot = useCallback(
+    (slot: SlotInfo) => {
+      // A click gives RBC a single ten-minute slot, so widen it to the default length.
+      openFromSlot(toWall(slot.start), slot.action === 'select' ? toWall(slot.end) : null);
+    },
+    [openFromSlot],
+  );
+
+  /**
+   * The path taken when the calendar is tapped on a touch screen.
+   *
+   * On touch, RBC only starts a slot selection from a long press. A touchmove or touchend
+   * while its timer runs cancels it, so a short tap never fires at all, and with horizontal
+   * scrolling in the mix nothing but a deliberate press opens a booking. So we resolve the
+   * tap's coordinates into a date and time ourselves.
+   */
+  const slotFromPoint = useCallback(
+    (clientX: number, clientY: number): string | null => {
+      const root = gridRef.current;
+      if (!root) return null;
+      const cols = [
+        ...root.querySelectorAll<HTMLElement>('.rbc-time-content .rbc-day-slot'),
+      ];
+      if (cols.length === 0) return null;
+
+      const col = cols.find((c) => {
+        const r = c.getBoundingClientRect();
+        return clientX >= r.left && clientX < r.right;
+      });
+      if (!col) return null;
+
+      const day = format(addDays(range.start, cols.indexOf(col)), 'yyyy-MM-dd');
+      const r = col.getBoundingClientRect();
+      // A tap outside the grid, such as on a day header, opens at the start of that day.
+      const withinGrid = clientY >= r.top && clientY < r.bottom;
+      const minutes = withinGrid
+        ? ROOM_OPEN_MINUTES +
+          ((clientY - r.top) / r.height) * (ROOM_CLOSE_MINUTES - ROOM_OPEN_MINUTES)
+        : ROOM_OPEN_MINUTES;
+
+      const snapped = Math.floor(minutes / ROOM_STEP_MINUTES) * ROOM_STEP_MINUTES;
+      const clamped = Math.min(
+        Math.max(snapped, ROOM_OPEN_MINUTES),
+        ROOM_CLOSE_MINUTES - ROOM_STEP_MINUTES,
+      );
+      return toWallString(day, clamped);
+    },
+    [range.start],
+  );
+
+  const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = t ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+
+      const t = e.changedTouches[0];
+      if (!t) return;
+      // If it moved it was a scroll, and if it was held it belongs to RBC's long-press selection. Leave both alone.
+      const moved = Math.hypot(t.clientX - start.x, t.clientY - start.y);
+      if (moved > TAP_SLOP_PX || Date.now() - start.at > LONG_PRESS_MS) return;
+      // Tapping a booking block belongs to onSelectEvent, which opens its detail.
+      if ((e.target as HTMLElement).closest('.rbc-event')) return;
+
+      const startWall = slotFromPoint(t.clientX, t.clientY);
+      if (startWall) openFromSlot(startWall, null);
+    },
+    [slotFromPoint, openFromSlot],
   );
 
   // A week spanning New Year (2026-12-28 to 2027-01-03) needs the year on the far end too, or it cannot be read.
@@ -266,6 +358,9 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
         // On mobile all seven days stay and the grid scrolls sideways (.rbc-rooms-scroll in
         <div className="rbc-rooms-scroll">
           <div
+            ref={gridRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             className={cn(
               'rbc-rooms h-[calc(100svh-260px)] min-h-[520px] transition-opacity',
               loading && 'opacity-70',
@@ -301,7 +396,8 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
               // 'ignoreEvents' keeps a drag begun on top of an event from turning into a slot selection.
               selectable="ignoreEvents"
               // On touch a short swipe passes through as horizontal scrolling; only a held press starts a selection.
-              longPressThreshold={400}
+              // Short taps are picked up by handleTouchEnd above, which shares this threshold.
+              longPressThreshold={LONG_PRESS_MS}
               onSelectSlot={handleSelectSlot}
               onSelecting={handleSelecting}
               onSelectEvent={(e: UiBooking) => setDetail(e.resource)}

@@ -73,7 +73,9 @@ function TimeSel({
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="h-9 w-[76px] shrink-0 px-2.5" aria-label={label}>
+      {/* At a fixed width the fourth dropdown wraps to the next line on a narrow screen.
+          Sharing the available width between the four keeps them on one line. */}
+      <SelectTrigger className="h-9 min-w-0 flex-1 px-2" aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="max-h-60">
@@ -232,7 +234,7 @@ export function BookingDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Time</Label>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-nowrap items-center gap-1">
               <TimeSel
                 label="Start hour"
                 value={hourOf(start)}
@@ -247,7 +249,7 @@ export function BookingDialog({
                 items={MIN_ITEMS}
                 isDisabled={startMinuteDisabled}
               />
-              <span className="px-0.5 text-sm text-muted-foreground">~</span>
+              <span className="shrink-0 px-0.5 text-sm text-muted-foreground">~</span>
               <TimeSel
                 label="End hour"
                 value={hourOf(end)}
