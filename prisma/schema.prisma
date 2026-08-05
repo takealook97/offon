@@ -45,6 +45,16 @@ enum AttendanceEditStatus {
   CANCELLED
 }
 
+enum MeetingType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum RoomBookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
 model Member {
   id                   Int       @id @default(autoincrement())
   name                 String
@@ -64,6 +74,9 @@ model Member {
   approvedAttEdits AttendanceEditRequest[] @relation("AttEditApprover")
   leaveBalance     LeaveBalance?
   loginCodes       LoginCode[]
+
+  roomBookings         RoomBooking[]         @relation("RoomBookingOrganizer")
+  roomBookingAttendees RoomBookingAttendee[] @relation("RoomBookingAttendee")
 
   @@index([slackId])
   @@index([email])
@@ -250,6 +263,62 @@ model AppSetting {
   updatedAt                    DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
+}
+
+model MeetingRoom {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  bookings RoomBooking[]
+
+  @@map("meeting_rooms")
+}
+
+model RoomBooking {
+  id       Int         @id @default(autoincrement())
+  roomId   Int         @map("room_id")
+  memberId Int         @map("member_id")
+  type     MeetingType
+  /// Why the room was booked. What is typed here becomes the calendar event's title.
+  title    String
+  startAt  DateTime    @map("start_at")
+  endAt    DateTime    @map("end_at")
+  /// External attendees, as typed. They are not members, so there is nothing to key against.
+  externalAttendees String?           @map("external_attendees")
+  /// Cancelling flips the status rather than deleting the row, as leave does. Only confirmed bookings count for overlaps.
+  status            RoomBookingStatus @default(CONFIRMED)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  deletedAt         DateTime?         @map("deleted_at")
+
+  room      MeetingRoom           @relation(fields: [roomId], references: [id])
+  member    Member                @relation("RoomBookingOrganizer", fields: [memberId], references: [id])
+  attendees RoomBookingAttendee[]
+
+  @@index([roomId, startAt])
+  @@index([memberId, startAt])
+  @@map("room_bookings")
+}
+
+model RoomBookingAttendee {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @map("booking_id")
+  memberId  Int      @map("member_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  booking RoomBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  member  Member      @relation("RoomBookingAttendee", fields: [memberId], references: [id])
+
+  // A pure link row, so there is no soft delete. An edit rewrites the set wholesale, and
+  // the parent booking's status owns the lifetime.
+  @@unique([bookingId, memberId])
+  @@index([memberId])
+  @@map("room_booking_attendees")
 }
 
 model AuditLog {

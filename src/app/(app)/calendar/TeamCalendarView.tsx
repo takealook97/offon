@@ -3,34 +3,17 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Calendar,
-  dateFnsLocalizer,
   type View,
   type ToolbarProps,
   Views,
 } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { format, startOfWeek, getDay } from 'date-fns';
 import { toast } from 'sonner';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
+import { WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
 import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
-
-const WEEK_OPTS = { weekStartsOn: 0 as const };
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek: (d: Date) => startOfWeek(d, WEEK_OPTS),
-  getDay,
-  locales: { ko },
-});
-
-const formats = {
-  monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
-  weekdayFormat: (date: Date) => format(date, 'EEE', { locale: ko }),
-  dayFormat: (date: Date) => format(date, 'dDay (EEE)', { locale: ko }),
-};
 
 const VIEWS_ALLOWED: View[] = [Views.MONTH];
 

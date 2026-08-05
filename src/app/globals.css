@@ -356,6 +356,24 @@
   background: color-mix(in oklab, oklch(0.7 0.22 27) 30%, transparent);
   color: oklch(0.9 0.17 27);
 }
+/* Room bookings reuse the attendance calendar's hues, green for work and blue for leave.
+   The rooms screen stands alone and never shares a view with attendance events. */
+.rbc-event.rbc-event-room-internal {
+  background: color-mix(in oklab, oklch(0.75 0.17 160) 20%, transparent);
+  color: oklch(0.45 0.17 160);
+}
+.dark .rbc-event.rbc-event-room-internal {
+  background: color-mix(in oklab, oklch(0.75 0.17 160) 30%, transparent);
+  color: oklch(0.9 0.17 160);
+}
+.rbc-event.rbc-event-room-external {
+  background: color-mix(in oklab, oklch(0.7 0.2 250) 22%, transparent);
+  color: oklch(0.4 0.2 250);
+}
+.dark .rbc-event.rbc-event-room-external {
+  background: color-mix(in oklab, oklch(0.7 0.2 250) 30%, transparent);
+  color: oklch(0.9 0.15 250);
+}
 
 .rbc-show-more {
   color: var(--muted-foreground);
@@ -508,4 +526,163 @@
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   margin: 0;
+}
+
+/* ============ The room booking week grid ============
+   The time rules above assume half-hour steps. At ten-minute steps the dividers become
+   six an hour and the text in a short booking is clipped. Everything here is scoped to
+   the rooms grid so the other calendar is unaffected. */
+
+/* A ten-minute slot is 14px. At 12px a tap on mobile lands a slot out. */
+.rbc-rooms .rbc-timeslot-group {
+  min-height: 84px;
+}
+
+/* The library measures the gutter after mounting and writes an inline width into the header's empty corner.
+   Before that measurement it is zero, so the day columns jump left and then settle.
+   Pinning the width -- min and max outrank an inline width -- has it in place from the first frame. */
+.rbc-rooms .rbc-time-gutter,
+.rbc-rooms .rbc-time-header-gutter {
+  min-width: 4rem;
+  max-width: 4rem;
+}
+
+/* Six lines an hour becomes one, at the half hour: the fourth child of each group. */
+.rbc-rooms .rbc-day-slot .rbc-time-slot {
+  border-top: none;
+}
+.rbc-rooms .rbc-day-slot .rbc-time-slot:nth-child(4) {
+  border-top: 1px dashed color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+.rbc-rooms .rbc-time-content {
+  /* The heavy rule between the weekday row and the grid is removed. Today is already clear
+     from its background and bolder label below, and the rule made the header look cut off. */
+  border-top: none;
+  /* As events load and the content grows, the browser's scroll anchoring drags the view
+     towards the current time. Turned off, so it always starts at the top of the day. */
+  overflow-anchor: none;
+}
+/* Today's background alone reads poorly in light mode, so its label is bolder. */
+.rbc-rooms .rbc-time-header-cell .rbc-today {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Today's column has a pale background, against which a border-based line comes out lighter and disappears.
+   Based on the foreground instead, it holds up in either theme. */
+.rbc-rooms .rbc-day-slot.rbc-today .rbc-time-slot:nth-child(4) {
+  border-top-color: color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+.rbc-rooms .rbc-day-slot.rbc-today .rbc-timeslot-group {
+  border-bottom-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+}
+
+/* There are no all-day bookings. Leaving the strip in place means a click there selects
+   the whole day as a range. */
+.rbc-rooms .rbc-time-view .rbc-allday-cell {
+  display: none;
+}
+
+/* With the all-day strip gone the weekday labels sit right on the rule below. This gives them room. */
+.rbc-rooms .rbc-time-header-cell .rbc-header {
+  padding: 0.625rem 0 0.75rem;
+}
+
+/* The library labels only the start of each hourly group, so the closing time after the
+   last group never appears. It is drawn beneath that group directly. The label itself is
+   injected by the calendar component, derived from the configured closing time. */
+.rbc-rooms .rbc-time-gutter .rbc-timeslot-group:last-child {
+  position: relative;
+}
+.rbc-rooms .rbc-time-gutter .rbc-timeslot-group:last-child::after {
+  content: var(--room-close-label, '19:00');
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0;
+  transform: translateY(50%);
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+  background: var(--background);
+  padding-block: 0.125rem;
+}
+
+/* Overlapping bookings are refused, so a block always stands alone. Its start is obvious from its position,
+   so the time label is dropped and the full width goes to the title. The exact range is one click away. */
+.rbc-rooms .rbc-day-slot .rbc-event .rbc-event-label {
+  display: none;
+}
+/* The horizontal margins go, so an event fills its column. The library's default and the
+   override both left space on the right only, which made events look misaligned. */
+.rbc-rooms .rbc-day-slot .rbc-events-container {
+  margin-right: 0;
+}
+
+.rbc-rooms .rbc-day-slot .rbc-event {
+  /* The library's default gives day-slot events a 1px border, which makes them read as
+     boxes rather than the soft bars of the month view. The border is removed
+     so they match the soft surfaces of the other events. */
+  border: none;
+  border-radius: 6px;
+  flex-flow: row nowrap;
+  /* Vertically centred within the block. Nothing overlaps, so a block always stands alone,
+     and there is no reason to top-align the way calendars do to keep starts visible. */
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.0625rem 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  overflow: hidden;
+}
+.rbc-rooms .rbc-day-slot .rbc-event .rbc-event-label {
+  flex: none;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+.rbc-rooms .rbc-day-slot .rbc-event .rbc-event-content {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The area being dragged out */
+.rbc-rooms .rbc-slot-selection {
+  background: color-mix(in oklab, var(--primary) 22%, transparent);
+  color: var(--foreground);
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.375rem;
+}
+
+/* Signals that an empty slot can be clicked, where there is a pointer to signal it to. */
+@media (hover: hover) {
+  .rbc-rooms .rbc-day-slot {
+    cursor: pointer;
+  }
+  .rbc-rooms .rbc-day-slot:hover {
+    background: color-mix(in oklab, var(--accent) 25%, transparent);
+  }
+}
+
+/* All seven days stay on mobile and the grid scrolls sideways. The header and the body
+   are separate DOM, so keeping them moving together means putting a minimum width on the
+   view and wrapping the outside in a horizontal scroller. The toolbar sits outside the
+   calendar and is not caught up in it. */
+@media (max-width: 640px) {
+  .rbc-rooms-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rbc-rooms .rbc-time-view {
+    min-width: 640px;
+  }
+  /* The time gutter is pinned left so it does not scroll away horizontally. */
+  .rbc-rooms .rbc-time-gutter,
+  .rbc-rooms .rbc-time-header-gutter {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--card);
+  }
 }

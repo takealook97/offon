@@ -3,15 +3,20 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Calendar,
-  dateFnsLocalizer,
   type View,
   type ToolbarProps,
   Views,
 } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isSameWeek } from 'date-fns';
+import { format, startOfWeek, getDay, isSameWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
+import {
+  CALENDAR_MESSAGES,
+  WEEK_OPTS,
+  formats,
+  localizer,
+} from '@/lib/rbc-localizer';
 import type {
   CalendarEvent,
   CalendarEventsResponse,
@@ -31,33 +36,7 @@ import {
   weeksInMonth,
 } from './totals';
 
-const WEEK_OPTS = { weekStartsOn: 0 as const };
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek: (d: Date) => startOfWeek(d, WEEK_OPTS),
-  getDay,
-  locales: { ko },
-});
-
 const VIEWS_ALLOWED: View[] = [Views.MONTH];
-
-const formats = {
-  monthHeaderFormat: (date: Date) => format(date, 'MMMM yyyy'),
-  dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${format(start, 'd MMMM yyyy')} – ${format(end, 'd')}`,
-  dayHeaderFormat: (date: Date) => format(date, 'EEEE, d MMMM yyyy', { locale: ko }),
-  weekdayFormat: (date: Date) => format(date, 'EEE', { locale: ko }),
-  dayFormat: (date: Date) => format(date, 'dDay (EEE)', { locale: ko }),
-  timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: ko }),
-  eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${format(start, 'HH:mm', { locale: ko })} ~ ${format(end, 'HH:mm', { locale: ko })}`,
-  agendaDateFormat: (date: Date) => format(date, 'MMonth dDay (EEE)', { locale: ko }),
-  agendaTimeFormat: (date: Date) => format(date, 'HH:mm', { locale: ko }),
-  agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${format(start, 'HH:mm', { locale: ko })} – ${format(end, 'HH:mm', { locale: ko })}`,
-};
 
 type UiEvent = {
   id: string;
@@ -276,19 +255,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           onDrillDown={(d) => openDayModal(d)}
           onShowMore={(_evts, d) => openDayModal(d)}
           doShowMoreDrillDown={false}
-          messages={{
-            month: 'Month',
-            week: 'Week',
-            day: 'Day',
-            today: 'Today',
-            previous: 'Previous',
-            next: 'Next',
-            agenda: 'Agenda',
-            date: 'Date',
-            time: 'Time',
-            event: 'Event',
-            noEventsInRange: 'Nothing in this range',
-          }}
+          messages={CALENDAR_MESSAGES}
           style={{ height: '100%' }}
         />
       </div>

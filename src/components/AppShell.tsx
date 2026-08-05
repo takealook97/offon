@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   Calendar,
+  DoorOpen,
   LayoutDashboard,
   Users,
   ClipboardList,
@@ -14,13 +15,14 @@ import { DesktopNav } from '@/components/DesktopNav';
 export type NavItem = {
   href: string;
   label: string;
-  iconName: 'dashboard' | 'calendar' | 'users' | 'clipboard' | 'settings';
+  iconName: 'dashboard' | 'calendar' | 'rooms' | 'users' | 'clipboard' | 'settings';
   admin?: boolean;
 };
 
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', iconName: 'dashboard' },
   { href: '/calendar', label: 'Calendar', iconName: 'calendar' },
+  { href: '/rooms', label: 'Rooms', iconName: 'rooms' },
   { href: '/admin/members', label: 'Members', iconName: 'users', admin: true },
   { href: '/admin/approvals', label: 'Approvals', iconName: 'clipboard', admin: true },
   { href: '/admin/settings', label: 'Settings', iconName: 'settings', admin: true },
@@ -32,6 +34,8 @@ export function iconFor(name: NavItem['iconName']) {
       return LayoutDashboard;
     case 'calendar':
       return Calendar;
+    case 'rooms':
+      return DoorOpen;
     case 'users':
       return Users;
     case 'clipboard':
