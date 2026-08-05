@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { cn } from '@/lib/cn';
+import { NavBadge } from '@/components/NavBadge';
 import { iconFor, type NavItem } from '@/components/AppShell';
 
 export function MobileNav({
@@ -30,12 +31,25 @@ export function MobileNav({
   const [open, setOpen] = useState(false);
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+  const pendingTotal = items.reduce((sum, item) => sum + (item.badge ?? 0), 0);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative md:hidden"
+          aria-label={
+            pendingTotal > 0 ? `Open the menu (${pendingTotal} waiting)` : 'Open the menu'
+          }
+        >
           <Menu className="size-5" />
+          {/* The menu is invisible until the sheet opens, so the mark rides the opening
+              button too. It sits outside the icon's corner and does not cover it. */}
+          {pendingTotal > 0 && (
+            <NavBadge count={pendingTotal} className="absolute right-1.5 top-1.5" />
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
@@ -62,8 +76,10 @@ export function MobileNav({
                     : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
                 )}
               >
-                <Icon className="size-4" />
+                <Icon className="size-4 shrink-0" />
                 {item.label}
+                {/* Pushed to the far right so it never overlaps the label. */}
+                {item.badge ? <NavBadge count={item.badge} className="ml-auto" /> : null}
               </Link>
             );
           })}

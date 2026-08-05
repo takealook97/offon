@@ -17,14 +17,19 @@ export type NavItem = {
   label: string;
   iconName: 'dashboard' | 'calendar' | 'rooms' | 'users' | 'clipboard' | 'settings';
   admin?: boolean;
+  /** How much is waiting to be dealt with. Anything above zero puts a red mark beside the menu item. */
+  badge?: number;
 };
+
+/** Where the badge goes. A constant, so it cannot drift from the NAV entries. */
+const APPROVALS_HREF = '/admin/approvals';
 
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', iconName: 'dashboard' },
   { href: '/calendar', label: 'Calendar', iconName: 'calendar' },
   { href: '/rooms', label: 'Rooms', iconName: 'rooms' },
   { href: '/admin/members', label: 'Members', iconName: 'users', admin: true },
-  { href: '/admin/approvals', label: 'Approvals', iconName: 'clipboard', admin: true },
+  { href: APPROVALS_HREF, label: 'Approvals', iconName: 'clipboard', admin: true },
   { href: '/admin/settings', label: 'Settings', iconName: 'settings', admin: true },
 ];
 
@@ -48,11 +53,19 @@ export function iconFor(name: NavItem['iconName']) {
 export function AppShell({
   me,
   children,
+  pendingApprovals = 0,
 }: {
   me: { name: string; role: 'EMPLOYEE' | 'ADMIN' };
   children: React.ReactNode;
+  /** How many approvals are waiting. Anything above zero marks the approvals menu item. */
+  pendingApprovals?: number;
 }) {
-  const items = NAV.filter((item) => (item.admin ? me.role === 'ADMIN' : true));
+  const items = NAV.filter((item) => (item.admin ? me.role === 'ADMIN' : true)).map(
+    (item) =>
+      item.href === APPROVALS_HREF && pendingApprovals > 0
+        ? { ...item, badge: pendingApprovals }
+        : item,
+  );
 
   return (
     <div className="flex min-h-svh flex-col">
