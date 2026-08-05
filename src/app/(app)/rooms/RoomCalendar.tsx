@@ -27,6 +27,7 @@ import {
   minutesToHhMm,
   toWallString,
   wallDate,
+  wallMinutes,
   type BookingSlot,
 } from '@/lib/room-booking';
 import { CalendarToolbar } from '../calendar/CalendarToolbar';
@@ -203,12 +204,30 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
   const openDraft = useCallback(
     (startWall: string, endWall: string) => {
       const daySlots = bookingsOnDate(slots, wallDate(startWall));
-      const clamped = clampEndToNextBooking(daySlots, startWall, endWall);
+
+      // If the start lands inside an existing booking, push it to where that booking ends.
+      // Clicking a past slot pulls the start forward to now, and if a meeting happens to be
+      // running right then, it used to be refused as already booked for no visible reason.
+      // Repeating lets it step over back-to-back bookings, bounded by the slots in a day.
+      let start = startWall;
+      for (let i = 0; i < daySlots.length + 1; i += 1) {
+        const blocking = daySlots.find((b) => b.start <= start && b.end > start);
+        if (!blocking) break;
+        start = blocking.end;
+      }
+      if (wallMinutes(start) >= ROOM_CLOSE_MINUTES) {
+        toast.error('There is no time left that day');
+        return;
+      }
+
+      // Once the start has moved, the original end means nothing, so fall back to the default length.
+      const end = start === startWall ? endWall : defaultEndWall(start);
+      const clamped = clampEndToNextBooking(daySlots, start, end);
       if (!clamped) {
         toast.error('That slot is already booked');
         return;
       }
-      setDraft({ mode: 'create', start: startWall, end: clamped });
+      setDraft({ mode: 'create', start, end: clamped });
     },
     [slots],
   );
