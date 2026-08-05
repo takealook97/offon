@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { Calendar, Views, type SlotInfo } from 'react-big-calendar';
 import { addWeeks, endOfWeek, format, getDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
@@ -70,6 +77,20 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [draft, setDraft] = useState<BookingDraft | null>(null);
   const [detail, setDetail] = useState<RoomBookingDTO | null>(null);
+
+  /**
+   * Stops the click that dismissed the dialog from carrying on into the calendar and
+   * immediately opening a new booking.
+   *
+   * Radix closes on pointerdown while RBC listens for mousedown. The overlay is already
+   * gone in between, so RBC's elementFromPoint check finds the calendar cell underneath.
+   */
+  const reopenBlockedUntil = useRef(0);
+  const closeDialogs = useCallback(() => {
+    reopenBlockedUntil.current = Date.now() + 300;
+    setDraft(null);
+    setDetail(null);
+  }, []);
 
   const range = useMemo(
     () => ({
@@ -181,6 +202,8 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
   const handleSelectSlot = useCallback(
     (slot: SlotInfo) => {
       if (rooms.length === 0) return;
+      // Ignore this if it is the click that just dismissed the dialog leaking through.
+      if (Date.now() < reopenBlockedUntil.current) return;
       const now = new Date();
       const day = wallDate(toWall(slot.start));
       const today = wallDate(toWall(now));
@@ -299,7 +322,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           viewerId={viewerId}
           dayBookings={draftDayBookings}
           open
-          onOpenChange={(o) => !o && setDraft(null)}
+          onOpenChange={(o) => !o && closeDialogs()}
           onDone={refresh}
         />
       )}
@@ -309,7 +332,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           key={detail.id}
           booking={detail}
           open
-          onOpenChange={(o) => !o && setDetail(null)}
+          onOpenChange={(o) => !o && closeDialogs()}
           onEdit={() => {
             setDraft({
               mode: 'edit',
