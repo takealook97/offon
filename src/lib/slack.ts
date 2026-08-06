@@ -50,7 +50,7 @@ export async function scheduleChannel(
 
 /**
  * Schedules a DM for a future time. It opens the DM channel and hands it to scheduleChannel.
- * This is how a pre-meeting reminder is sent without a cron.
+ * This is how something like a pre-meeting reminder is sent without a cron.
  */
 export async function scheduleDm(
   slackUserId: string,

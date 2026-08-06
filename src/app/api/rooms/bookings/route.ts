@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       metadata: { roomId, type, title, start, end, memberIds: uniqueMemberIds },
     });
 
-    // Two notices: one now, and one ten minutes before the meeting.
+    // Two notices: one now, and one shortly before the meeting starts.
     // It calls an external API, so it runs outside the transaction; the booking is already confirmed, so a failure
     // and never blocks the response; each function writes to the audit log itself.
     await notifyBookingCreated(created.id);

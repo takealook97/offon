@@ -98,7 +98,7 @@ export async function allMembersActive(memberIds: number[]): Promise<boolean> {
 }
 
 /** How many minutes before a meeting the reminder goes out. */
-export const REMINDER_LEAD_MINUTES = 10;
+export const REMINDER_LEAD_MINUTES = 3;
 
 /**
  * Cancels every pre-meeting DM scheduled for a booking and clears the records.
@@ -215,7 +215,7 @@ export async function notifyBookingCreated(bookingId: number): Promise<void> {
  *
  * Uses Slack's chat.scheduleMessage rather than a cron. When a booking is edited or
  * cancelled, cancelBookingReminders clears these and they are scheduled afresh.
- * A meeting starting sooner than the lead time is skipped, since Slack refuses a time in the past.
+ * A meeting starting sooner than the lead time is skipped, since Slack refuses a time in
  * the past. A Slack failure must not block the booking, so errors only reach the audit log.
  */
 export async function scheduleBookingReminders(bookingId: number): Promise<void> {
