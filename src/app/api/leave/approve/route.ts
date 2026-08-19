@@ -7,6 +7,7 @@ import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { formatKST, countBusinessDaysKST } from '@/lib/time';
 import { getHolidaySet } from '@/lib/holidays';
+import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was approved.`,
+        `${formatLeaveDateRange(target.startDate, target.endDate)} ${leaveTypeLabel(target.type)} was approved.`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

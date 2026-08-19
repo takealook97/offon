@@ -4,15 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { formatKST, todayKST } from '@/lib/time';
+import { todayKST } from '@/lib/time';
+import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
 
 const Body = z.object({ id: z.coerce.number().int() });
-
-const TYPE_LABEL: Record<string, string> = {
-  FULL_DAY: 'Leave',
-  HALF_DAY_AM: 'Morning half day',
-  HALF_DAY_PM: 'Afternoon half day',
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,11 +64,8 @@ export async function POST(req: NextRequest) {
       prisma.member.findFirst({ where: { id: session.memberId, deletedAt: null } }),
       prisma.member.findMany({ where: { role: 'ADMIN', deletedAt: null } }),
     ]);
-    const dateRange =
-      formatKST(target.startDate, 'yyyy-MM-dd') === formatKST(target.endDate, 'yyyy-MM-dd')
-        ? formatKST(target.startDate, 'yyyy-MM-dd')
-        : `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')}`;
-    const typeLabel = TYPE_LABEL[target.type] ?? 'Leave';
+    const dateRange = formatLeaveDateRange(target.startDate, target.endDate);
+    const typeLabel = leaveTypeLabel(target.type);
     await Promise.all(
       admins.map((a) =>
         sendDm(

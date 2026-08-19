@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { formatKST } from '@/lib/time';
+import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
 
 const Body = z.object({ id: z.coerce.number().int(), reason: z.string().max(500).optional() });
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        `${formatKST(target.startDate, 'yyyy-MM-dd')}~${formatKST(target.endDate, 'yyyy-MM-dd')} leave was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}.`,
+        `${formatLeaveDateRange(target.startDate, target.endDate)} ${leaveTypeLabel(target.type)} was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}.`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

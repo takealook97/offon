@@ -10,6 +10,7 @@ import {
   isBusinessDayKSTDateStr,
   todayKST,
 } from '@/lib/time';
+import { leaveTypeLabel, formatLeaveDateRangeKST } from '@/lib/leave-labels';
 import { getHolidaySet } from '@/lib/holidays';
 
 const Body = z.object({
@@ -143,13 +144,8 @@ export async function POST(req: NextRequest) {
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', deletedAt: null },
     });
-    const dateRange = startDate === endDate ? startDate : `${startDate}~${endDate}`;
-    const action =
-      type === 'FULL_DAY'
-        ? 'requested leave'
-        : type === 'HALF_DAY_AM'
-        ? 'requested a morning half day'
-        : 'requested an afternoon half day';
+    const dateRange = formatLeaveDateRangeKST(startDate, endDate);
+    const action = `requested ${leaveTypeLabel(type)}`;
     await Promise.all(
       admins.map((a) =>
         sendDm(
