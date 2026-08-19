@@ -156,22 +156,31 @@ async function loadNotifiableBooking(bookingId: number) {
 }
 
 /**
+ * Everyone in the meeting: the organiser first, then the attendees in order. An organiser
+ * may also be listed as an attendee, so duplicates are removed.
+ */
+function bookingMembers(booking: NotifiableBooking) {
+  return [booking.member, ...booking.attendees.map((a) => a.member)].filter(
+    (m, idx, all) => all.findIndex((x) => x.id === m.id) === idx,
+  );
+}
+
+/**
  * Who receives the DM: the organiser and the attendees. The organiser is included because they are in the meeting,
  * and because a booking with no attendees still needs a reminder. People who have left are dropped.
  */
 function notifyTargets(booking: NotifiableBooking) {
-  return [booking.member, ...booking.attendees.map((a) => a.member)].filter(
-    (m, idx, all) => m.deletedAt === null && all.findIndex((x) => x.id === m.id) === idx,
-  );
+  return bookingMembers(booking).filter((m) => m.deletedAt === null);
 }
 
 /** Builds the detail lines in one place so both notices word things the same way. */
 function bookingDetailLines(booking: NotifiableBooking): string[] {
-  const attendeeNames = booking.attendees.map((a) => a.member.name);
+  // The organiser is in the meeting, so they lead the attendee line. People who have left stay, so the record remains true.
+  const names = bookingMembers(booking).map((m) => m.name);
   return [
     `- Subject : ${booking.title}`,
     `- Type : ${MEETING_TYPE_LABEL[booking.type]}`,
-    `- Attendees: ${attendeeNames.length > 0 ? attendeeNames.join(', ') : 'none'}`,
+    `- Attendees : ${names.join(', ')}`,
   ];
 }
 
