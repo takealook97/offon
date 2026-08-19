@@ -541,10 +541,15 @@
 /* The library measures the gutter after mounting and writes an inline width into the header's empty corner.
    Before that measurement it is zero, so the day columns jump left and then settle.
    Pinning the width -- min and max outrank an inline width -- has it in place from the first frame. */
+/* At 11px the widest label is about 31px, so 52px leaves room after the padding and still
+   leaves 8px. Any narrower and a slightly wider font clips the label. */
 .rbc-rooms .rbc-time-gutter,
 .rbc-rooms .rbc-time-header-gutter {
-  min-width: 4rem;
-  max-width: 4rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+}
+.rbc-rooms .rbc-time-gutter .rbc-label {
+  padding: 0 0.375rem;
 }
 
 /* Six lines an hour becomes one, at the half hour: the fourth child of each group. */
@@ -598,7 +603,7 @@
 .rbc-rooms .rbc-time-gutter .rbc-timeslot-group:last-child::after {
   content: var(--room-close-label, '19:00');
   position: absolute;
-  right: 0.5rem;
+  right: 0.375rem;
   bottom: 0;
   transform: translateY(50%);
   font-size: 0.6875rem;

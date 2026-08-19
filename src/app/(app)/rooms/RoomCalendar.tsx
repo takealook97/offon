@@ -177,6 +177,25 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  /** Moving a week at a time. Shared by the toolbar buttons and the arrow keys. */
+  const shiftWeek = useCallback((delta: number) => setDate((d) => addWeeks(d, delta)), []);
+
+  // Left and right arrows move a week, but not while typing or while a dialog or dropdown is open.
+  // Those already use the arrow keys, and shifting the week behind them loses the context.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (document.querySelector('[role="dialog"], [role="listbox"], [role="menu"]')) return;
+      e.preventDefault();
+      shiftWeek(e.key === 'ArrowLeft' ? -1 : 1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [shiftWeek]);
+
   const eventPropGetter = useCallback(
     (event: UiBooking) => ({
       className:
@@ -363,8 +382,8 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
     <div className="space-y-3 p-2 sm:p-4">
       <CalendarToolbar
         label={weekLabel}
-        onPrev={() => setDate((d) => addWeeks(d, -1))}
-        onNext={() => setDate((d) => addWeeks(d, 1))}
+        onPrev={() => shiftWeek(-1)}
+        onNext={() => shiftWeek(1)}
         onToday={() => setDate(new Date())}
         right={<Legend />}
       />
