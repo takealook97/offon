@@ -626,6 +626,12 @@
      boxes rather than the soft bars of the month view. The border is removed
      so they match the soft surfaces of the other events. */
   border: none;
+  /* Back-to-back bookings ran together into one surface, so a pixel is freed at the bottom.
+     The block's top and height are inline, so a margin cannot move it; a transparent border is set instead
+     and the background clipped to the padding box, letting the grid show through. The smallest booking is ten minutes,
+     Freeing both edges would clip the text, so the gap goes at the bottom only. */
+  border-bottom: 1px solid transparent;
+  background-clip: padding-box;
   border-radius: 6px;
   flex-flow: row nowrap;
   /* Vertically centred within the block. Nothing overlaps, so a block always stands alone,
@@ -641,6 +647,22 @@
   flex: none;
   opacity: 0.75;
   font-variant-numeric: tabular-nums;
+}
+
+/* The block's edge. A faint version of the same hue breaks the mass without fighting the
+   fill. Drawn as an inset shadow it takes no height, so even a ten-minute block keeps its
+   text in place. In dark mode the fill is deeper, so the ring has to come up with it. */
+.rbc-rooms .rbc-day-slot .rbc-event.rbc-event-room-internal {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, oklch(0.75 0.17 160) 40%, transparent);
+}
+.dark .rbc-rooms .rbc-day-slot .rbc-event.rbc-event-room-internal {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, oklch(0.75 0.17 160) 55%, transparent);
+}
+.rbc-rooms .rbc-day-slot .rbc-event.rbc-event-room-external {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, oklch(0.7 0.2 250) 40%, transparent);
+}
+.dark .rbc-rooms .rbc-day-slot .rbc-event.rbc-event-room-external {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, oklch(0.7 0.2 250) 55%, transparent);
 }
 .rbc-rooms .rbc-day-slot .rbc-event .rbc-event-content {
   min-width: 0;
