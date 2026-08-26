@@ -110,7 +110,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
     const check = validateBookingRange(start, end, utcToKstWall(new Date()));
     if (!check.ok) {
-      return NextResponse.json({ ok: false, error: check.error }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t(check.messageKey, check.vars) }, { status: 400 });
     }
 
     const uniqueMemberIds = [...new Set(memberIds)];

@@ -1,6 +1,6 @@
 import type { MessageKey } from './dictionary';
 
-type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 /**
  * Writes a duration in minutes the way the locale does: `90` becomes `'1h 30m'` in English.
@@ -16,4 +16,23 @@ export function formatDuration(t: Translate, minutes: number): string {
   if (h > 0 && m > 0) return t('duration.hm', { h, m });
   if (h > 0) return t('duration.h', { h });
   return t('duration.m', { m });
+}
+
+/** Renders a validation failure as prose. */
+export type Failure = {
+  messageKey: MessageKey;
+  vars?: Record<string, string | number>;
+  /** For when a value going into the message is itself translatable, such as a meal or a break. */
+  kindKey?: MessageKey;
+};
+
+/**
+ * A placeholder sometimes takes a value that needs translating itself, so the domain
+ * leaves a key there and it is resolved one layer further here. Otherwise the screen prints the raw key.
+ */
+export function translateFailure(t: Translate, failure: Failure): string {
+  const vars = failure.kindKey
+    ? { ...failure.vars, kind: t(failure.kindKey) }
+    : failure.vars;
+  return t(failure.messageKey, vars);
 }

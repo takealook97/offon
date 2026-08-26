@@ -1,3 +1,5 @@
+import type { MessageKey } from './i18n/dictionary';
+import type { Failure } from './i18n/format';
 import { z } from 'zod';
 import { formatKST, kstDayKey, kstWallToUtc, utcToKstWall } from './time';
 
@@ -91,26 +93,29 @@ export function buildEditableSession(
 export function buildAndValidateTimeline(
   input: TimelineInput,
   now: Date = new Date(),
-): { ok: true; timeline: EditTimeline } | { ok: false; error: string } {
+):
+  | { ok: true; timeline: EditTimeline }
+  /** Failures are message keys. The screen and Slack each render them in their own language. */
+  | ({ ok: false } & Failure) {
   const start = kstWallToUtc(input.clockIn);
   if (Number.isNaN(start.getTime())) {
-    return { ok: false, error: 'The clock-in time is not in a valid format' };
+    return { ok: false, messageKey: 'valid.badClockInFormat' };
   }
   if (start.getTime() > now.getTime()) {
-    return { ok: false, error: 'A time in the future cannot be entered' };
+    return { ok: false, messageKey: 'valid.noFutureTime' };
   }
 
   let end: Date | null = null;
   if (input.clockOut) {
     end = kstWallToUtc(input.clockOut);
     if (Number.isNaN(end.getTime())) {
-      return { ok: false, error: 'The clock-out time is not in a valid format' };
+      return { ok: false, messageKey: 'valid.badClockOutFormat' };
     }
     if (start.getTime() >= end.getTime()) {
-      return { ok: false, error: 'Clock-out has to come after clock-in' };
+      return { ok: false, messageKey: 'valid.clockOutBeforeIn' };
     }
     if (end.getTime() > now.getTime()) {
-      return { ok: false, error: 'A time in the future cannot be entered' };
+      return { ok: false, messageKey: 'valid.noFutureTime' };
     }
   }
 
@@ -118,7 +123,7 @@ export function buildAndValidateTimeline(
   const parsed: { s: Date; e: Date; kind: EditBreakKind }[] = [];
   for (const b of input.breaks) {
     const kind = normalizeBreakKind(b.kind);
-    const label = kind === 'LUNCH' ? 'Meal' : 'Away';
+    const labelKey: MessageKey = kind === 'LUNCH' ? 'edit.meal' : 'edit.away';
     const s = kstWallToUtc(b.start);
     // A meal ends at its start plus the fixed length, never at an input value; it only moves.
     // Why it is not trimmed to the clock-out: its length would jump around on every unrelated edit,
@@ -128,10 +133,10 @@ export function buildAndValidateTimeline(
         ? new Date(s.getTime() + LUNCH_MINUTES * 60_000)
         : kstWallToUtc(b.end);
     if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
-      return { ok: false, error: `The ${label} time is not in a valid format` };
+      return { ok: false, messageKey: 'valid.breakBadFormat', kindKey: labelKey };
     }
     if (s.getTime() >= e.getTime()) {
-      return { ok: false, error: `${label} has to end after it starts` };
+      return { ok: false, messageKey: 'valid.breakEndBeforeStart', kindKey: labelKey };
     }
     // A meal still running may end in the future, so with no clock-out the ceiling is checked
     // against its start. With a clock-out, the whole meal has to fit inside the working span.
@@ -142,9 +147,8 @@ export function buildAndValidateTimeline(
     if (s.getTime() < start.getTime() || overUpper) {
       return {
         ok: false,
-        error: end
-          ? `${label} has to fall between the clock-in and the clock-out`
-          : `${label} has to fall between the clock-in and now`,
+        messageKey: end ? 'valid.breakOutsideShift' : 'valid.breakOutsideOpen',
+        kindKey: labelKey,
       };
     }
     parsed.push({ s, e, kind });
@@ -153,7 +157,7 @@ export function buildAndValidateTimeline(
   const sorted = [...parsed].sort((a, b) => a.s.getTime() - b.s.getTime());
   for (let i = 1; i < sorted.length; i += 1) {
     if (sorted[i].s.getTime() < sorted[i - 1].e.getTime()) {
-      return { ok: false, error: 'Away and meal periods overlap' };
+      return { ok: false, messageKey: 'valid.breaksOverlap' };
     }
   }
 

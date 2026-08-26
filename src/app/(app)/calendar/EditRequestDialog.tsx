@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useTranslation } from '@/lib/i18n/client';
+import { translateFailure } from '@/lib/i18n/format';
 import type { MessageKey } from '@/lib/i18n/dictionary';
 import {
   Select,
@@ -251,7 +252,7 @@ export function EditRequestDialog({
     };
     const check = buildAndValidateTimeline(payload);
     if (!check.ok) {
-      toast.error(check.error);
+      toast.error(translateFailure(t, check));
       return;
     }
     start(async () => {

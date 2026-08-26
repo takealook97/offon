@@ -20,8 +20,8 @@ function expectFail(
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.ok(
-    result.error.includes(needle),
-    `expected error to include ${JSON.stringify(needle)}, got ${JSON.stringify(result.error)}`,
+    result.messageKey === needle,
+    `expected messageKey ${JSON.stringify(needle)}, got ${JSON.stringify(result.messageKey)}`,
   );
 }
 
@@ -36,35 +36,35 @@ test('accepts a booking that ends exactly at closing time', () => {
 });
 
 test('rejects a start before opening time', () => {
-  expectFail(validateBookingRange(at('07:50'), at('08:30'), NOW), '08:00~19:00');
+  expectFail(validateBookingRange(at('07:50'), at('08:30'), NOW), 'valid.openHours');
 });
 
 test('rejects an end after closing time', () => {
-  expectFail(validateBookingRange(at('18:00'), at('19:10'), NOW), '08:00~19:00');
+  expectFail(validateBookingRange(at('18:00'), at('19:10'), NOW), 'valid.openHours');
 });
 
 test('rejects a start that is not on a 10-minute boundary', () => {
-  expectFail(validateBookingRange(at('10:05'), at('11:00'), NOW), 'ten-minute steps');
+  expectFail(validateBookingRange(at('10:05'), at('11:00'), NOW), 'valid.stepMinutes');
 });
 
 test('rejects an end that is not on a 10-minute boundary', () => {
-  expectFail(validateBookingRange(at('10:00'), at('10:55'), NOW), 'ten-minute steps');
+  expectFail(validateBookingRange(at('10:00'), at('10:55'), NOW), 'valid.stepMinutes');
 });
 
 test('rejects an end earlier than the start', () => {
-  expectFail(validateBookingRange(at('11:00'), at('10:00'), NOW), 'end time');
+  expectFail(validateBookingRange(at('11:00'), at('10:00'), NOW), 'valid.endBeforeStart');
 });
 
 test('rejects a zero-length booking', () => {
-  expectFail(validateBookingRange(at('10:00'), at('10:00'), NOW), 'end time');
+  expectFail(validateBookingRange(at('10:00'), at('10:00'), NOW), 'valid.endBeforeStart');
 });
 
 test('rejects a booking that crosses midnight into the next day', () => {
-  expectFail(validateBookingRange(`${D}T18:00`, '2026-08-06T09:00', NOW), 'same day');
+  expectFail(validateBookingRange(`${D}T18:00`, '2026-08-06T09:00', NOW), 'valid.sameDayOnly');
 });
 
 test('rejects a start in the past', () => {
-  expectFail(validateBookingRange(at('09:00'), at('10:00'), at('10:00')), 'in the past');
+  expectFail(validateBookingRange(at('09:00'), at('10:00'), at('10:00')), 'valid.pastTime');
 });
 
 test('accepts a start exactly at the current time', () => {

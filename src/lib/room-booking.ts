@@ -32,13 +32,13 @@ export const MEETING_TYPE_KEY: Record<MeetingTypeValue, MessageKey> = {
 
 const WALL = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'That time is not in a valid format');
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'valid.badTimeFormat');
 
 /** The request body sent by the client. Times are wall clock. */
 export const RoomBookingBody = z.object({
   roomId: z.coerce.number().int().positive(),
   type: z.enum(MEETING_TYPES),
-  title: z.string().trim().min(1, 'Enter a reason').max(100),
+  title: z.string().trim().min(1, 'valid.reasonRequired').max(100),
   start: WALL,
   end: WALL,
   memberIds: z.array(z.coerce.number().int().positive()).max(30).default([]),
@@ -74,7 +74,10 @@ export function toWallString(dateStr: string, minutes: number): string {
 
 export type BookingSlot = { id: number; start: string; end: string };
 
-export type BookingCheck = { ok: true } | { ok: false; error: string };
+/** Failures come back as keys, not prose. The screen and Slack each render them in their own language. */
+export type BookingCheck =
+  | { ok: true }
+  | { ok: false; messageKey: MessageKey; vars?: Record<string, string | number> };
 
 /**
  * Same day, on the slot granularity, ending after it starts, inside the bookable window, and not in the past.
@@ -88,23 +91,23 @@ export function validateBookingRange(
   nowWall: string,
 ): BookingCheck {
   if (wallDate(start) !== wallDate(end)) {
-    return { ok: false, error: 'A booking has to start and end on the same day' };
+    return { ok: false, messageKey: 'valid.sameDayOnly' };
   }
   const s = wallMinutes(start);
   const e = wallMinutes(end);
   if (s % ROOM_STEP_MINUTES !== 0 || e % ROOM_STEP_MINUTES !== 0) {
-    return { ok: false, error: 'Times can only be chosen in ten-minute steps' };
+    return { ok: false, messageKey: 'valid.stepMinutes', vars: { step: ROOM_STEP_MINUTES } };
   }
   if (e <= s) {
-    return { ok: false, error: 'The end time has to come after the start time' };
+    return { ok: false, messageKey: 'valid.endBeforeStart' };
   }
   if (s < ROOM_OPEN_MINUTES || e > ROOM_CLOSE_MINUTES) {
     const open = minutesToHhMm(ROOM_OPEN_MINUTES);
     const close = minutesToHhMm(ROOM_CLOSE_MINUTES);
-    return { ok: false, error: `Bookings are only possible between ${open} and ${close}` };
+    return { ok: false, messageKey: 'valid.openHours', vars: { open, close } };
   }
   if (start < nowWall) {
-    return { ok: false, error: 'A time in the past cannot be booked' };
+    return { ok: false, messageKey: 'valid.pastTime' };
   }
   return { ok: true };
 }

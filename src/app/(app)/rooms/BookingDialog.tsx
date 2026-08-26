@@ -177,7 +177,7 @@ export function BookingDialog({
   );
 
   const error = !rangeCheck.ok
-    ? rangeCheck.error
+    ? t(rangeCheck.messageKey, rangeCheck.vars)
     : conflict
       ? t('room.conflict', { start: minutesToHhMm(wallMinutes(conflict.start)), end: minutesToHhMm(
           wallMinutes(conflict.end),

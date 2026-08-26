@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     const check = validateBookingRange(start, end, utcToKstWall(new Date()));
     if (!check.ok) {
-      return NextResponse.json({ ok: false, error: check.error }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t(check.messageKey, check.vars) }, { status: 400 });
     }
 
     const room = await prisma.meetingRoom.findFirst({

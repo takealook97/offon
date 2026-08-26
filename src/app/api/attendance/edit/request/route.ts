@@ -15,6 +15,7 @@ import {
 } from '@/lib/attendance-edit';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
+import { translateFailure } from '@/lib/i18n/format';
 
 const PENDING_UNIQUE_INDEX = 'attendance_edit_requests_pending_unique';
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const built = buildAndValidateTimeline({ clockIn, clockOut, breaks });
     if (!built.ok) {
-      return NextResponse.json({ ok: false, error: built.error }, { status: 400 });
+      return NextResponse.json({ ok: false, error: translateFailure(t, built) }, { status: 400 });
     }
 
     // The clock-in has to fall on the same day as the work date. Moving it elsewhere
