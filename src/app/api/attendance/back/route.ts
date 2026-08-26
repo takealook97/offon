@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 import { endBreak } from '@/lib/attendance';
 
 export async function POST() {
@@ -8,7 +9,7 @@ export async function POST() {
     const result = await endBreak(session.memberId, 'web');
     if (!result.ok) {
       return NextResponse.json(
-        { ok: false, error: result.error },
+        { ok: false, error: (await getT())(result.messageKey) },
         { status: 400 },
       );
     }

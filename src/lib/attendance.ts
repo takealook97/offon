@@ -4,6 +4,7 @@ import { prisma } from './prisma';
 import { formatKST, todayKST } from './time';
 import { logAudit } from './audit';
 import { getDeploymentT } from './i18n/deployment';
+import type { MessageKey } from './i18n/dictionary';
 import { sendChannel, scheduleChannel, cancelScheduledChannel } from './slack';
 import { LUNCH_MINUTES } from './attendance-edit';
 
@@ -38,11 +39,11 @@ export type ClockInResult =
       at: Date;
       memberName: string | null;
     }
-  | { ok: false; code: 'ALREADY_WORKING'; error: string };
+  | { ok: false; code: 'ALREADY_WORKING'; messageKey: MessageKey };
 
 export type ClockOutResult =
   | { ok: true; attendance: Attendance; at: Date; memberName: string | null }
-  | { ok: false; code: 'NO_OPEN_SESSION' | 'ON_BREAK' | 'ON_LUNCH'; error: string };
+  | { ok: false; code: 'NO_OPEN_SESSION' | 'ON_BREAK' | 'ON_LUNCH'; messageKey: MessageKey };
 
 export type StartBreakResult =
   | {
@@ -54,7 +55,7 @@ export type StartBreakResult =
   | {
       ok: false;
       code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH';
-      error: string;
+      messageKey: MessageKey;
     };
 
 export type EndBreakResult =
@@ -62,7 +63,7 @@ export type EndBreakResult =
   | {
       ok: false;
       code: 'NOT_ON_BREAK' | 'ALREADY_WORKING';
-      error: string;
+      messageKey: MessageKey;
     };
 
 export type StartLunchResult =
@@ -78,7 +79,7 @@ export type StartLunchResult =
   | {
       ok: false;
       code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH';
-      error: string;
+      messageKey: MessageKey;
     };
 
 const STANDARD_MINUTES = 480;
@@ -297,7 +298,7 @@ export async function clockInMember(
     },
   });
   if (activeOpen) {
-    return { ok: false, code: 'ALREADY_WORKING', error: 'You are already clocked in' };
+    return { ok: false, code: 'ALREADY_WORKING', messageKey: 'attErr.alreadyWorking' };
   }
 
   const existing = await prisma.attendance.findFirst({
@@ -308,7 +309,7 @@ export async function clockInMember(
     return {
       ok: false,
       code: 'ALREADY_WORKING',
-      error: 'You are away. Use the back command',
+      messageKey: 'attErr.awayUseBack',
     };
   }
 
@@ -332,7 +333,7 @@ export async function clockInMember(
       });
     } catch (e) {
       if (isOpenSessionConflict(e)) {
-        return { ok: false, code: 'ALREADY_WORKING', error: 'You are already clocked in' };
+        return { ok: false, code: 'ALREADY_WORKING', messageKey: 'attErr.alreadyWorking' };
       }
       throw e;
     }
@@ -377,7 +378,7 @@ export async function clockInMember(
     });
   } catch (e) {
     if (isOpenSessionConflict(e)) {
-      return { ok: false, code: 'ALREADY_WORKING', error: 'You are already clocked in' };
+      return { ok: false, code: 'ALREADY_WORKING', messageKey: 'attErr.alreadyWorking' };
     }
     throw e;
   }
@@ -429,7 +430,7 @@ export async function clockOutMember(
     return {
       ok: false,
       code: 'ON_BREAK',
-      error: 'You are away. Come back before clocking out',
+      messageKey: 'attErr.awayBeforeClockOut',
     };
   }
 
@@ -446,7 +447,7 @@ export async function clockOutMember(
     return {
       ok: false,
       code: 'NO_OPEN_SESSION',
-      error: 'No work session is open',
+      messageKey: 'attErr.noOpenSession',
     };
   }
 
@@ -506,20 +507,20 @@ export async function clockOutMember(
       return {
         ok: false,
         code: 'ON_BREAK',
-        error: 'You are away. Come back before clocking out',
+        messageKey: 'attErr.awayBeforeClockOut',
       };
     }
     if (outcome.code === 'ON_LUNCH') {
       return {
         ok: false,
         code: 'ON_LUNCH',
-        error: 'You are on a meal. Clock out once it ends',
+        messageKey: 'attErr.mealBeforeClockOut',
       };
     }
     return {
       ok: false,
       code: 'NO_OPEN_SESSION',
-      error: 'No work session is open',
+      messageKey: 'attErr.noOpenSession',
     };
   }
   const updated = outcome.updated;
@@ -569,19 +570,19 @@ export async function startBreak(
     include: { attendance: true },
   });
   if (!open) {
-    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+    return { ok: false, code: 'NOT_WORKING', messageKey: 'attErr.clockInFirst' };
   }
   const attendance = open.attendance;
   if (attendance.status === 'DONE') {
-    return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+    return { ok: false, code: 'ALREADY_DONE', messageKey: 'attErr.alreadyDone' };
   }
   if (attendance.status === 'ON_BREAK') {
-    return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
+    return { ok: false, code: 'ALREADY_ON_BREAK', messageKey: 'attErr.alreadyAway' };
   }
   // With an open session the status should be WORKING. Anything else is inconsistent
   // (NOT_STARTED and friends), and we answer NOT_WORKING to stay on the safe side.
   if (attendance.status !== 'WORKING') {
-    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+    return { ok: false, code: 'NOT_WORKING', messageKey: 'attErr.clockInFirst' };
   }
 
   const at = new Date();
@@ -614,21 +615,21 @@ export async function startBreak(
     });
   } catch (e) {
     if (isOpenBreakConflict(e)) {
-      return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
+      return { ok: false, code: 'ALREADY_ON_BREAK', messageKey: 'attErr.alreadyAway' };
     }
     throw e;
   }
   if ('code' in outcome) {
     if (outcome.code === 'ON_LUNCH') {
-      return { ok: false, code: 'ON_LUNCH', error: 'That cannot be used while you are on a meal' };
+      return { ok: false, code: 'ON_LUNCH', messageKey: 'attErr.blockedWhileMeal' };
     }
     if (outcome.code === 'ALREADY_ON_BREAK') {
-      return { ok: false, code: 'ALREADY_ON_BREAK', error: 'You are already marked away' };
+      return { ok: false, code: 'ALREADY_ON_BREAK', messageKey: 'attErr.alreadyAway' };
     }
     if (outcome.code === 'ALREADY_DONE') {
-      return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+      return { ok: false, code: 'ALREADY_DONE', messageKey: 'attErr.alreadyDone' };
     }
-    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+    return { ok: false, code: 'NOT_WORKING', messageKey: 'attErr.clockInFirst' };
   }
   const updated = outcome.updated;
 
@@ -782,21 +783,21 @@ export async function startLunch(
     include: { attendance: true },
   });
   if (!open) {
-    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+    return { ok: false, code: 'NOT_WORKING', messageKey: 'attErr.clockInFirst' };
   }
   const attendance = open.attendance;
   if (attendance.status === 'DONE') {
-    return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+    return { ok: false, code: 'ALREADY_DONE', messageKey: 'attErr.alreadyDone' };
   }
   if (attendance.status === 'ON_BREAK') {
     return {
       ok: false,
       code: 'ALREADY_ON_BREAK',
-      error: 'That cannot be used while you are away',
+      messageKey: 'attErr.blockedWhileAway',
     };
   }
   if (attendance.status !== 'WORKING') {
-    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+    return { ok: false, code: 'NOT_WORKING', messageKey: 'attErr.clockInFirst' };
   }
 
   const at = new Date();
@@ -826,19 +827,19 @@ export async function startLunch(
   });
   if ('code' in outcome) {
     if (outcome.code === 'ON_LUNCH') {
-      return { ok: false, code: 'ON_LUNCH', error: 'You are already on a meal' };
+      return { ok: false, code: 'ON_LUNCH', messageKey: 'attErr.alreadyOnMeal' };
     }
     if (outcome.code === 'ALREADY_ON_BREAK') {
       return {
         ok: false,
         code: 'ALREADY_ON_BREAK',
-        error: 'That cannot be used while you are away',
+        messageKey: 'attErr.blockedWhileAway',
       };
     }
     if (outcome.code === 'ALREADY_DONE') {
-      return { ok: false, code: 'ALREADY_DONE', error: 'Today is already finished' };
+      return { ok: false, code: 'ALREADY_DONE', messageKey: 'attErr.alreadyDone' };
     }
-    return { ok: false, code: 'NOT_WORKING', error: 'Clock in first' };
+    return { ok: false, code: 'NOT_WORKING', messageKey: 'attErr.clockInFirst' };
   }
   const created = outcome.created;
 
@@ -891,7 +892,7 @@ export async function endBreak(
     return {
       ok: false,
       code: 'NOT_ON_BREAK',
-      error: 'You are not marked away',
+      messageKey: 'attErr.notAway',
     };
   }
   const attendance = openBreak.attendance;
@@ -929,7 +930,7 @@ export async function endBreak(
     return {
       ok: false,
       code: 'NOT_ON_BREAK',
-      error: 'You are not marked away',
+      messageKey: 'attErr.notAway',
     };
   }
 

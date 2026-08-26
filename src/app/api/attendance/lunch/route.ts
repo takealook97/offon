@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSession } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 import { startLunch } from '@/lib/attendance';
 
 export async function POST() {
@@ -7,7 +8,7 @@ export async function POST() {
     const session = await requireSession();
     const result = await startLunch(session.memberId, 'web');
     if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+      return NextResponse.json({ ok: false, error: (await getT())(result.messageKey) }, { status: 400 });
     }
     return NextResponse.json({
       ok: true,

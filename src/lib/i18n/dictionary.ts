@@ -148,6 +148,21 @@ const ko = {
   'announce.meal': '{time}\n{name}님이 식사하러 가셨습니다🍽️',
   'announce.away': '{time}\n{name}님이 자리를 비웠습니다⏸️',
   'announce.back': '{time}\n{name}님이 복귀했습니다▶️',
+
+  // 근태 도메인 거절 사유. 도메인은 키만 반환하고, 화면은 보는 사람의 언어로,
+  // Slack 은 배포 언어로 각자 번역한다.
+  'attErr.alreadyWorking': '이미 근무 중입니다',
+  'attErr.awayUseBack': '자리비움 상태입니다. 복귀를 사용해주세요',
+  'attErr.awayBeforeClockOut': '자리비움 상태입니다. 복귀 후 퇴근해주세요',
+  'attErr.mealBeforeClockOut': '식사 중입니다. 식사 종료 후 퇴근해주세요',
+  'attErr.noOpenSession': '진행 중인 근무 세션이 없습니다',
+  'attErr.clockInFirst': '출근 후 사용해주세요',
+  'attErr.alreadyDone': '오늘 근무가 이미 종료되었습니다',
+  'attErr.alreadyAway': '이미 자리비움 상태입니다',
+  'attErr.blockedWhileMeal': '식사 중에는 사용할 수 없습니다',
+  'attErr.alreadyOnMeal': '이미 식사 중입니다',
+  'attErr.blockedWhileAway': '자리비움 중에는 사용할 수 없습니다',
+  'attErr.notAway': '자리비움 상태가 아닙니다',
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -285,6 +300,19 @@ const en: Messages = {
   'announce.meal': '{time}\n{name} went for a meal🍽️',
   'announce.away': '{time}\n{name} stepped away⏸️',
   'announce.back': '{time}\n{name} is back▶️',
+
+  'attErr.alreadyWorking': "You're already clocked in",
+  'attErr.awayUseBack': "You're away — use back instead",
+  'attErr.awayBeforeClockOut': "You're away. Come back before clocking out",
+  'attErr.mealBeforeClockOut': "You're on a meal. Clock out once it ends",
+  'attErr.noOpenSession': 'No work session is open',
+  'attErr.clockInFirst': 'Clock in first',
+  'attErr.alreadyDone': "You've already finished for today",
+  'attErr.alreadyAway': "You're already away",
+  'attErr.blockedWhileMeal': "You can't use that during a meal",
+  'attErr.alreadyOnMeal': "You're already on a meal",
+  'attErr.blockedWhileAway': "You can't use that while away",
+  'attErr.notAway': "You're not away right now",
 };
 
 export const MESSAGES: Record<Locale, Messages> = { ko, en };
