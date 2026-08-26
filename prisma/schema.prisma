@@ -132,22 +132,21 @@ model AttendanceSession {
 }
 
 model AttendanceBreak {
-  id                  Int       @id @default(autoincrement())
-  attendanceId        Int       @map("attendance_id")
-  sessionId           Int       @map("session_id")
-  startAt             DateTime  @map("start_at")
-  endAt               DateTime? @map("end_at")
-  kind                BreakKind @default(BREAK)
-  lunchReminderSentAt DateTime? @map("lunch_reminder_sent_at")
+  id                Int       @id @default(autoincrement())
+  attendanceId      Int       @map("attendance_id")
+  sessionId         Int       @map("session_id")
+  startAt           DateTime  @map("start_at")
+  endAt             DateTime? @map("end_at")
+  kind              BreakKind @default(BREAK)
   // Meals only: the id of the return notice scheduled in Slack for when the meal ends.
   // If the meal is cut short, by leaving early for instance, this is what cancels it.
   // The channel column holds the channel from the scheduling response, always an id.
   // (SLACK_OFFON_CHANNEL may be a name such as '#offon', but cancelling requires an id.)
-  autoBackMessageId   String?   @map("auto_back_message_id")
-  autoBackChannelId   String?   @map("auto_back_channel_id")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-  deletedAt           DateTime? @map("deleted_at")
+  autoBackMessageId String?   @map("auto_back_message_id")
+  autoBackChannelId String?   @map("auto_back_channel_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
 
   attendance Attendance        @relation(fields: [attendanceId], references: [id])
   session    AttendanceSession @relation(fields: [sessionId], references: [id])
@@ -260,7 +259,6 @@ model AppSetting {
   id                           Int      @id @default(1)
   missingClockInNotifyEnabled  Boolean  @default(false) @map("missing_clockin_notify_enabled")
   missingClockOutNotifyEnabled Boolean  @default(false) @map("missing_clockout_notify_enabled")
-  lunchReminderNotifyEnabled   Boolean  @default(false) @map("lunch_reminder_notify_enabled")
   /// The bookable window for rooms, in minutes from midnight. Defaults to 08:00-19:00.
   roomOpenMinutes              Int      @default(480) @map("room_open_minutes")
   roomCloseMinutes             Int      @default(1140) @map("room_close_minutes")

@@ -102,15 +102,7 @@ Three jobs are declared in `vercel.ts` and authenticate with `CRON_SECRET`:
 
 The notification jobs are off by default and switched on from the in-app **admin → settings** page, so deploying doesn't start messaging your team unannounced.
 
-**Cron limits depend on your Vercel plan** — both how many jobs you get and how often they may run. Check [Vercel's cron documentation](https://vercel.com/docs/cron-jobs) against the four entries in `vercel.ts` before relying on them; on the free plan you may need to drop one or move it to an external scheduler.
-
-There's a fourth handler, `/api/cron/lunch-reminder`, deliberately **not** registered in `vercel.ts`. It needs to run every few minutes across the lunch window, which exceeds what the free plan allows. If you want it, call it from any external scheduler (cron-job.org, GitHub Actions, your own box) with the same bearer token:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/lunch-reminder
-```
-
-The handler is idempotent, so calling it more often than needed is harmless.
+**Cron limits depend on your Vercel plan** — both how many jobs you get and how often they may run. Check [Vercel's cron documentation](https://vercel.com/docs/cron-jobs) against the entries in `vercel.ts` before relying on them; on the free plan you may need to drop one or move it to an external scheduler.
 
 ## Deploying somewhere other than Vercel
 
