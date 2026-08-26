@@ -1,4 +1,27 @@
+# For local development, bringing up just Postgres is enough.
+# To run the app as well, use the app profile.
 services:
+  app:
+    profiles: [app]
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_TIMEZONE: ${NEXT_PUBLIC_TIMEZONE:-Asia/Seoul}
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://offon:offon@postgres:5432/offon?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      OTP_PEPPER: ${OTP_PEPPER:?set OTP_PEPPER in .env}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      SLACK_OFFON_CHANNEL: ${SLACK_OFFON_CHANNEL:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+      DEFAULT_LOCALE: ${DEFAULT_LOCALE:-ko}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:18
     container_name: offon-local-pg

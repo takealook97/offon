@@ -97,7 +97,9 @@ Then sign in with the admin's email. A 6-digit code arrives in that person's Sla
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftakealook97%2Foffon&project-name=offon&repository-name=offon&env=DATABASE_URL,SESSION_SECRET,OTP_PEPPER,SLACK_BOT_TOKEN,SLACK_SIGNING_SECRET,SLACK_OFFON_CHANNEL,CRON_SECRET)
 
-You'll need a Postgres database — **Supabase, Neon, Railway, RDS, or your own** all work. See **[docs/self-hosting.md](docs/self-hosting.md)** for the full walkthrough, including the connection-pooling setting that matters on serverless and how the scheduled jobs are wired.
+Prefer Docker? `docker compose --profile app up --build` brings up the app and a database together — see [docs/self-hosting.md](docs/self-hosting.md).
+
+On Vercel you'll need a Postgres database — **Supabase, Neon, Railway, RDS, or your own** all work. See **[docs/self-hosting.md](docs/self-hosting.md)** for the full walkthrough, including the connection-pooling setting that matters on serverless and how the scheduled jobs are wired.
 
 ## Configuration
 

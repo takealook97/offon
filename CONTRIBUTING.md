@@ -33,6 +33,8 @@ DATABASE_URL="postgresql://offon:offon@localhost:55432/offon_test?schema=public"
 
 It refuses to run unless the database name ends in `_test`, because it truncates every table between cases.
 
+There is also a `Dockerfile` for self-hosters; `docker build .` should stay green.
+
 CI runs all four. They pass on `main`, so a red build means the change broke something.
 
 **Run the app too.** Type checking and linting both pass on code that cannot boot — server-only imports leaking into client bundles and missing `'use client'` directives only show up at runtime.

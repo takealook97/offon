@@ -114,7 +114,31 @@ The handler is idempotent, so calling it more often than needed is harmless.
 
 ## Deploying somewhere other than Vercel
 
-Nothing here is Vercel-specific except the cron declarations. `pnpm build && pnpm start` runs anywhere Node runs — Docker, Fly, Render, a VPS. Replace the `vercel.ts` crons with whatever your platform offers (a real crontab, a Kubernetes CronJob) hitting the same endpoints with the same bearer token.
+Nothing here is Vercel-specific except the cron declarations.
+
+### Docker
+
+The repository ships a `Dockerfile` and a compose profile that brings up the app and its database together:
+
+```bash
+cp .env.example .env      # fill in the secrets
+docker compose --profile app up --build
+```
+
+Then create the schema and the first admin, once:
+
+```bash
+docker compose exec app npx prisma migrate deploy
+docker compose exec app node node_modules/.bin/tsx prisma/seed.ts
+```
+
+The image is a multi-stage build on Next.js's standalone output — about 400 MB — and runs as a non-root user. The standalone bundle already carries the Prisma client and its engines, so migrations run inside the container.
+
+`NEXT_PUBLIC_TIMEZONE` is baked in at build time — the browser needs it, so it cannot be read from the environment at runtime. Change it and rebuild.
+
+### Anything else
+
+`pnpm build && pnpm start` runs anywhere Node runs — Fly, Render, a VPS. Replace the `vercel.ts` crons with whatever your platform offers (a real crontab, a Kubernetes CronJob) hitting the same endpoints with the same bearer token.
 
 ## Upgrading
 
