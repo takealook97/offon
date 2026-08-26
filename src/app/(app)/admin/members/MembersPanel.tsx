@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { MoreHorizontal, Pencil, Plus, UserMinus, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -70,6 +71,7 @@ function remaining(m: MemberRow): number {
 }
 
 export function MembersPanel({ rows }: { rows: MemberRow[] }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -81,17 +83,17 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>{t('member.name')}</TableHead>
+              <TableHead>{t('member.email')}</TableHead>
               <TableHead>Slack ID</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead className="w-[72px]">Base</TableHead>
-              <TableHead className="w-[72px]">Add</TableHead>
-              <TableHead className="w-[72px]">Scheduled</TableHead>
-              <TableHead className="w-[72px]">Used</TableHead>
-              <TableHead className="w-[72px]">Remaining</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('member.position')}</TableHead>
+              <TableHead>{t('member.role')}</TableHead>
+              <TableHead className="w-[72px]">{t('member.baseDays')}</TableHead>
+              <TableHead className="w-[72px]">{t('member.bonusDays')}</TableHead>
+              <TableHead className="w-[72px]">{t('member.scheduledDays')}</TableHead>
+              <TableHead className="w-[72px]">{t('member.usedDays')}</TableHead>
+              <TableHead className="w-[72px]">{t('member.remainingDays')}</TableHead>
+              <TableHead>{t('member.state')}</TableHead>
               <TableHead className="w-[48px]" />
             </TableRow>
           </TableHeader>
@@ -155,7 +157,7 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
                   <StatusBadge active={m.active} />
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  {m.position ?? '—'} · {m.email ?? 'no email'}
+                  {m.position ?? '—'} · {m.email ?? t('member.noEmail')}
                 </p>
                 <p className="truncate font-mono text-xs text-muted-foreground">{m.slackId}</p>
               </div>
@@ -163,15 +165,15 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
             </div>
             <div className="mt-3 flex items-center justify-between gap-2 text-xs">
               <span className="text-muted-foreground">
-                Base <span className="font-mono tabular-nums">{safe(m.baseDays)}</span>
+                {t('member.baseDays')} <span className="font-mono tabular-nums">{safe(m.baseDays)}</span>
                 <span className="mx-1.5">·</span>
-                Add <span className="font-mono tabular-nums">{safe(m.bonusDays)}</span>
+                {t('member.bonusDays')} <span className="font-mono tabular-nums">{safe(m.bonusDays)}</span>
                 <span className="mx-1.5">·</span>
-                Scheduled <span className="font-mono tabular-nums">{safe(m.scheduledDays)}</span>
+                {t('member.scheduledDays')} <span className="font-mono tabular-nums">{safe(m.scheduledDays)}</span>
                 <span className="mx-1.5">·</span>
-                Used <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
+                {t('member.usedDays')} <span className="font-mono tabular-nums">{safe(m.usedDays)}</span>
               </span>
-              <span className="font-mono font-medium tabular-nums">Remaining {remaining(m)}Day</span>
+              <span className="font-mono font-medium tabular-nums">{t('member.remainingWithDays', { days: remaining(m) })}</span>
             </div>
           </div>
         ))}
@@ -181,24 +183,27 @@ export function MembersPanel({ rows }: { rows: MemberRow[] }) {
 }
 
 function RoleBadge({ role }: { role: 'EMPLOYEE' | 'ADMIN' }) {
+  const { t } = useTranslation();
   if (role === 'ADMIN')
-    return <Badge variant="outline" className="border-foreground/30">Admin</Badge>;
-  return <Badge variant="secondary">An employee</Badge>;
+    return <Badge variant="outline" className="border-foreground/30">{t('member.roleAdmin')}</Badge>;
+  return <Badge variant="secondary">{t('member.roleEmployee')}</Badge>;
 }
 
 function StatusBadge({ active }: { active: boolean }) {
+  const { t } = useTranslation();
   return active ? (
     <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-      Active
+      {t('member.active')}
     </Badge>
   ) : (
     <Badge variant="outline" className="border-border text-muted-foreground">
-      Inactive
+      {t('member.inactive')}
     </Badge>
   );
 }
 
 function RowActions({ member }: { member: MemberRow }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
@@ -206,7 +211,7 @@ function RowActions({ member }: { member: MemberRow }) {
   const toggle = () =>
     start(async () => {
       const next = !member.active;
-      if (!next && !confirm('Deactivate this member?')) return;
+      if (!next && !confirm(t('member.deactivateConfirm'))) return;
       const res = await fetch('/api/admin/user/deactivate', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
@@ -214,10 +219,10 @@ function RowActions({ member }: { member: MemberRow }) {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? (next ? 'Could not activate' : 'Could not deactivate'));
+        toast.error(data.error ?? (next ? t('member.activateFailed') : t('member.deactivateFailed')));
         return;
       }
-      toast.success(next ? 'Activated' : 'Deactivated');
+      toast.success(next ? t('member.activated') : t('member.deactivated'));
       router.refresh();
     });
 
@@ -225,25 +230,25 @@ function RowActions({ member }: { member: MemberRow }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-8" aria-label="Menu">
+          <Button variant="ghost" size="icon" className="size-8" aria-label={t('member.menu')}>
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
-            <Pencil className="size-4" /> Edit
+            <Pencil className="size-4" /> {t('member.edit')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={toggle} disabled={pending}>
             {member.active ? (
               <>
                 <UserMinus className="size-4 text-destructive" />
-                <span className="text-destructive">Deactivate</span>
+                <span className="text-destructive">{t('member.deactivate')}</span>
               </>
             ) : (
               <>
                 <UserPlus className="size-4 text-emerald-600" />
-                <span className="text-emerald-700 dark:text-emerald-300">Activate</span>
+                <span className="text-emerald-700 dark:text-emerald-300">{t('member.activate')}</span>
               </>
             )}
           </DropdownMenuItem>
@@ -256,6 +261,7 @@ function RowActions({ member }: { member: MemberRow }) {
 }
 
 function CreateDialog() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -282,10 +288,10 @@ function CreateDialog() {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Could not create that');
+        toast.error(data.error ?? t('member.createFailed'));
         return;
       }
-      toast.success(`${form.name} was added`);
+      toast.success(t('member.added', { name: form.name }));
       setForm({ name: '', email: '', slackId: '', position: '', role: 'EMPLOYEE', baseDays: 15 });
       setOpen(false);
       router.refresh();
@@ -295,16 +301,16 @@ function CreateDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="gap-2">
-          <Plus className="size-4" /> Add member
+          <Plus className="size-4" /> {t('member.add')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Add member</DialogTitle>
-          <DialogDescription>Enter the new member\'s details and starting leave.</DialogDescription>
+          <DialogTitle>{t('member.add')}</DialogTitle>
+          <DialogDescription>{t('member.addDescription')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          <Field label="Name" required>
+          <Field label={t('member.name')} required>
             <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -312,7 +318,7 @@ function CreateDialog() {
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Email">
+            <Field label={t('member.email')}>
               <Input
                 type="email"
                 value={form.email}
@@ -330,13 +336,13 @@ function CreateDialog() {
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Title">
+            <Field label={t('member.position')}>
               <Input
                 value={form.position}
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
               />
             </Field>
-            <Field label="Role">
+            <Field label={t('member.role')}>
               <Select
                 value={form.role}
                 onValueChange={(v) => setForm((f) => ({ ...f, role: v as 'EMPLOYEE' | 'ADMIN' }))}
@@ -345,12 +351,12 @@ function CreateDialog() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EMPLOYEE">An employee</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="EMPLOYEE">{t('member.roleEmployee')}</SelectItem>
+                  <SelectItem value="ADMIN">{t('member.roleAdmin')}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Base leave (days)">
+            <Field label={t('member.baseLeaveField')}>
               <Input
                 type="number"
                 min={0}
@@ -363,10 +369,10 @@ function CreateDialog() {
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
-            Cancelled
+            {t('common.cancel')}
           </Button>
           <Button onClick={submit} disabled={pending || !form.name || !form.slackId}>
-            {pending ? 'Adding…' : 'Add'}
+            {pending ? t('member.adding') : t('member.addAction')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -383,6 +389,7 @@ function EditDialog({
   onOpenChange: (v: boolean) => void;
   member: MemberRow;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [form, setForm] = useState({
@@ -422,10 +429,10 @@ function EditDialog({
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Could not save that');
+        toast.error(data.error ?? t('member.saveFailed'));
         return;
       }
-      toast.success('Saved');
+      toast.success(t('member.saved'));
       onOpenChange(false);
       router.refresh();
     });
@@ -434,18 +441,18 @@ function EditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{member.name} Edit</DialogTitle>
-          <DialogDescription>Edit this person's details and leave.</DialogDescription>
+          <DialogTitle>{t('member.editTitle', { name: member.name })}</DialogTitle>
+          <DialogDescription>{t('member.editDescription')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          <Field label="Name" required>
+          <Field label={t('member.name')} required>
             <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Email">
+            <Field label={t('member.email')}>
               <Input
                 type="email"
                 value={form.email}
@@ -461,13 +468,13 @@ function EditDialog({
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Title">
+            <Field label={t('member.position')}>
               <Input
                 value={form.position}
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
               />
             </Field>
-            <Field label="Role">
+            <Field label={t('member.role')}>
               <Select
                 value={form.role}
                 onValueChange={(v) => setForm((f) => ({ ...f, role: v as 'EMPLOYEE' | 'ADMIN' }))}
@@ -476,8 +483,8 @@ function EditDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EMPLOYEE">An employee</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="EMPLOYEE">{t('member.roleEmployee')}</SelectItem>
+                  <SelectItem value="ADMIN">{t('member.roleAdmin')}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -489,10 +496,10 @@ function EditDialog({
                 htmlFor={`exclude-missing-${member.id}`}
                 className="text-sm font-medium"
               >
-                Skip attendance reminders
+                {t('member.excludeNotify')}
               </Label>
               <p className="text-xs text-muted-foreground">
-                This person is never sent a missing clock-in or clock-out DM
+                {t('member.excludeNotifyHint')}
               </p>
             </div>
             <Switch
@@ -501,14 +508,14 @@ function EditDialog({
               onCheckedChange={(v) =>
                 setForm((f) => ({ ...f, excludeMissingNotify: v }))
               }
-              aria-label="Toggle attendance reminders"
+              aria-label={t('member.excludeNotifyToggle')}
             />
           </div>
 
           <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-            <Label className="text-xs text-muted-foreground">Leave</Label>
+            <Label className="text-xs text-muted-foreground">{t('member.leave')}</Label>
             <div className="mt-2 grid gap-3 sm:grid-cols-5">
-              <Field label="Base (days)">
+              <Field label={t('member.baseField')}>
                 <Input
                   type="number"
                   min={0}
@@ -520,7 +527,7 @@ function EditDialog({
                   }
                 />
               </Field>
-              <Field label="Bonus (days)">
+              <Field label={t('member.bonusLeaveField')}>
                 <Input
                   type="number"
                   min={-365}
@@ -533,7 +540,7 @@ function EditDialog({
                 />
               </Field>
               <div className="space-y-1.5">
-                <Label className="text-xs">Scheduled (days)</Label>
+                <Label className="text-xs">{t('member.scheduledLeaveField')}</Label>
                 <Input
                   type="number"
                   value={safe(member.scheduledDays)}
@@ -542,7 +549,7 @@ function EditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Used (days)</Label>
+                <Label className="text-xs">{t('member.usedField')}</Label>
                 <Input
                   type="number"
                   value={safe(member.usedDays)}
@@ -551,7 +558,7 @@ function EditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Remaining (days)</Label>
+                <Label className="text-xs">{t('member.remainingField')}</Label>
                 <Input
                   type="number"
                   value={remainingPreview}
@@ -564,10 +571,10 @@ function EditDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancelled
+            {t('common.cancel')}
           </Button>
           <Button onClick={save} disabled={pending || !form.name || !form.slackId}>
-            {pending ? 'Saving…' : 'Save'}
+            {pending ? t('member.saving') : t('member.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

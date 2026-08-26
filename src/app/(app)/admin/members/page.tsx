@@ -1,3 +1,4 @@
+import { getT } from '@/lib/i18n/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { kstDayKey } from '@/lib/time';
@@ -6,6 +7,7 @@ import { MembersPanel, type MemberRow } from './MembersPanel';
 export const dynamic = 'force-dynamic';
 
 export default async function MembersPage() {
+  const t = await getT();
   await requireAdmin();
 
   // leave_requests.endDate is a @db.Date, midnight UTC of the calendar date.
@@ -69,7 +71,7 @@ export default async function MembersPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('member.title')}</h1>
           <p className="text-sm text-muted-foreground">
             {rows.length} people · {rows.filter((r) => r.active).length} active
           </p>

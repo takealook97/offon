@@ -1,3 +1,4 @@
+import { getT } from '@/lib/i18n/server';
 import { requireAdmin } from '@/lib/session';
 import { getAppSettings } from '@/lib/settings';
 import { listHolidays } from '@/lib/holidays';
@@ -7,6 +8,7 @@ import { HolidaysPanel } from './HolidaysPanel';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSettingsPage() {
+  const t = await getT();
   await requireAdmin();
   const [settings, holidays] = await Promise.all([
     getAppSettings(),
@@ -16,7 +18,7 @@ export default async function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.title')}</h1>
         <p className="text-sm text-muted-foreground">
           Admin only · manage the application-wide settings
         </p>
