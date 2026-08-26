@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     });
     if (!room) {
       return NextResponse.json(
-        { ok: false, error: 'That room no longer exists' },
+        { ok: false, error: t('api.roomNotFound') },
         { status: 404 },
       );
     }
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     const uniqueMemberIds = [...new Set(memberIds)];
     if (!(await allMembersActive(uniqueMemberIds))) {
       return NextResponse.json(
-        { ok: false, error: 'One of the attendees is not a valid member' },
+        { ok: false, error: t('api.badAttendee') },
         { status: 400 },
       );
     }

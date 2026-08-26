@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     where: { email, deletedAt: null },
   });
   if (!member) {
-    return NextResponse.json({ ok: false, error: 'That code is not correct' }, { status: 401 });
+    return NextResponse.json({ ok: false, error: t('api.badCode') }, { status: 401 });
   }
 
   const latest = await prisma.loginCode.findUnique({
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       data: { attempts: { increment: 1 } },
     });
     await logAudit({ actorId: member.id, action: 'LOGIN_FAIL', metadata: { reason: 'wrong-code', ip } });
-    return NextResponse.json({ ok: false, error: 'That code is not correct' }, { status: 401 });
+    return NextResponse.json({ ok: false, error: t('api.badCode') }, { status: 401 });
   }
 
   await prisma.loginCode.update({

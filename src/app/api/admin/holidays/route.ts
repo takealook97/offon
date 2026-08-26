@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.holiday.findUnique({ where: { date: dateObj } });
     if (existing && existing.deletedAt === null) {
       return NextResponse.json(
-        { ok: false, error: 'That date is already registered' },
+        { ok: false, error: t('api.holidayDuplicate') },
         { status: 409 },
       );
     }

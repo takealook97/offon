@@ -24,7 +24,7 @@ export async function DELETE(
     });
     if (!existing) {
       return NextResponse.json(
-        { ok: false, error: 'Not found' },
+        { ok: false, error: t('api.notFound') },
         { status: 404 },
       );
     }

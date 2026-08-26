@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       where: { role: 'ADMIN', deletedAt: null },
       select: { slackId: true },
     });
-    const text = `${requester?.name ?? dt('dm.employee')} cancelled their attendance correction request.`;
+    const text = dt('dm.editCancelledLine', { name: requester?.name ?? dt('dm.employee') });
     await Promise.all(
       recipients.map((r) =>
         sendDm(r.slackId, text).catch((err) =>

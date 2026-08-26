@@ -26,14 +26,14 @@ export async function POST(req: NextRequest) {
       where: { id: parsed.data.id, deletedAt: null },
     });
     if (!target) {
-      return NextResponse.json({ ok: false, error: 'That leave request no longer exists' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: t('api.leaveNotFound') }, { status: 404 });
     }
     if (target.memberId !== session.memberId) {
-      return NextResponse.json({ ok: false, error: 'You can only cancel your own requests' }, { status: 403 });
+      return NextResponse.json({ ok: false, error: t('api.ownLeaveOnly') }, { status: 403 });
     }
     if (target.status !== 'REQUESTED' && target.status !== 'APPROVED') {
       return NextResponse.json(
-        { ok: false, error: 'That request was already cancelled or handled' },
+        { ok: false, error: t('api.leaveCancelledAlready') },
         { status: 400 },
       );
     }
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       admins.map((a) =>
         sendDm(
           a.slackId,
-          `${requester?.name ?? dt('dm.employee')} cancelled their ${typeLabel} request for ${dateRange}.`,
+          dt('dm.leaveCancelledLine', { name: requester?.name ?? dt('dm.employee'), range: dateRange, type: typeLabel }),
         ).catch((err) =>
           logAudit({
             actorId: session.memberId,

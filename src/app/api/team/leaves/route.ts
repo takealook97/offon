@@ -9,11 +9,12 @@ import {
 } from '@/lib/calendar-utils';
 import type { CalendarEvent } from '@/lib/api-types';
 import { getT } from '@/lib/i18n/server';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 
-function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
-  if (type === 'HALF_DAY_AM') return 'Half day (morning)';
-  if (type === 'HALF_DAY_PM') return 'Half day (afternoon)';
-  return 'Leave';
+function typeKey(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): MessageKey {
+  if (type === 'HALF_DAY_AM') return 'evt.halfAm';
+  if (type === 'HALF_DAY_PM') return 'evt.halfPm';
+  return 'appr.leave';
 }
 
 export async function GET(req: NextRequest) {
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
     });
 
     const events: CalendarEvent[] = leaves.map((l) => {
-      const label = typeLabel(l.type);
+      const label = t(typeKey(l.type));
       const title = `${l.member.name} ${label}`;
       if (l.type === 'FULL_DAY') {
         return {

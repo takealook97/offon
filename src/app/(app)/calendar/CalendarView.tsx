@@ -30,9 +30,9 @@ import { ShowMoreDialog } from './ShowMoreDialog';
 import { EditRequestDialog } from './EditRequestDialog';
 import { PendingEditRequests } from './PendingEditRequests';
 import { useTranslation } from '@/lib/i18n/client';
+import { formatDuration } from '@/lib/i18n/format';
 import {
   attendanceMinutesIn,
-  formatMinutes,
   rangeForView,
   weeksInMonth,
 } from './totals';
@@ -330,7 +330,7 @@ function WeeklySummary({
         <span className="text-xs text-muted-foreground">
           <span className="mr-1">{t('cal.monthTotal')}</span>
           <span className="font-mono font-medium tabular-nums text-foreground">
-            {formatMinutes(monthTotal)}
+            {formatDuration(t, monthTotal)}
           </span>
         </span>
       </header>
@@ -358,7 +358,7 @@ function WeeklySummary({
                   minutes > 0 ? 'font-medium' : 'text-muted-foreground',
                 )}
               >
-                {minutes > 0 ? formatMinutes(minutes) : isFuture ? '—' : t('cal.zeroMinutes')}
+                {minutes > 0 ? formatDuration(t, minutes) : isFuture ? '—' : t('cal.zeroMinutes')}
               </span>
             </li>
           );

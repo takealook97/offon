@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       await requireAdmin();
       const report = await buildOrgReport({ range, now });
       const buffer = await buildOrgWorkbook(t, report);
-      return xlsxResponse(buffer, `attendance_all_${range.yyyymm}.xlsx`, range.yyyymm);
+      return xlsxResponse(buffer, t('xls.fileAll', { yyyymm: range.yyyymm }), range.yyyymm);
     }
 
     // Per-person detail: anyone may export their own; only an admin may export somebody else's.
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
     const report = await buildIndividualReport({ memberId: targetMemberId, range, now });
     if (!report) {
       return NextResponse.json(
-        { ok: false, error: 'Could not find that' },
+        { ok: false, error: t('api.targetNotFound') },
         { status: 404 },
       );
     }
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
     if (e instanceof Response) return e;
     console.error('[export/attendance] failed', e);
     return NextResponse.json(
-      { ok: false, error: 'Could not build the spreadsheet' },
+      { ok: false, error: t('api.excelFailed') },
       { status: 500 },
     );
   }

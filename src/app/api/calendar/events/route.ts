@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
         const endAt = s.endAt ?? now;
         const minutes = sessionMinutes[idx];
         const inLabel = formatKST(s.startAt, 'HH:mm');
-        const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : 'In progress';
+        const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : t('status.inProgress');
         events.push({
           id: `sess-${s.id}`,
           title: `${inLabel} ~ ${outLabel} · ${formatDuration(minutes)}`,
@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
       if (l.type === 'FULL_DAY') {
         events.push({
           id: `leave-${l.id}`,
-          title: 'Leave (full day)',
+          title: t('evt.leaveFull'),
           start: kstIsoFromDate(l.startDate),
           end: kstIsoFromDate(addDaysUtc(l.endDate, 1)),
           allDay: true,
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
           l.startDate,
           l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
         );
-        const suffix = l.type === 'HALF_DAY_AM' ? '(morning)' : '(afternoon)';
+        const suffix = l.type === 'HALF_DAY_AM' ? t('evt.am') : t('evt.pm');
         events.push({
           id: `leave-${l.id}`,
           title: `Half day${suffix}`,
@@ -171,7 +171,7 @@ export async function GET(req: NextRequest) {
     if (e instanceof Response) return e;
     console.error('[calendar/events] failed', e);
     return NextResponse.json(
-      { ok: false, error: 'Could not load the calendar events' },
+      { ok: false, error: t('api.calendarLoadFailed') },
       { status: 500 },
     );
   }

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     const workDateKey = kstDayKey(target.attendance.workDate);
     if (kstDayKey(new Date(built.timeline.startAt)) !== workDateKey) {
       return NextResponse.json(
-        { ok: false, error: `The clock-in has to fall on the work date (${workDateKey})` },
+        { ok: false, error: t('api.clockInDayMismatch', { date: workDateKey }) },
         { status: 400 },
       );
     }
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     if (timelinesEqualAtMinute(snapshot, built.timeline)) {
       return NextResponse.json(
-        { ok: false, error: 'Nothing changed' },
+        { ok: false, error: t('edit.noChanges') },
         { status: 400 },
       );
     }
@@ -146,10 +146,10 @@ export async function POST(req: NextRequest) {
       select: { slackId: true },
     });
     const text =
-      `${requester?.name ?? dt('dm.employee')} requested an attendance correction.\n` +
+      `${dt('dm.editRequestedLine', { name: requester?.name ?? dt('dm.employee') })}\n` +
       `${formatTimelineDate(snapshot)}\n\n` +
-      `[was] ${formatTimelineSummary(snapshot)}\n` +
-      `[now] ${formatTimelineSummary(built.timeline)}`;
+      `${dt('dm.before')} ${formatTimelineSummary(snapshot)}\n` +
+      `${dt('dm.after')} ${formatTimelineSummary(built.timeline)}`;
     await Promise.all(
       recipients.map((r) =>
         sendDm(r.slackId, text).catch((err) =>

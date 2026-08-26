@@ -86,7 +86,7 @@ export async function findRoomConflict(
   });
   if (!conflict) return null;
   const range = `${formatKST(conflict.startAt, 'HH:mm')}~${formatKST(conflict.endAt, 'HH:mm')}`;
-  return `That slot is already booked (${range} ${conflict.title})`;
+  return getDeploymentT()('dm.slotTaken', { range, title: conflict.title });
 }
 
 /** Checks every attendee id belongs to an active member. Duplicates are removed before calling. */

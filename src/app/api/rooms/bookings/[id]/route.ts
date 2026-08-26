@@ -52,7 +52,7 @@ async function guardManage(
     return {
       ok: false,
       response: NextResponse.json(
-        { ok: false, error: 'That booking no longer exists' },
+        { ok: false, error: t('api.bookingNotFound') },
         { status: 404 },
       ),
     };
@@ -61,7 +61,7 @@ async function guardManage(
     return {
       ok: false,
       response: NextResponse.json(
-        { ok: false, error: 'That booking was already cancelled' },
+        { ok: false, error: t('api.bookingCancelled') },
         { status: 400 },
       ),
     };
@@ -70,7 +70,7 @@ async function guardManage(
     return {
       ok: false,
       response: NextResponse.json(
-        { ok: false, error: 'You can only edit bookings you made' },
+        { ok: false, error: t('api.ownBookingOnly') },
         { status: 403 },
       ),
     };
@@ -79,7 +79,7 @@ async function guardManage(
     return {
       ok: false,
       response: NextResponse.json(
-        { ok: false, error: 'That meeting has already ended' },
+        { ok: false, error: t('api.bookingEnded') },
         { status: 400 },
       ),
     };
@@ -116,7 +116,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     const uniqueMemberIds = [...new Set(memberIds)];
     if (!(await allMembersActive(uniqueMemberIds))) {
       return NextResponse.json(
-        { ok: false, error: 'One of the attendees is not a valid member' },
+        { ok: false, error: t('api.badAttendee') },
         { status: 400 },
       );
     }

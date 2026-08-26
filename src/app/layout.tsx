@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'offon · attendance for Slack teams',
   description:
     'Self-hosted attendance and leave management, driven from Slack. Clock in with a slash command, request leave from the web app.',
-  keywords: ['offon', 'attendance', 'leave', 'slack', 'time tracking'],
+  keywords: ['offon', 'attendance', 'leave', 'slack', 'time tracking', 'self-hosted'],
   appleWebApp: {
     capable: true,
     title: 'offon',

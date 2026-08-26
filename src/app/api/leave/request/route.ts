@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     const today = todayKST();
     if (new Date(startDate) < today) {
       return NextResponse.json(
-        { ok: false, error: 'A date in the past cannot be requested' },
+        { ok: false, error: t('leave.errPast') },
         { status: 400 },
       );
     }
@@ -68,13 +68,13 @@ export async function POST(req: NextRequest) {
       // Full leave is refused when either end falls on a non-business day. Any inside the range are excluded automatically.
       if (!isBusinessDayKSTDateStr(startDate, holidays)) {
         return NextResponse.json(
-          { ok: false, error: 'The start date cannot be a weekend or a holiday' },
+          { ok: false, error: t('leave.errStartHoliday') },
           { status: 400 },
         );
       }
       if (!isBusinessDayKSTDateStr(endDate, holidays)) {
         return NextResponse.json(
-          { ok: false, error: 'The end date cannot be a weekend or a holiday' },
+          { ok: false, error: t('leave.errEndHoliday') },
           { status: 400 },
         );
       }
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          error: `Leave has already been requested or approved for those dates (${range})`,
+          error: t('api.leaveOverlap', { range }),
         },
         { status: 409 },
       );
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     const available = base + bonus - used - pendingDays;
     if (Number(days) > available) {
       return NextResponse.json(
-        { ok: false, error: `That is more than the ${available} days available` },
+        { ok: false, error: t('api.leaveExceeds', { days: available }) },
         { status: 400 },
       );
     }

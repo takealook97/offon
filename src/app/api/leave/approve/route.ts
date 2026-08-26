@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
       where: { id: parsed.data.id, deletedAt: null },
     });
     if (!target) {
-      return NextResponse.json({ ok: false, error: 'That leave request no longer exists' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: t('api.leaveNotFound') }, { status: 404 });
     }
     if (target.status !== 'REQUESTED') {
-      return NextResponse.json({ ok: false, error: 'That request was already handled' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.leaveHandled') }, { status: 400 });
     }
 
     // The day count is recomputed against the holidays as they stand at approval. A half day is

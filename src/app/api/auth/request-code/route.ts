@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!limit.ok) {
     const retrySec = Math.ceil(limit.retryAfterMs / 1000);
     return NextResponse.json(
-      { ok: false, error: `Please try again in ${retrySec} seconds` },
+      { ok: false, error: t('api.retryAfter', { seconds: retrySec }) },
       { status: 429 },
     );
   }
