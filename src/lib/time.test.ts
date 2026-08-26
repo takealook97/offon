@@ -12,6 +12,8 @@ import {
   dayKey,
   dayBoundsUtc,
   clipMinutes,
+  zonedToday,
+  todayKey,
 } from './time';
 
 // 2026-08-24 is a Monday, 08-28 a Friday, 08-29 a Saturday and 08-30 a Sunday.
@@ -262,4 +264,38 @@ test('grid conversion round-trips across a DST transition', () => {
     const instant = new Date('2026-03-08T12:00:00Z');
     assert.equal(fromGridDate(toGridDate(instant)).toISOString(), '2026-03-08T12:00:00.000Z');
   });
+});
+
+// --- Today ------------------------------------------------------------------
+// zonedToday was once startOfDay(zonedNow()). startOfDay truncates in the **runtime**
+// timezone, so the answer depended on where the server ran: right on Vercel, which is UTC,
+// and a day ahead on a machine in KST after 15:00, where leave requested for today was
+// refused as being in the past. A self-hoster does not get to choose the runtime timezone.
+
+test('today is the same day no matter what timezone the server runs in', () => {
+  for (const zone of ['Asia/Seoul', 'America/New_York', 'Asia/Kolkata', 'UTC']) {
+    inTimezone(zone, () => {
+      const expected = dayKey(new Date());
+      assert.equal(todayKey(), expected);
+      assert.equal(
+        zonedToday().toISOString(),
+        `${expected}T00:00:00.000Z`,
+        `${zone}: has to be the same midnight UTC a @db.Date column holds`,
+      );
+    });
+  }
+});
+
+test('today sits at UTC midnight so it compares with @db.Date columns', () => {
+  // leave_requests.startDate is a @db.Date and arrives as midnight UTC. If zonedToday() is
+  // not the same shape, leave starting today counts as past or not depending on what time of
+  // day it is asked.
+  const today = zonedToday();
+  assert.equal(today.getUTCHours(), 0);
+  assert.equal(today.getUTCMinutes(), 0);
+  assert.equal(today.getUTCSeconds(), 0);
+  assert.equal(today.getUTCMilliseconds(), 0);
+
+  const startingToday = new Date(`${todayKey()}T00:00:00Z`);
+  assert.equal(startingToday < today, false, 'leave starting today is not in the past');
 });

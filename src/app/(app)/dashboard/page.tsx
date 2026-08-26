@@ -7,6 +7,7 @@ import {
   dayKey,
   monthRange,
   zonedToday,
+  todayKey,
   weekRange,
 } from '@/lib/time';
 import { clippedDailyTotals } from '@/lib/calendar-aggregation';
@@ -51,7 +52,7 @@ export default async function DashboardPage() {
   // it to clamp an open session inflates the worked time by the whole offset.
   const now = new Date();
 
-  const todayStr = formatZoned(today, 'yyyy-MM-dd');
+  const todayStr = todayKey();
   const year = Number(todayStr.slice(0, 4));
   const holidayFrom = `${year}-01-01`;
   const holidayTo = `${year + 1}-12-31`;
@@ -157,8 +158,7 @@ export default async function DashboardPage() {
     now,
   );
 
-  const todayKey = dayKey(today);
-  const todayWorked = dailyTotals[todayKey]?.workedMinutes ?? 0;
+  const todayWorked = dailyTotals[todayStr]?.workedMinutes ?? 0;
   const weekTotal = sumMinutesInRange(dailyTotals, week.start, week.end);
   const monthTotal = sumMinutesInRange(dailyTotals, month.start, month.end);
 
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
   const monthBaseDays = monthDaysWorked - todayWorkedDay;
 
   // Only rows touching today go to the client, including yesterday's session if it crossed midnight.
-  const todayBounds = dayBoundsUtc(todayKey);
+  const todayBounds = dayBoundsUtc(todayStr);
   const touchesToday = (segments: { startAt: Date; endAt: Date | null }[]) =>
     segments.some((seg) => {
       const segEnd = seg.endAt ?? now;
@@ -208,7 +208,7 @@ export default async function DashboardPage() {
 
   // Data for the \"today\" card.
   const todayRow =
-    allRows.find((r) => dayKey(r.workDate) === todayKey) ?? null;
+    allRows.find((r) => dayKey(r.workDate) === todayStr) ?? null;
   const status = (activeOpenRow?.status ?? todayRow?.status ?? 'NOT_STARTED') as
     | 'NOT_STARTED'
     | 'WORKING'
@@ -218,7 +218,7 @@ export default async function DashboardPage() {
   const isWorking = status === 'WORKING';
   const isOnBreak = status === 'ON_BREAK';
   const isCrossMidnightActive =
-    !!activeOpenRow && dayKey(activeOpenRow.workDate) !== todayKey;
+    !!activeOpenRow && dayKey(activeOpenRow.workDate) !== todayStr;
   const sessions: SessionLite[] = todayRow?.sessions ?? [];
 
   // The start of the open break while the status is ON_BREAK, as a UTC ISO string.
@@ -264,7 +264,7 @@ export default async function DashboardPage() {
     const todayEndMs = today.getTime() + MS_PER_DAY;
     let crossEnd: Date | null = null;
     for (const r of allRows) {
-      if (dayKey(r.workDate) === todayKey) continue;
+      if (dayKey(r.workDate) === todayStr) continue;
       for (const s of r.sessions) {
         if (!s.endAt) continue;
         const endMs = s.endAt.getTime();
@@ -336,7 +336,7 @@ export default async function DashboardPage() {
             />
             <ClockSlot
               label={t('dashboard.workTime')}
-              value={<TodayWorked rows={liveRows} dayKey={todayKey} hasClockIn={hasClockIn} />}
+              value={<TodayWorked rows={liveRows} dayKey={todayStr} hasClockIn={hasClockIn} />}
             />
           </div>
           <AttendanceActions status={status} lunchEndsAt={lunchEndsAt} />
@@ -348,11 +348,11 @@ export default async function DashboardPage() {
         <StatCard
           icon={Clock3}
           label={t('dashboard.thisWeek')}
-          value={<RangeWorked rows={liveRows} dayKey={todayKey} baseMinutes={weekBaseMinutes} />}
+          value={<RangeWorked rows={liveRows} dayKey={todayStr} baseMinutes={weekBaseMinutes} />}
           sub={
             <RangeWorkedDays
               rows={liveRows}
-              dayKey={todayKey}
+              dayKey={todayStr}
               baseDays={weekBaseDays}
               emptyLabel={t('dashboard.noRecord')}
             />
@@ -361,8 +361,8 @@ export default async function DashboardPage() {
         <StatCard
           icon={Calendar}
           label={t('dashboard.thisMonth')}
-          value={<RangeWorked rows={liveRows} dayKey={todayKey} baseMinutes={monthBaseMinutes} />}
-          sub={<RangeWorkedDays rows={liveRows} dayKey={todayKey} baseDays={monthBaseDays} />}
+          value={<RangeWorked rows={liveRows} dayKey={todayStr} baseMinutes={monthBaseMinutes} />}
+          sub={<RangeWorkedDays rows={liveRows} dayKey={todayStr} baseDays={monthBaseDays} />}
         />
         <StatCard
           icon={CalendarCheck}

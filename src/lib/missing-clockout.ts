@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { zonedToday, isWeekday, formatZoned } from './time';
+import { todayKey, zonedToday, isWeekday } from './time';
 import { getHolidaySet } from './holidays';
 import { getAppSettings } from './settings';
 import { sendDm } from './slack';
@@ -20,8 +20,8 @@ export async function runMissingClockOut(): Promise<MissingClockOutResult> {
   const t = getDeploymentT();
   if (!isWeekday()) return { ok: true, skipped: 'weekend' };
 
+  const dateStr = todayKey();
   const date = zonedToday();
-  const dateStr = formatZoned(date, 'yyyy-MM-dd');
   const holidays = await getHolidaySet(dateStr, dateStr);
   if (holidays.has(dateStr)) {
     return { ok: true, skipped: 'holiday' };

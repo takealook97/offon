@@ -4,7 +4,6 @@ import {
   endOfWeek,
   startOfMonth,
   endOfMonth,
-  startOfDay,
 } from 'date-fns';
 import { enUS, ko } from 'date-fns/locale';
 
@@ -97,8 +96,25 @@ export function zonedNow(): Date {
   return zoneShifted();
 }
 
+/**
+ * Midnight UTC of **today's date** in the org timezone.
+ *
+ * `@db.Date` columns (workDate, startDate, endDate) are stored as midnight UTC, so
+ * anything compared against them, or written to them, needs the same shape.
+ *
+ * This used to be `startOfDay(zonedNow())`. But `zonedNow()` is already shifted to the
+ * wall clock and `startOfDay` truncates in the **runtime** timezone, so the answer
+ * depended on which zone the server happened to run in: correct on Vercel (UTC), a day
+ * ahead on a machine in KST after 15:00, where leave requested for today was refused as
+ * being in the past. Removing exactly this is why the timezone was made configurable.
+ */
 export function zonedToday(): Date {
-  return startOfDay(zonedNow());
+  return new Date(`${todayKey()}T00:00:00Z`);
+}
+
+/** Today's `yyyy-MM-dd` in the org timezone. Use this wherever a date string is needed. */
+export function todayKey(): string {
+  return dayKey(new Date());
 }
 
 /**
