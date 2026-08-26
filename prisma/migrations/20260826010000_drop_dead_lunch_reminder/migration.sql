@@ -1,9 +1,11 @@
 -- Clears out what the lunch reminder left behind.
 --
 -- Once a meal was given a fixed end at the moment it starts, and returned on its own,
--- there was no longer any reason to ask whether someone was still at lunch. The handler went then, but the column
--- and the settings flag stayed, with nothing reading them and nothing writing them.
+-- there was no longer any reason to ask whether someone was still at lunch. The handler
+-- went then, but the column and the settings flag stayed, sitting in the schema with
+-- nothing reading them and nothing writing them.
 --
--- Not reversible. The values left are the last trace of a feature that no longer exists.
+-- Not reversible. The values left are the last trace of a feature that no longer exists
+-- and are of no use to anything.
 ALTER TABLE "app_settings" DROP COLUMN IF EXISTS "lunch_reminder_notify_enabled";
 ALTER TABLE "attendances"  DROP COLUMN IF EXISTS "lunch_reminder_sent_at";

@@ -182,9 +182,11 @@
   min-width: 0;
 }
 
-/* The vertical dividers are one overlay across the whole month view, so the header and body cannot disagree.
-   The six dividers are separate gradient layers, each rounding independently.
-   A repeating gradient accumulated sub-pixel error on fractional steps and some columns disappeared. */
+/* The vertical dividers are one overlay across the whole month view, so the header and
+   the body being separate DOM cannot make them disagree: the same overlay covers both.
+   The six dividers are separate gradient layers, each rounding independently. A single
+   repeating gradient accumulated sub-pixel error on fractional steps and some columns
+   disappeared, which is why it was replaced. */
 .rbc-month-view {
   position: relative;
 }
@@ -538,14 +540,16 @@
   min-height: 84px;
 }
 
-/* The library measures the gutter after mounting and writes an inline width into the header's empty corner.
-   Before that measurement it is zero, so the day columns jump left and then settle.
-   Pinning the width -- min and max outrank an inline width -- has it in place from the first frame. */
-/* The library right-aligns by default, leaving 6px on the right and the whole remaining width empty on the left.
-   Centring, and sizing the gutter as the label plus 6px either side, makes both margins equal.
-   At 11px the widest label is about 29px, so 40px leaves 5.4px on each side.
-   The padding has to be narrower than the width or the text is pushed out, hence the smaller value.
-   The width is fixed because the two elements must match exactly, or the columns drift apart. */
+/* The library measures the gutter after mounting and writes an inline width into the
+   header's empty corner. Before that measurement it is zero, so the day columns jump
+   left and then settle. Pinning the width -- min and max outrank an inline width --
+   has them in place from the first frame. */
+/* The library right-aligns by default, leaving 6px on the right and the whole remaining
+   width empty on the left. Centring, and sizing the gutter as the label plus 6px either
+   side, makes both margins equal. At 11px the widest label is about 29px, so 40px leaves
+   5.4px on each side. The padding has to be narrower than that or the text is pushed out,
+   hence the smaller value. The width is a fixed number because the two elements must match
+   exactly, or the day columns and the grid drift apart. */
 .rbc-rooms .rbc-time-gutter,
 .rbc-rooms .rbc-time-header-gutter {
   min-width: 2.5rem;
@@ -578,8 +582,9 @@
   color: var(--foreground);
 }
 
-/* Today's column has a pale background, against which a border-based line comes out lighter and disappears.
-   Based on the foreground instead, it holds up in either theme. */
+/* Today's column has a pale background, against which a border-based line comes out
+   lighter than the fill and disappears. Based on the foreground instead, it holds up in
+   either theme. */
 .rbc-rooms .rbc-day-slot.rbc-today .rbc-time-slot:nth-child(4) {
   border-top-color: color-mix(in oklab, var(--foreground) 14%, transparent);
 }
@@ -617,8 +622,9 @@
   padding-block: 0.125rem;
 }
 
-/* Overlapping bookings are refused, so a block always stands alone. Its start is obvious from its position,
-   so the time label is dropped and the full width goes to the title. The exact range is one click away. */
+/* Overlapping bookings are refused, so a block always stands alone. Its start is already
+   obvious from its vertical position, so the time label is dropped and the full width goes
+   to the title. The exact range is one click away in the detail view. */
 .rbc-rooms .rbc-day-slot .rbc-event .rbc-event-label {
   display: none;
 }
@@ -633,13 +639,14 @@
 
 .rbc-rooms .rbc-day-slot .rbc-event {
   /* The library's default gives day-slot events a 1px border, which makes them read as
-     boxes rather than the soft bars of the month view. The border is removed
-     so they match the soft surfaces of the other events. */
+     boxes rather than the soft bars of the month view. The border is removed so they match. */
   border: none;
-  /* Back-to-back bookings ran together into one surface, so a pixel is freed at the bottom.
-     The block's top and height are inline, so a margin cannot move it; a transparent border is set instead
-     and the background clipped to the padding box, letting the grid show through. The smallest booking is ten minutes,
-     Freeing both edges would clip the text, so the gap goes at the bottom only. */
+  /* Back-to-back bookings, one ending at 10:00 and the next starting there, ran together
+     into a single surface. A pixel is freed at the bottom. The block's top and height are
+     inline, so a margin cannot move it; instead a transparent border is set and the
+     background clipped to the padding box, letting the grid show through. The smallest
+     booking is ten minutes, about 14px, so freeing both edges would clip the text -- the
+     gap goes at the bottom only. */
   border-bottom: 1px solid transparent;
   background-clip: padding-box;
   border-radius: 6px;

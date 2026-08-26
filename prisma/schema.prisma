@@ -191,7 +191,8 @@ model AttendanceEditRequest {
   status       AttendanceEditStatus @default(REQUESTED)
   reason       String?
   rejectReason String?              @map("reject_reason")
-  // {startAt, endAt, breaks:[...]} as UTC ISO strings. The snapshot is how it looked at request time; the proposal is what was asked for.
+  // {startAt, endAt, breaks:[{kind, startAt, endAt}]} as UTC ISO strings. The snapshot is
+  // how it looked when the request was made; the proposal is what was asked for.
   snapshot     Json
   proposed     Json
   createdAt    DateTime             @default(now()) @map("created_at")
@@ -265,7 +266,8 @@ model AppSetting {
   /// The fixed meal length in minutes. Applies to meals started from now on and leaves the past alone.
   mealMinutes                  Int      @default(60) @map("meal_minutes")
   /// The working hours, in minutes from midnight. Defaults to 09:00-18:00.
-  /// The standard day, the half-day credit and the half-day split all derive from these; see src/lib/work-hours.ts.
+  /// The standard day, the half-day credit and the half-day split all derive from these;
+  /// see src/lib/work-hours.ts.
   workStartMinutes             Int      @default(540) @map("work_start_minutes")
   workEndMinutes               Int      @default(1080) @map("work_end_minutes")
   updatedAt                    DateTime @updatedAt @map("updated_at")

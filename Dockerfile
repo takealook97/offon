@@ -10,9 +10,10 @@ RUN corepack enable
 # stage and never reaches the runtime image.
 RUN apk add --no-cache python3 make g++
 COPY package.json pnpm-lock.yaml ./
-# From pnpm 10 on, dependency install scripts are blocked by default, and the interactive approval
-# cannot be used inside an image build. What runs here is only what the lockfile pins, and
-# argon2, the Prisma engines and sharp all fail at runtime without their scripts.
+# From pnpm 10 on, dependency install scripts are blocked by default, and the
+# interactive approval cannot be used inside an image build. What runs here is only what
+# the lockfile pins, and argon2, the Prisma engines and sharp all fail at runtime without
+# their scripts.
 RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds
 
 FROM node:24-alpine AS builder
@@ -32,8 +33,9 @@ ENV NODE_ENV=production
 RUN addgroup -S offon && adduser -S offon -G offon
 
 COPY --from=builder /app/public ./public
-# The standalone output already contains the dependencies actually used, the Prisma client and engines.
-# pnpm links rather than copies, so picking pieces out of node_modules by hand breaks those links.
+# The standalone output already contains the dependencies actually used, the Prisma client
+# and engines among them. pnpm links rather than copies, so picking pieces out of
+# node_modules by hand breaks those links.
 COPY --from=builder --chown=offon:offon /app/.next/standalone ./
 COPY --from=builder --chown=offon:offon /app/.next/static ./.next/static
 # The schema comes along so migrations can be run from inside the container.

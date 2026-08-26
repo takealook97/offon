@@ -1,5 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 
+/**
+ * Seeds one year of public holidays.
+ *
+ * These are South Korean holidays for 2026, kept as an example of the shape rather than
+ * as something every deployment should run. Replace the list with your own country's
+ * holidays, or add them through the admin settings screen instead.
+ *
+ * The names stay in their own language: a holiday's name is what it is called, and the
+ * calendar shows it verbatim.
+ */
+
 const prisma = new PrismaClient();
 
 const ITEMS: { date: string; name: string }[] = [
