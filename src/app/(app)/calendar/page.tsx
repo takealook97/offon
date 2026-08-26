@@ -1,10 +1,12 @@
-import { getSession } from '@/lib/session';
+import { getLiveSession } from '@/lib/session';
 import { CalendarTabs } from './CalendarTabs';
 import { getT } from '@/lib/i18n/server';
 
 export default async function CalendarPage() {
   const t = await getT();
-  const session = await getSession();
+  // The stored role, not the one in the cookie: the team tab is admin-only, and a demoted
+  // admin should stop seeing it now rather than when their session happens to expire.
+  const session = await getLiveSession();
   const isAdmin = session?.role === 'ADMIN';
   return (
     <div className="space-y-4">
