@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/client';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 
-const MONTHS = ['1Month', '2Month', '3Month', '4Month', '5Month', '6Month', '7Month', '8Month', '9Month', '10Month', '11Month', '12Month'];
+
 
 export function MonthPicker({
   date,
@@ -16,6 +18,8 @@ export function MonthPicker({
   label: string;
   onPick: (next: Date) => void;
 }) {
+  const { t } = useTranslation();
+  const months = Array.from({ length: 12 }, (_, i) => t(`month.${i + 1}` as MessageKey));
   const [open, setOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(date.getFullYear());
   const today = new Date();
@@ -34,7 +38,7 @@ export function MonthPicker({
         <button
           type="button"
           className="rounded-md px-2 py-0.5 text-base font-semibold tracking-tight transition-colors hover:bg-accent sm:text-lg"
-          aria-label="Jump to a month"
+          aria-label={t('cal.jumpMonth')}
         >
           {label}
         </button>
@@ -45,22 +49,22 @@ export function MonthPicker({
             type="button"
             onClick={() => setPickerYear((y) => y - 1)}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            aria-label="Previous year"
+            aria-label={t('cal.prevYear')}
           >
             <ChevronLeft className="size-4" />
           </button>
-          <span className="text-sm font-semibold tabular-nums">{pickerYear}</span>
+          <span className="text-sm font-semibold tabular-nums">{t('cal.yearLabel', { year: pickerYear })}</span>
           <button
             type="button"
             onClick={() => setPickerYear((y) => y + 1)}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            aria-label="Next year"
+            aria-label={t('cal.nextYear')}
           >
             <ChevronRight className="size-4" />
           </button>
         </div>
         <div className="grid grid-cols-3 gap-1.5">
-          {MONTHS.map((m, idx) => {
+          {months.map((m, idx) => {
             const isCurrent = pickerYear === curYear && idx === curMonth;
             const isToday = pickerYear === today.getFullYear() && idx === today.getMonth();
             return (

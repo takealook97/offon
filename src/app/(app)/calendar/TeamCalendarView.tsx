@@ -14,6 +14,7 @@ import { WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
 import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
+import { useTranslation } from '@/lib/i18n/client';
 
 const VIEWS_ALLOWED: View[] = [Views.MONTH];
 
@@ -40,6 +41,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 }
 
 export function TeamCalendarView() {
+  const { t } = useTranslation();
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export function TeamCalendarView() {
         } else {
           setEvents([]);
           toast.error(
-            (data && 'error' in data && data.error) || 'Could not load the team leave schedule',
+            (data && 'error' in data && data.error) || t('cal.teamLoadFailed'),
           );
         }
         setHolidays(new Set((hData?.holidays ?? []).map((h) => h.date)));
@@ -204,11 +206,11 @@ export function TeamCalendarView() {
           onShowMore={(_evts, d) => openDayModal(d)}
           doShowMoreDrillDown={false}
           messages={{
-            month: 'Month',
-            today: 'Today',
-            previous: 'Previous',
-            next: 'Next',
-            noEventsInRange: 'No leave in this range',
+            month: t('cal.month'),
+            today: t('cal.today'),
+            previous: t('cal.prev'),
+            next: t('cal.next'),
+            noEventsInRange: t('cal.noEventsInRange'),
           }}
           style={{ height: '100%' }}
         />

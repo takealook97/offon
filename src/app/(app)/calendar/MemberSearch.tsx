@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { CalendarView } from './CalendarView';
+import { useTranslation } from '@/lib/i18n/client';
 
 type Member = {
   id: number;
@@ -15,6 +16,7 @@ type Member = {
 };
 
 export function MemberSearch() {
+  const { t } = useTranslation();
   const [members, setMembers] = useState<Member[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Member | null>(null);
@@ -98,7 +100,7 @@ export function MemberSearch() {
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 120)}
             onKeyDown={onKeyDown}
-            placeholder="Search by name or position · ↑↓ to move · Enter to choose"
+            placeholder={t('cal.searchHint')}
             className="h-11 pl-9 pr-9"
             role="combobox"
             aria-expanded={open}
@@ -117,7 +119,7 @@ export function MemberSearch() {
                 setSelected(null);
                 setOpen(true);
               }}
-              aria-label="Clear"
+              aria-label={t('cal.clear')}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <X className="size-3.5" />
@@ -154,7 +156,7 @@ export function MemberSearch() {
                     )}
                   </span>
                   {m.role === 'ADMIN' && (
-                    <span className="text-xs text-muted-foreground">Admin</span>
+                    <span className="text-xs text-muted-foreground">{t('cal.admin')}</span>
                   )}
                 </button>
               </li>
@@ -181,7 +183,7 @@ export function MemberSearch() {
                 setQuery('');
               }}
             >
-              Clear selection
+              {t('cal.deselect')}
             </Button>
           </div>
           <CalendarView key={selected.id} memberId={selected.id} />
@@ -189,8 +191,8 @@ export function MemberSearch() {
       ) : (
         <div className="flex h-[40vh] flex-col items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
           <Search className="mb-2 size-5" />
-          <p>Search for a teammate by name or title</p>
-          <p className="mt-1 text-xs">↑↓ to move · Enter to choose · Esc to close</p>
+          <p>{t('cal.searchPrompt')}</p>
+          <p className="mt-1 text-xs">{t('cal.searchKeys')}</p>
         </div>
       )}
     </div>

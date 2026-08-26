@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { enUS, ko } from 'date-fns/locale';
 import { Pencil } from 'lucide-react';
 import {
   Dialog,
@@ -13,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { kstClipSegmentLabel } from '@/lib/time';
 import type { CalendarEvent, DailyAttendanceTotal } from '@/lib/api-types';
+import { useTranslation } from '@/lib/i18n/client';
+import { formatDuration } from '@/lib/i18n/format';
+import type { MessageKey } from '@/lib/i18n/dictionary';
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 type UiEvent = {
   id: string;
@@ -23,43 +28,36 @@ type UiEvent = {
   resource: CalendarEvent['resource'];
 };
 
-function formatMinutes(m: number): string {
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h > 0 && mm > 0) return `${h}h ${mm}m`;
-  if (h > 0) return `${h}h`;
-  return `${mm}m`;
-}
-
 type EventMeta = { typeLabel: string; dot: string };
 
 // The dot colours match the grid's event colours (rbc-event-* in globals.css), so the modal
 // and the calendar read as the same thing. The rows themselves stay neutral, like everything else.
-function eventMeta(ev: UiEvent): EventMeta {
+function eventMeta(ev: UiEvent, t: Translate): EventMeta {
   if (ev.resource.kind === 'ATTENDANCE') {
-    return { typeLabel: 'Working', dot: 'bg-emerald-500' };
+    return { typeLabel: t('cal.legendWork'), dot: 'bg-emerald-500' };
   }
   if (ev.resource.kind === 'LEAVE') {
     const requested = ev.resource.leaveStatus === 'REQUESTED';
     const full = ev.resource.leaveType === 'FULL_DAY';
-    const base = full ? 'Leave' : 'Half day';
+    const base = full ? t('cal.legendLeave') : t('cal.legendHalf');
     return {
-      typeLabel: requested ? `${base} · pending` : base,
+      typeLabel: requested ? `${base} · ${t('cal.pending')}` : base,
       dot: requested ? 'bg-amber-500' : full ? 'bg-blue-500' : 'bg-violet-500',
     };
   }
-  return { typeLabel: 'Missing', dot: 'bg-red-500' };
+  return { typeLabel: t('status.missing'), dot: 'bg-red-500' };
 }
 
 function SummaryStats({ summary }: { summary: DailyAttendanceTotal }) {
+  const { t } = useTranslation();
   const { workedMinutes: worked, breakMinutes: brk } = summary;
   // Time on the clock is the worked total plus the breaks.
   const sessionSpan = worked + brk;
   return (
     <div className="grid grid-cols-3 divide-x divide-border/60 rounded-lg border border-border/60 bg-muted/40 py-2.5">
-      <Stat label="Worked" value={formatMinutes(sessionSpan)} />
-      <Stat label="Away" value={formatMinutes(brk)} />
-      <Stat label="Total" value={formatMinutes(worked)} strong />
+      <Stat label={t('cal.workedTime')} value={formatDuration(t, sessionSpan)} />
+      <Stat label={t('cal.awayTime')} value={formatDuration(t, brk)} />
+      <Stat label={t('cal.totalTime')} value={formatDuration(t, worked)} strong />
     </div>
   );
 }
@@ -97,6 +95,7 @@ export function ShowMoreDialog({
   canEdit?: boolean;
   onEdit?: (sessionId: number) => void;
 }) {
+  const { t, locale } = useTranslation();
   const dayKey = date ? format(date, 'yyyy-MM-dd') : null;
   const now = new Date();
 
@@ -106,7 +105,7 @@ export function ShowMoreDialog({
     const { startLabel, endLabel, minutes } = kstClipSegmentLabel(e.start, segEnd, dayKey, {
       now,
     });
-    return `${startLabel} ~ ${endLabel} · ${formatMinutes(minutes)}`;
+    return `${startLabel} ~ ${endLabel} · ${formatDuration(t, minutes)}`;
   };
 
   return (
@@ -114,17 +113,17 @@ export function ShowMoreDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">
-            {date ? format(date, 'MMonth dDay (EEEE)', { locale: ko }) : ''}
+            {date ? format(date, 'MMM d (EEEE)', { locale: locale === 'en' ? enUS : ko }) : ''}
           </DialogTitle>
         </DialogHeader>
 
         {events.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Nothing on this day</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">{t('cal.dayNoEvents')}</p>
         ) : (
           <div className="max-h-[60vh] space-y-3 overflow-y-auto">
             <ul className="space-y-1.5">
               {events.map((e) => {
-                const meta = eventMeta(e);
+                const meta = eventMeta(e, t);
                 return (
                   <li
                     key={e.id}
@@ -147,7 +146,7 @@ export function ShowMoreDialog({
                           className="h-7 shrink-0 gap-1 px-2 text-xs"
                         >
                           <Pencil className="size-3.5" />
-                          Edit
+                          {t('cal.edit')}
                         </Button>
                       )}
                   </li>

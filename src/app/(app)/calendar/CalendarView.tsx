@@ -29,6 +29,7 @@ import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
 import { EditRequestDialog } from './EditRequestDialog';
 import { PendingEditRequests } from './PendingEditRequests';
+import { useTranslation } from '@/lib/i18n/client';
 import {
   attendanceMinutesIn,
   formatMinutes,
@@ -67,6 +68,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 }
 
 export function CalendarView({ memberId }: { memberId?: number }) {
+  const { t } = useTranslation();
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [dailyTotals, setDailyTotals] = useState<Record<string, DailyAttendanceTotal>>({});
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
@@ -124,7 +126,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           setEvents([]);
           setDailyTotals({});
           toast.error(
-            (data && 'error' in data && data.error) || 'Could not load the calendar',
+            (data && 'error' in data && data.error) || t('cal.loadFailed'),
           );
         }
         setHolidays(new Set((hData?.holidays ?? []).map((h) => h.date)));
@@ -177,9 +179,9 @@ export function CalendarView({ memberId }: { memberId?: number }) {
       .then((r) => r.json())
       .then((d: { ok?: boolean; session?: EditableSession; error?: string }) => {
         if (d?.ok && d.session) setEditSession(d.session);
-        else toast.error(d?.error ?? 'Could not load that session');
+        else toast.error(d?.error ?? t('cal.sessionLoadFailed'));
       })
-      .catch(() => toast.error('Could not load that session'));
+      .catch(() => toast.error(t('cal.sessionLoadFailed')));
   }, []);
 
   const handleCellClick = useCallback(
@@ -313,6 +315,7 @@ function WeeklySummary({
   dailyTotals: Record<string, DailyAttendanceTotal>;
   date: Date;
 }) {
+  const { t } = useTranslation();
   const today = new Date();
   const weeks = useMemo(() => weeksInMonth(date), [date]);
   const monthTotal = useMemo(
@@ -323,9 +326,9 @@ function WeeklySummary({
   return (
     <section className="rounded-lg border border-border/60 bg-card">
       <header className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-        <h3 className="text-sm font-semibold text-muted-foreground">Weekly summary</h3>
+        <h3 className="text-sm font-semibold text-muted-foreground">{t('cal.weeklySummary')}</h3>
         <span className="text-xs text-muted-foreground">
-          <span className="mr-1">Month total</span>
+          <span className="mr-1">{t('cal.monthTotal')}</span>
           <span className="font-mono font-medium tabular-nums text-foreground">
             {formatMinutes(monthTotal)}
           </span>
@@ -347,7 +350,7 @@ function WeeklySummary({
               <span className="font-mono tabular-nums text-muted-foreground">
                 {format(w.start, 'M/d', { locale: ko })} –{' '}
                 {format(w.end, 'M/d', { locale: ko })}
-                {isCurrent && <span className="ml-2 text-xs text-foreground">(this week)</span>}
+                {isCurrent && <span className="ml-2 text-xs text-foreground">{t('cal.thisWeek')}</span>}
               </span>
               <span
                 className={cn(
@@ -355,7 +358,7 @@ function WeeklySummary({
                   minutes > 0 ? 'font-medium' : 'text-muted-foreground',
                 )}
               >
-                {minutes > 0 ? formatMinutes(minutes) : isFuture ? '—' : '0m'}
+                {minutes > 0 ? formatMinutes(minutes) : isFuture ? '—' : t('cal.zeroMinutes')}
               </span>
             </li>
           );
