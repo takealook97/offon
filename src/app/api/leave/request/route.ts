@@ -14,6 +14,11 @@ import { leaveTypeKey, formatLeaveDateRangeStr } from '@/lib/leave-labels';
 import { getHolidaySet } from '@/lib/holidays';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
+import {
+  findOverlappingLeave,
+  overlapRangeLabel,
+  remainingLeaveFor,
+} from '@/lib/leave-request';
 
 const Body = z.object({
   type: z.enum(['FULL_DAY', 'HALF_DAY_AM', 'HALF_DAY_PM']),
@@ -81,22 +86,9 @@ export async function POST(req: NextRequest) {
     }
     const days = dayCount(startDate, endDate, type, holidays);
 
-    const overlap = await prisma.leaveRequest.findFirst({
-      where: {
-        memberId: session.memberId,
-        status: { in: ['REQUESTED', 'APPROVED'] },
-        deletedAt: null,
-        startDate: { lte: new Date(endDate) },
-        endDate: { gte: new Date(startDate) },
-      },
-      select: { startDate: true, endDate: true, type: true, status: true },
-    });
+    const overlap = await findOverlappingLeave(session.memberId, startDate, endDate);
     if (overlap) {
-      const range =
-        overlap.startDate.toISOString().slice(0, 10) ===
-        overlap.endDate.toISOString().slice(0, 10)
-          ? overlap.startDate.toISOString().slice(0, 10)
-          : `${overlap.startDate.toISOString().slice(0, 10)}~${overlap.endDate.toISOString().slice(0, 10)}`;
+      const range = overlapRangeLabel(overlap);
       return NextResponse.json(
         {
           ok: false,
@@ -106,18 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [balance, pending] = await Promise.all([
-      prisma.leaveBalance.findFirst({ where: { memberId: session.memberId, deletedAt: null } }),
-      prisma.leaveRequest.aggregate({
-        where: { memberId: session.memberId, status: 'REQUESTED', deletedAt: null },
-        _sum: { days: true },
-      }),
-    ]);
-    const base = balance ? Number(balance.baseDays) : 0;
-    const bonus = balance ? Number(balance.bonusDays) : 0;
-    const used = balance ? Number(balance.usedDays) : 0;
-    const pendingDays = pending._sum.days ? Number(pending._sum.days) : 0;
-    const available = base + bonus - used - pendingDays;
+    const available = await remainingLeaveFor(session.memberId);
     if (Number(days) > available) {
       return NextResponse.json(
         { ok: false, error: t('api.leaveExceeds', { days: available }) },
