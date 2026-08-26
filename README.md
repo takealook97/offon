@@ -14,6 +14,10 @@ Self-hosted. MIT licensed. Deploys to Vercel in about 10 minutes.
 
 </div>
 
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="offon dashboard" width="900">
+</p>
+
 ---
 
 ## Who this is for
@@ -49,6 +53,15 @@ Everything else — leave requests, approvals, the calendar, corrections when so
 - **Passwordless login** — A 6-digit code, DM'd on Slack, hashed with argon2.
 - **Scheduled nudges** — Missing clock-in and clock-out reminders, and yearly leave rollover.
 - **English and Korean** — Each person picks their language from the header; Slack messages follow `DEFAULT_LOCALE`.
+
+## What it looks like
+
+| | |
+|---|---|
+| ![Calendar](docs/screenshots/calendar.png) | ![Meeting rooms](docs/screenshots/rooms.png) |
+| **Calendar** — a month of your own attendance and leave | **Meeting rooms** — a week grid you book by dragging |
+| ![Approvals](docs/screenshots/approvals.png) | ![Members](docs/screenshots/members.png) |
+| **Approvals** — leave and correction requests in one queue | **Members** — the team and their leave balances |
 
 ## Quick start
 

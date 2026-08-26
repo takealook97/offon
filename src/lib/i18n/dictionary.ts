@@ -54,6 +54,7 @@ const ko = {
   'status.complete': '완료',
   'status.pending': '대기',
   'status.approved': '승인',
+  'status.rejected': '반려',
 
   // 근태 버튼
   'attendance.clockIn': '출근',
@@ -605,6 +606,7 @@ const en: Messages = {
   'status.complete': 'Done',
   'status.pending': 'Pending',
   'status.approved': 'Approved',
+  'status.rejected': 'Rejected',
 
   'attendance.clockIn': 'Clock in',
   'attendance.clockOut': 'Clock out',

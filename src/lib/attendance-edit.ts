@@ -66,10 +66,12 @@ export type EditableSession = {
 export function buildEditableSession(
   session: { id: number; startAt: Date; endAt: Date | null },
   breaks: { startAt: Date; endAt: Date | null; kind?: string }[],
+  /** The label contains a weekday name, so it follows the viewer's language. */
+  locale: 'ko' | 'en' = 'ko',
 ): EditableSession {
   return {
     id: session.id,
-    dateLabel: formatKST(session.startAt, 'yyyy-MM-dd (EEE)'),
+    dateLabel: formatKST(session.startAt, 'yyyy-MM-dd (EEE)', locale),
     clockIn: utcToKstWall(session.startAt),
     clockOut: session.endAt ? utcToKstWall(session.endAt) : null,
     breaks: breaks

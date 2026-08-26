@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
   const devBypass = process.env.NODE_ENV !== 'production' && !slackTokenReady;
 
   if (devBypass) {
-    // Development only: with no Slack token the code is verified by hand.
+    // Development only. Without a Slack token there is nowhere to send the DM, and unless the
+    // code is printed to the console, anyone who has not wired up Slack yet cannot sign in at
+    // all and never gets the app running. This branch is unreachable in production.
+    console.info(`[offon] dev login code for ${member.email ?? member.slackId}: ${code}`);
   } else {
     try {
       await sendDm(member.slackId, dt('dm.loginCode', { code }));

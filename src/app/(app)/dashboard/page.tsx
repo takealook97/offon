@@ -15,7 +15,7 @@ import { listHolidays } from '@/lib/holidays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
-import { getT } from '@/lib/i18n/server';
+import { getT, getLocale } from '@/lib/i18n/server';
 import { AttendanceActions } from './AttendanceActions';
 import { RangeWorked, RangeWorkedDays, TodayWorked, type LiveRow } from './LiveWorked';
 import { BreakDuration } from './BreakDuration';
@@ -293,7 +293,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm text-muted-foreground">
-          {formatKST(new Date(), 'yyyy-MM-dd (EEEE)')}
+          {formatKST(new Date(), 'yyyy-MM-dd (EEEE)', await getLocale())}
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
           {t('dashboard.greeting', { name: me?.name ?? '' })}

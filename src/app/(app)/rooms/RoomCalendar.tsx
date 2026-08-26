@@ -71,10 +71,10 @@ const toWall = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
  * Only the start time goes inside the event. Adding the end fills the width and truncates
  * the title, which is the part people actually need. The full range is in the detail view.
  */
-const roomFormats = {
-  ...calendarFormats,
+const roomFormats = (locale: 'ko' | 'en') => ({
+  ...calendarFormats(locale),
   eventTimeRangeFormat: ({ start }: { start: Date }) => format(start, 'HH:mm'),
-};
+});
 
 /** The next ten-minute boundary after now, in minutes. */
 function nextStepMinutes(now: Date): number {
@@ -83,7 +83,7 @@ function nextStepMinutes(now: Date): number {
 }
 
 export function RoomCalendar({ viewerId }: { viewerId: number }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [rooms, setRooms] = useState<RoomDTO[]>([]);
   const [bookings, setBookings] = useState<RoomBookingDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -418,7 +418,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
             <Calendar
               localizer={localizer}
               culture="ko"
-              formats={roomFormats}
+              formats={roomFormats(locale)}
               events={events}
               view={Views.WEEK}
               onView={() => {}}
@@ -487,17 +487,18 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
 }
 
 function Legend() {
+  const { t } = useTranslation();
   // The dot colours match the grid event colours (rbc-event-room-* in globals.css),
   // following the same convention as the other calendar's legend: blue for leave, green for work.
   return (
     <ul className="flex items-center gap-3 text-xs text-muted-foreground">
       <li className="flex items-center gap-1.5">
         <span className="size-2 rounded-full bg-emerald-500" />
-        {MEETING_TYPE_KEY.INTERNAL}
+        {t(MEETING_TYPE_KEY.INTERNAL)}
       </li>
       <li className="flex items-center gap-1.5">
         <span className="size-2 rounded-full bg-blue-500" />
-        {MEETING_TYPE_KEY.EXTERNAL}
+        {t(MEETING_TYPE_KEY.EXTERNAL)}
       </li>
     </ul>
   );

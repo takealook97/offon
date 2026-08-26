@@ -6,7 +6,7 @@ import {
   endOfMonth,
   startOfDay,
 } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { enUS, ko } from 'date-fns/locale';
 
 // The app is pinned to one timezone with no daylight saving, handled as a fixed offset.
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -48,8 +48,16 @@ export function todayKST(): Date {
   return startOfDay(nowKST());
 }
 
-export function formatKST(d: Date, fmt = 'yyyy-MM-dd HH:mm'): string {
-  return fnsFormat(kstWallClock(d), fmt, { locale: ko });
+/**
+ * Formats against the local wall clock. Formats with weekday or month names take a locale.
+ * It defaults to the primary locale because most callers use numeric-only formats.
+ */
+export function formatKST(
+  d: Date,
+  fmt = 'yyyy-MM-dd HH:mm',
+  locale: 'ko' | 'en' = 'ko',
+): string {
+  return fnsFormat(kstWallClock(d), fmt, { locale: locale === 'en' ? enUS : ko });
 }
 
 export function weekRangeKST(ref: Date = nowKST()): { start: Date; end: Date } {

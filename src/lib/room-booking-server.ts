@@ -3,7 +3,7 @@ import { logAudit } from './audit';
 import { cancelScheduledChannel, scheduleDm, sendDm } from './slack';
 import { formatKST } from './time';
 import { MEETING_TYPE_KEY } from './room-booking';
-import { getDeploymentT } from './i18n/deployment';
+import { getDeploymentT, getDeploymentLocale } from './i18n/deployment';
 import type { RoomBookingDTO } from './api-types';
 
 /**
@@ -187,7 +187,7 @@ function bookingDetailLines(booking: NotifiableBooking): string[] {
 
 /** Formats a booking's date and time range for display. */
 function bookingWhen(booking: NotifiableBooking): string {
-  const date = formatKST(booking.startAt, 'yyyy-MM-dd (EEE)');
+  const date = formatKST(booking.startAt, 'yyyy-MM-dd (EEE)', getDeploymentLocale());
   return `${date} ${formatKST(booking.startAt, 'a h:mm')} ~ ${formatKST(booking.endAt, 'a h:mm')}`;
 }
 

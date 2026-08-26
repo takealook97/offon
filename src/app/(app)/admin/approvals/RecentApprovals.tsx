@@ -34,13 +34,13 @@ async function StatusBadge({ status }: { status: RecentStatus }) {
         variant="outline"
         className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
       >
-        {t('appr.approve')}
+        {t('status.approved')}
       </Badge>
     );
   if (status === 'REJECTED')
     return (
       <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-300">
-        {t('appr.reject')}
+        {t('status.rejected')}
       </Badge>
     );
   return (

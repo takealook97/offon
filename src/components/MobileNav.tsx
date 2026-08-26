@@ -18,7 +18,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { cn } from '@/lib/cn';
 import { NavBadge } from '@/components/NavBadge';
-import { iconFor, type NavItem } from '@/components/AppShell';
+import { iconFor, type NavItem } from '@/components/nav-items';
 import { useTranslation } from '@/lib/i18n/client';
 
 export function MobileNav({

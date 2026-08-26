@@ -33,12 +33,12 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className="min-h-svh flex flex-col" suppressHydrationWarning>
-        <LocaleProvider locale={locale}>
-          <ThemeProvider>
+        <ThemeProvider>
+          <LocaleProvider locale={locale}>
             {children}
             <Toaster position="top-right" richColors closeButton />
-          </ThemeProvider>
-        </LocaleProvider>
+          </LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

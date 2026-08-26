@@ -1,3 +1,5 @@
+'use client';
+
 import { formatKST } from '@/lib/time';
 import { cn } from '@/lib/cn';
 import { useTranslation } from '@/lib/i18n/client';

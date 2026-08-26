@@ -1,56 +1,10 @@
-import {
-  Calendar,
-  DoorOpen,
-  LayoutDashboard,
-  Users,
-  ClipboardList,
-  Settings,
-} from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { MobileNav } from '@/components/MobileNav';
 import { DesktopNav } from '@/components/DesktopNav';
 import { getT } from '@/lib/i18n/server';
-import type { MessageKey } from '@/lib/i18n/dictionary';
-
-export type NavItem = {
-  href: string;
-  labelKey: MessageKey;
-  iconName: 'dashboard' | 'calendar' | 'rooms' | 'users' | 'clipboard' | 'settings';
-  admin?: boolean;
-  /** How much is waiting to be dealt with. Anything above zero puts a red mark beside the menu item. */
-  badge?: number;
-};
-
-/** Where the badge goes. A constant, so it cannot drift from the NAV entries. */
-const APPROVALS_HREF = '/admin/approvals';
-
-const NAV: NavItem[] = [
-  { href: '/dashboard', labelKey: 'nav.dashboard', iconName: 'dashboard' },
-  { href: '/calendar', labelKey: 'nav.calendar', iconName: 'calendar' },
-  { href: '/rooms', labelKey: 'nav.rooms', iconName: 'rooms' },
-  { href: '/admin/members', labelKey: 'nav.members', iconName: 'users', admin: true },
-  { href: APPROVALS_HREF, labelKey: 'nav.approvals', iconName: 'clipboard', admin: true },
-  { href: '/admin/settings', labelKey: 'nav.settings', iconName: 'settings', admin: true },
-];
-
-export function iconFor(name: NavItem['iconName']) {
-  switch (name) {
-    case 'dashboard':
-      return LayoutDashboard;
-    case 'calendar':
-      return Calendar;
-    case 'rooms':
-      return DoorOpen;
-    case 'users':
-      return Users;
-    case 'clipboard':
-      return ClipboardList;
-    case 'settings':
-      return Settings;
-  }
-}
+import { APPROVALS_HREF, NAV } from '@/components/nav-items';
 
 export async function AppShell({
   me,

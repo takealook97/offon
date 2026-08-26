@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { PendingList, type PendingRow } from './PendingList';
 import { RecentApprovals, type RecentItem } from './RecentApprovals';
 import { ApproveAllButton, type ApproveAllItem } from './ApproveAllButton';
-import { getT } from '@/lib/i18n/server';
+import { getT, getLocale } from '@/lib/i18n/server';
 import type { MessageKey } from '@/lib/i18n/dictionary';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +20,7 @@ const TYPE_LABEL: Record<string, MessageKey> = {
 };
 
 export default async function ApprovalsPage() {
+  const locale = await getLocale();
   const t = await getT();
   await requireAdmin();
 
@@ -71,7 +72,7 @@ export default async function ApprovalsPage() {
         id: r.id,
         name: r.member.name,
         position: r.member.position,
-        dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)'),
+        dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)', locale),
         before: formatTimelineSummary(t, before),
         after: formatTimelineSummary(t, after),
         reason: r.reason,
@@ -106,7 +107,7 @@ export default async function ApprovalsPage() {
         key: `att-${r.id}`,
         name: r.member.name,
         approverName: r.approver?.name ?? null,
-        dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)'),
+        dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)', locale),
         before: formatTimelineSummary(t, before),
         after: formatTimelineSummary(t, after),
         status: r.status as 'APPROVED' | 'REJECTED' | 'CANCELLED',
