@@ -6,6 +6,7 @@ import { verifyCode } from '@/lib/otp';
 import { signSession } from '@/lib/auth';
 import { setSessionCookie } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
+import { getT } from '@/lib/i18n/server';
 
 const Body = z.object({
   email: z.string().email(),
@@ -13,16 +14,17 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
   }
   const { email, code } = parsed.data;
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const limit = await consumeLimit(otpVerifyLimiter, `${ip}:${email}`);
   if (!limit.ok) {
     return NextResponse.json(
-      { ok: false, error: 'Too many requests. Try again in a moment.' },
+      { ok: false, error: t('api.tooManyRequests') },
       { status: 429 },
     );
   }
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
       action: 'LOGIN_FAIL',
       metadata: { reason: 'no-valid-code', ip },
     });
-    return NextResponse.json({ ok: false, error: 'That code expired or was tried too many times' }, { status: 401 });
+    return NextResponse.json({ ok: false, error: t('api.codeExpired') }, { status: 401 });
   }
 
   const ok = await verifyCode(latest.codeHash, code);

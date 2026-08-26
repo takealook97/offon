@@ -6,8 +6,10 @@ import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { checkCronAuth } from '@/lib/cron-auth';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 export async function GET(req: NextRequest) {
+  const t = getDeploymentT();
   const auth = checkCronAuth(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -61,8 +63,8 @@ export async function GET(req: NextRequest) {
       try {
         const msg =
           a.status === 'ON_BREAK'
-            ? 'You are still marked away. Please come back before clocking out.'
-            : 'No clock-out on record as of 19:00. Please clock out.';
+            ? t('cron.stillAway')
+            : t('cron.missingClockOut');
         await sendDm(a.member.slackId, msg);
         await prisma.attendance.update({
           where: { id: a.id },

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/session';
 import { getAppSettings, updateAppSettings } from '@/lib/settings';
 import { logAudit } from '@/lib/audit';
+import { getT } from '@/lib/i18n/server';
 
 const PatchBody = z.object({
   missingClockInNotifyEnabled: z.boolean().optional(),
@@ -21,12 +22,13 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const t = await getT();
   try {
     const session = await requireAdmin();
     const parsed = PatchBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, error: 'That input is not valid' },
+        { ok: false, error: t('api.badInput') },
         { status: 400 },
       );
     }

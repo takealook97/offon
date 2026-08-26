@@ -144,7 +144,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [range.start, range.end, memberId]);
+  }, [range.start, range.end, memberId, t]);
 
   const eventPropGetter = useCallback((event: UiEvent) => {
     return { className: eventStyle(event) };
@@ -182,7 +182,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
         else toast.error(d?.error ?? t('cal.sessionLoadFailed'));
       })
       .catch(() => toast.error(t('cal.sessionLoadFailed')));
-  }, []);
+  }, [t]);
 
   const handleCellClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

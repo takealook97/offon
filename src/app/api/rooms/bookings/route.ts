@@ -13,6 +13,7 @@ import {
   scheduleBookingReminders,
   toBookingDTO,
 } from '@/lib/room-booking-server';
+import { getT } from '@/lib/i18n/server';
 
 /** The default span when no range is given: one week grid, plus a little slack. */
 const DEFAULT_RANGE_DAYS = 14;
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
   try {
     const session = await requireSession();
     const parsed = RoomBookingBody.safeParse(await req.json().catch(() => null));
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          error: parsed.error.issues[0]?.message ?? 'That input is not valid',
+          error: parsed.error.issues[0]?.message ?? t('api.badInput'),
         },
         { status: 400 },
       );

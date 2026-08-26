@@ -5,15 +5,17 @@ import { requireAdmin } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
+import { getT } from '@/lib/i18n/server';
 
 const Body = z.object({ id: z.coerce.number().int(), reason: z.string().max(500).optional() });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
   try {
     const admin = await requireAdmin();
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
 
     const target = await prisma.leaveRequest.findFirst({

@@ -2,18 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
+import { getT } from '@/lib/i18n/server';
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const t = await getT();
   try {
     const admin = await requireAdmin();
     const { id: raw } = await params;
     const id = Number(raw);
     if (!Number.isInteger(id) || id <= 0) {
       return NextResponse.json(
-        { ok: false, error: 'Invalid id' },
+        { ok: false, error: t('api.badId') },
         { status: 400 },
       );
     }

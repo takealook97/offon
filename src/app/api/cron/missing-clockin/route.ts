@@ -6,8 +6,10 @@ import { logAudit } from '@/lib/audit';
 import { getAppSettings } from '@/lib/settings';
 import { sendDm } from '@/lib/slack';
 import { checkCronAuth } from '@/lib/cron-auth';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 export async function GET(req: NextRequest) {
+  const t = getDeploymentT();
   const auth = checkCronAuth(req);
   if (!auth.ok) {
     return NextResponse.json(
@@ -83,7 +85,7 @@ export async function GET(req: NextRequest) {
     if (!settings.missingClockInNotifyEnabled) continue;
 
     try {
-      await sendDm(m.slackId, 'No clock-in on record as of 10:00. Please take a look.');
+      await sendDm(m.slackId, t('cron.missingClockIn'));
       await prisma.attendance.update({
         where: { id: upserted.id },
         data: { clockInReminderSentAt: new Date() },

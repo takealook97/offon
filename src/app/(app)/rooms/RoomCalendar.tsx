@@ -151,7 +151,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [range.start, range.end, refreshKey]);
+  }, [range.start, range.end, refreshKey, t]);
 
   const events: UiBooking[] = useMemo(
     () =>
@@ -250,7 +250,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       }
       setDraft({ mode: 'create', start, end: clamped });
     },
-    [slots],
+    [slots, t],
   );
 
   /**
@@ -290,7 +290,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           : defaultEndWall(start, DEFAULT_BOOKING_MINUTES);
       openDraft(start, end);
     },
-    [rooms.length, openDraft],
+    [rooms.length, openDraft, t],
   );
 
   const handleSelectSlot = useCallback(
@@ -346,8 +346,11 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
   const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const t = e.touches[0];
-    touchStartRef.current = t ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+    // Named touch so it does not shadow the translation function t.
+    const touch = e.touches[0];
+    touchStartRef.current = touch
+      ? { x: touch.clientX, y: touch.clientY, at: Date.now() }
+      : null;
   }, []);
 
   const handleTouchEnd = useCallback(

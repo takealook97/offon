@@ -13,6 +13,8 @@ import {
   formatTimelineDate,
   timelinesEqualAtMinute,
 } from '@/lib/attendance-edit';
+import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const PENDING_UNIQUE_INDEX = 'attendance_edit_requests_pending_unique';
 
@@ -25,11 +27,13 @@ function isPendingConflict(e: unknown): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
+  const dt = getDeploymentT();
   try {
     const session = await requireSession();
     const parsed = EditRequestBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
     const { sessionId, reason, clockIn, clockOut, breaks } = parsed.data;
 
@@ -49,14 +53,14 @@ export async function POST(req: NextRequest) {
       },
     });
     if (!target) {
-      return NextResponse.json({ ok: false, error: 'Session not found' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: t('api.sessionNotFound') }, { status: 404 });
     }
     // A session still running can have its clock-in and breaks corrected.
     // The one exception is someone away right now, who is asked to come back first.
     // A meal is a closed break with its end already fixed, so it does not trip this; even one in progress can be edited or removed.
     if (target.breaks.some((b) => !b.endAt)) {
       return NextResponse.json(
-        { ok: false, error: 'A correction cannot be requested while you are away. Try again once you are back' },
+        { ok: false, error: t('api.editWhileAway') },
         { status: 400 },
       );
     }
@@ -67,7 +71,7 @@ export async function POST(req: NextRequest) {
     });
     if (dup) {
       return NextResponse.json(
-        { ok: false, error: 'You already have a correction request waiting' },
+        { ok: false, error: t('api.editPending') },
         { status: 409 },
       );
     }
@@ -118,7 +122,7 @@ export async function POST(req: NextRequest) {
       // is stopped by the attendance_edit_requests_pending_unique index.
       if (isPendingConflict(err)) {
         return NextResponse.json(
-          { ok: false, error: 'You already have a correction request waiting' },
+          { ok: false, error: t('api.editPending') },
           { status: 409 },
         );
       }
@@ -141,7 +145,7 @@ export async function POST(req: NextRequest) {
       select: { slackId: true },
     });
     const text =
-      `${requester?.name ?? 'An employee'} requested an attendance correction.\n` +
+      `${requester?.name ?? dt('dm.employee')} requested an attendance correction.\n` +
       `${formatTimelineDate(snapshot)}\n\n` +
       `[was] ${formatTimelineSummary(snapshot)}\n` +
       `[now] ${formatTimelineSummary(built.timeline)}`;

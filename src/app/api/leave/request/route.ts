@@ -12,14 +12,14 @@ import {
 } from '@/lib/time';
 import { leaveTypeLabel, formatLeaveDateRangeKST } from '@/lib/leave-labels';
 import { getHolidaySet } from '@/lib/holidays';
+import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({
   type: z.enum(['FULL_DAY', 'HALF_DAY_AM', 'HALF_DAY_PM']),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
-
-const NON_BUSINESS_REJECT_MESSAGE = 'Leave cannot be requested on a weekend or a holiday';
 
 function dayCount(
   start: string,
@@ -32,16 +32,18 @@ function dayCount(
 }
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
+  const dt = getDeploymentT();
   try {
     const session = await requireSession();
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
     const { type, startDate, endDate } = parsed.data;
     if (type !== 'FULL_DAY' && startDate !== endDate) {
       return NextResponse.json(
-        { ok: false, error: 'A half day has to start and end on the same date' },
+        { ok: false, error: t('api.halfDaySameDay') },
         { status: 400 },
       );
     }
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
       // A half day is refused when its date is a weekend or a holiday.
       if (!isBusinessDayKSTDateStr(startDate, holidays)) {
         return NextResponse.json(
-          { ok: false, error: NON_BUSINESS_REJECT_MESSAGE },
+          { ok: false, error: t('api.leaveWeekend') },
           { status: 400 },
         );
       }
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest) {
       admins.map((a) =>
         sendDm(
           a.slackId,
-          `${requester?.name ?? 'An employee'} ${action} ${dateRange}.`,
+          `${requester?.name ?? dt('dm.employee')} ${action} ${dateRange}.`,
         ).catch((err) =>
           logAudit({
             actorId: session.memberId,

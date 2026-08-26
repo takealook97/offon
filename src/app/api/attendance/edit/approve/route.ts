@@ -16,25 +16,29 @@ import {
   mergeAttendanceEditTimeline,
   normalizeBreakKind,
 } from '@/lib/attendance-edit';
+import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
+  const dt = getDeploymentT();
   try {
     const admin = await requireAdmin();
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
 
     const target = await prisma.attendanceEditRequest.findFirst({
       where: { id: parsed.data.id, deletedAt: null },
     });
     if (!target) {
-      return NextResponse.json({ ok: false, error: 'That correction request no longer exists' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: t('api.editNotFound') }, { status: 404 });
     }
     if (target.status !== 'REQUESTED') {
-      return NextResponse.json({ ok: false, error: 'That request was already handled' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.alreadyHandled') }, { status: 400 });
     }
 
     const proposed = asTimeline(target.proposed);
@@ -186,7 +190,7 @@ export async function POST(req: NextRequest) {
             : 'session_not_found';
       if (outcome.code === 'NOT_FOUND') {
         return NextResponse.json(
-          { ok: false, error: 'That session no longer exists' },
+          { ok: false, error: t('api.targetSessionNotFound') },
           { status: 404 },
         );
       }
@@ -206,8 +210,8 @@ export async function POST(req: NextRequest) {
           ok: false,
           error:
             outcome.code === 'OPEN_BREAK'
-              ? 'They are away right now. Try again once they are back'
-              : 'Their attendance changed after this request, so it can no longer be approved. Ask them to request it again.',
+              ? t('api.memberAway')
+              : t('api.staleEdit'),
         },
         { status: 409 },
       );
@@ -245,15 +249,15 @@ export async function POST(req: NextRequest) {
           lunch.endAt,
           admin.memberId,
         );
-        if (!ok) autoBackWarning = 'Could not schedule the automatic return notice';
+        if (!ok) autoBackWarning = t('api.mealScheduleFailed');
       }
     } else {
       // A failed cancel is reported whether or not anything was rescheduled. Deleting a meal outright leaves
       // nothing to reschedule but keeps the old message alive, so a notice for a meal that is gone still lands.
       autoBackWarning =
         outcome.pendingLunches.length > 0
-          ? 'Could not cancel the existing return notice, so nothing was rescheduled'
-          : 'Could not cancel the return notice for a deleted meal; it may still go out';
+          ? t('api.mealRescheduleSkipped')
+          : t('api.mealCancelFailed');
       await logAudit({
         actorId: admin.memberId,
         action: 'LUNCH_AUTO_BACK_CANCEL_FAILED',
@@ -268,7 +272,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        'Your attendance correction was approved.',
+        dt('dm.editApproved'),
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

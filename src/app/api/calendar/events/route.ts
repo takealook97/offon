@@ -10,6 +10,7 @@ import {
 } from '@/lib/calendar-utils';
 import { clippedDailyTotals } from '@/lib/calendar-aggregation';
 import type { CalendarEvent } from '@/lib/api-types';
+import { getT } from '@/lib/i18n/server';
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -20,12 +21,13 @@ function formatDuration(minutes: number): string {
 }
 
 export async function GET(req: NextRequest) {
+  const t = await getT();
   try {
     const session = await requireSession();
     const start = parseDate(req.nextUrl.searchParams.get('start'));
     const end = parseDate(req.nextUrl.searchParams.get('end'));
     if (!start || !end) {
-      return NextResponse.json({ ok: false, error: 'start and end query parameters are required' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.needRange') }, { status: 400 });
     }
     const memberIdRaw = req.nextUrl.searchParams.get('memberId');
     const parsedMemberId = memberIdRaw ? Number(memberIdRaw) : null;
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
     // Anyone may see their own calendar. Seeing a colleague's attendance and leave is
     // Admin-only, as the search is. Sharing leave across the team is handled by its own endpoint.
     if (targetMemberId !== session.memberId && session.role !== 'ADMIN') {
-      return NextResponse.json({ ok: false, error: 'You do not have permission' }, { status: 403 });
+      return NextResponse.json({ ok: false, error: t('api.forbidden') }, { status: 403 });
     }
 
     const [attendances, leaves] = await Promise.all([

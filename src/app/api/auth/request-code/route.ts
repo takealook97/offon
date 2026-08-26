@@ -5,13 +5,17 @@ import { consumeLimit, otpRequestLimiter } from '@/lib/rateLimit';
 import { generateCode, hashCode } from '@/lib/otp';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
+import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({ email: z.string().email() });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
+  const dt = getDeploymentT();
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: 'That email address is not valid' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: t('api.badEmail') }, { status: 400 });
   }
   const { email } = parsed.data;
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -31,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!member) {
     await logAudit({ action: 'LOGIN_UNKNOWN_EMAIL', metadata: { email, ip } });
     return NextResponse.json(
-      { ok: false, error: 'No account is registered with that email' },
+      { ok: false, error: t('api.unknownEmail') },
       { status: 404 },
     );
   }
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest) {
     // Development only: with no Slack token the code is verified by hand.
   } else {
     try {
-      await sendDm(member.slackId, `Your offon sign-in code: ${code} (valid for 5 minutes)`);
+      await sendDm(member.slackId, dt('dm.loginCode', { code }));
     } catch (err) {
       await logAudit({
         actorId: member.id,
@@ -61,7 +65,7 @@ export async function POST(req: NextRequest) {
         metadata: { stage: 'login_otp', error: String(err) },
       });
       return NextResponse.json(
-        { ok: false, error: 'The Slack DM could not be sent. Please contact an admin' },
+        { ok: false, error: t('api.dmFailed') },
         { status: 500 },
       );
     }

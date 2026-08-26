@@ -14,7 +14,7 @@ export async function sendDm(slackUserId: string, text: string): Promise<void> {
   const client = getClient();
   const open = await client.conversations.open({ users: slackUserId });
   const channel = open.channel?.id;
-  if (!channel) throw new Error(`could not open a Slack DM channel for ${slackUserId}`);
+  if (!channel) throw new Error(`Could not open a Slack DM channel for ${slackUserId}`);
   await client.chat.postMessage({ channel, text });
 }
 
@@ -59,7 +59,7 @@ export async function scheduleDm(
 ): Promise<ScheduledChannelMessage | null> {
   const open = await getClient().conversations.open({ users: slackUserId });
   const channel = open.channel?.id;
-  if (!channel) throw new Error(`could not open a Slack DM channel for ${slackUserId}`);
+  if (!channel) throw new Error(`Could not open a Slack DM channel for ${slackUserId}`);
   return scheduleChannel(channel, text, postAt);
 }
 

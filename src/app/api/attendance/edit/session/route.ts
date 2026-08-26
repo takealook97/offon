@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { buildEditableSession } from '@/lib/attendance-edit';
+import { getT } from '@/lib/i18n/server';
 
 // Returns your own session shaped for editing — clock-in, clock-out and breaks — when a correction is opened from the calendar.
 export async function GET(req: NextRequest) {
+  const t = await getT();
   try {
     const session = await requireSession();
     const id = Number(req.nextUrl.searchParams.get('id'));
     if (!Number.isInteger(id) || id <= 0) {
-      return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badRequest') }, { status: 400 });
     }
 
     const target = await prisma.attendanceSession.findFirst({
@@ -27,11 +29,11 @@ export async function GET(req: NextRequest) {
       },
     });
     if (!target) {
-      return NextResponse.json({ ok: false, error: 'Session not found' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: t('api.sessionNotFound') }, { status: 404 });
     }
     if (target.breaks.some((b) => !b.endAt)) {
       return NextResponse.json(
-        { ok: false, error: 'This cannot be edited while you are away. Try again once you are back' },
+        { ok: false, error: t('api.modifyWhileAway') },
         { status: 400 },
       );
     }

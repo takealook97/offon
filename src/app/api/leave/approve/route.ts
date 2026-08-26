@@ -8,15 +8,17 @@ import { logAudit } from '@/lib/audit';
 import { formatKST, countBusinessDaysKST } from '@/lib/time';
 import { getHolidaySet } from '@/lib/holidays';
 import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
+import { getT } from '@/lib/i18n/server';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
   try {
     const admin = await requireAdmin();
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
 
     const target = await prisma.leaveRequest.findFirst({
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          error: 'Holidays leave this request at zero days. Reject it and ask for a new one.',
+          error: t('api.zeroLeaveDays'),
         },
         { status: 400 },
       );

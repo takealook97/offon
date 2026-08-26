@@ -4,29 +4,33 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
+import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
+  const dt = getDeploymentT();
   try {
     const session = await requireSession();
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
 
     const target = await prisma.attendanceEditRequest.findFirst({
       where: { id: parsed.data.id, deletedAt: null },
     });
     if (!target) {
-      return NextResponse.json({ ok: false, error: 'That correction request no longer exists' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: t('api.editNotFound') }, { status: 404 });
     }
     if (target.memberId !== session.memberId) {
-      return NextResponse.json({ ok: false, error: 'You can only cancel your own requests' }, { status: 403 });
+      return NextResponse.json({ ok: false, error: t('api.ownRequestOnly') }, { status: 403 });
     }
     if (target.status !== 'REQUESTED') {
       return NextResponse.json(
-        { ok: false, error: 'That request was already handled or cancelled' },
+        { ok: false, error: t('api.alreadyHandledOrCancelled') },
         { status: 400 },
       );
     }
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
       where: { role: 'ADMIN', deletedAt: null },
       select: { slackId: true },
     });
-    const text = `${requester?.name ?? 'An employee'} cancelled their attendance correction request.`;
+    const text = `${requester?.name ?? dt('dm.employee')} cancelled their attendance correction request.`;
     await Promise.all(
       recipients.map((r) =>
         sendDm(r.slackId, text).catch((err) =>

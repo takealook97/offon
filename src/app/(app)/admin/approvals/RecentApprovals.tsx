@@ -51,7 +51,6 @@ async function StatusBadge({ status }: { status: RecentStatus }) {
 }
 
 async function KindBadge({ label }: { label: string }) {
-  const t = await getT();
   return (
     <Badge variant="secondary" className="shrink-0">
       {label}

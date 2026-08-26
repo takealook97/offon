@@ -7,6 +7,7 @@ import {
   buildOrgReport,
 } from '@/lib/attendance-export';
 import { buildIndividualWorkbook, buildOrgWorkbook } from '@/lib/attendance-excel';
+import { getT } from '@/lib/i18n/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,6 +38,7 @@ function xlsxResponse(buffer: Uint8Array<ArrayBuffer>, koreanFilename: string, y
 }
 
 export async function GET(req: NextRequest) {
+  const t = await getT();
   try {
     const sp = req.nextUrl.searchParams;
     const parsed = Query.safeParse({
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
     });
     if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, error: 'Those request parameters are not valid' },
+        { ok: false, error: t('api.badParams') },
         { status: 400 },
       );
     }
@@ -75,7 +77,7 @@ export async function GET(req: NextRequest) {
     } else {
       if (!memberId) {
         return NextResponse.json(
-          { ok: false, error: 'memberId is required' },
+          { ok: false, error: t('api.needMemberId') },
           { status: 400 },
         );
       }

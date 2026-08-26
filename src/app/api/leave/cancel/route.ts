@@ -6,15 +6,19 @@ import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { todayKST } from '@/lib/time';
 import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
+import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
+  const dt = getDeploymentT();
   try {
     const session = await requireSession();
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
 
     const target = await prisma.leaveRequest.findFirst({
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
     if (target.startDate < todayKST()) {
       return NextResponse.json(
-        { ok: false, error: 'Leave that has already started cannot be cancelled' },
+        { ok: false, error: t('api.leaveAlreadyStarted') },
         { status: 400 },
       );
     }
@@ -70,7 +74,7 @@ export async function POST(req: NextRequest) {
       admins.map((a) =>
         sendDm(
           a.slackId,
-          `${requester?.name ?? 'An employee'} cancelled their ${typeLabel} request for ${dateRange}.`,
+          `${requester?.name ?? dt('dm.employee')} cancelled their ${typeLabel} request for ${dateRange}.`,
         ).catch((err) =>
           logAudit({
             actorId: session.memberId,

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
 import { kstYear } from '@/lib/time';
+import { getT } from '@/lib/i18n/server';
 
 const CreateBody = z.object({
   name: z.string().min(1),
@@ -28,11 +29,12 @@ const UpdateBody = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
   try {
     const admin = await requireAdmin();
     const parsed = CreateBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
     const d = parsed.data;
     const created = await prisma.$transaction(async (tx) => {
@@ -68,11 +70,12 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const t = await getT();
   try {
     const admin = await requireAdmin();
     const parsed = UpdateBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'That input is not valid' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t('api.badInput') }, { status: 400 });
     }
     const { id, baseDays, bonusDays, ...rest } = parsed.data;
     await prisma.$transaction(async (tx) => {

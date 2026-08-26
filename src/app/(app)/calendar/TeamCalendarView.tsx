@@ -113,7 +113,7 @@ export function TeamCalendarView() {
     return () => {
       cancelled = true;
     };
-  }, [range.start, range.end]);
+  }, [range.start, range.end, t]);
 
   const eventPropGetter = useCallback(
     (event: UiEvent) => ({ className: eventStyle(event) }),

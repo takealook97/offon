@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { listHolidays } from '@/lib/holidays';
 import { logAudit } from '@/lib/audit';
+import { getT } from '@/lib/i18n/server';
 
 const CreateBody = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -25,12 +26,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const t = await getT();
   try {
     const admin = await requireAdmin();
     const parsed = CreateBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, error: 'That input is not valid' },
+        { ok: false, error: t('api.badInput') },
         { status: 400 },
       );
     }

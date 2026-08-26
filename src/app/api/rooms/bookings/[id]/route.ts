@@ -10,6 +10,7 @@ import {
   findRoomConflict,
   scheduleBookingReminders,
 } from '@/lib/room-booking-server';
+import { getT } from '@/lib/i18n/server';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -28,11 +29,12 @@ async function guardManage(
   idParam: string,
   viewer: { memberId: number; role: string },
 ): Promise<Guarded> {
+  const t = await getT();
   const id = Number(idParam);
   if (!Number.isInteger(id) || id <= 0) {
     return {
       ok: false,
-      response: NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 }),
+      response: NextResponse.json({ ok: false, error: t('api.badRequest') }, { status: 400 }),
     };
   }
   const booking = await prisma.roomBooking.findFirst({
@@ -86,6 +88,7 @@ async function guardManage(
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
+  const t = await getT();
   try {
     const session = await requireSession();
     const { id } = await ctx.params;
@@ -98,7 +101,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json(
         {
           ok: false,
-          error: parsed.error.issues[0]?.message ?? 'That input is not valid',
+          error: parsed.error.issues[0]?.message ?? t('api.badInput'),
         },
         { status: 400 },
       );

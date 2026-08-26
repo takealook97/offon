@@ -8,6 +8,7 @@ import {
   halfDayIsoRange,
 } from '@/lib/calendar-utils';
 import type { CalendarEvent } from '@/lib/api-types';
+import { getT } from '@/lib/i18n/server';
 
 function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
   if (type === 'HALF_DAY_AM') return 'Half day (morning)';
@@ -16,13 +17,14 @@ function typeLabel(type: 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM'): string {
 }
 
 export async function GET(req: NextRequest) {
+  const t = await getT();
   try {
     await requireSession();
     const start = parseDate(req.nextUrl.searchParams.get('start'));
     const end = parseDate(req.nextUrl.searchParams.get('end'));
     if (!start || !end) {
       return NextResponse.json(
-        { ok: false, error: 'start and end query parameters are required' },
+        { ok: false, error: t('api.needRange') },
         { status: 400 },
       );
     }
@@ -81,7 +83,7 @@ export async function GET(req: NextRequest) {
     if (e instanceof Response) return e;
     console.error('[team/leaves] failed', e);
     return NextResponse.json(
-      { ok: false, error: 'Could not load the team leave schedule' },
+      { ok: false, error: t('api.teamLeaveFailed') },
       { status: 500 },
     );
   }
