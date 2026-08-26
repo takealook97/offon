@@ -229,6 +229,8 @@ const ko = {
   'settings.missingOutExample': '메시지: “오후 7시 기준 퇴근 기록이 없습니다. 퇴근 처리 부탁드립니다.”',
   'settings.missingOutHint': '켜는 즉시 전송되지는 않으며, 다음 평일 오후 7시부터 작동합니다.',
   'settings.missingOutToggle': '미퇴근 Slack DM 알림 토글',
+  'settings.subtitle': '관리자 전용 · 앱 전역 설정을 관리합니다',
+  'member.summary': '총 {total}명 · 활성 {active}명',
   'settings.title': '설정',
 
   // 결재
@@ -261,6 +263,28 @@ const ko = {
   'appr.reasonLabel': '사유: {reason}',
   'appr.approver': '처리자: {name}',
   'appr.cancelled': '취소',
+
+  // 공휴일 관리
+  'weekday.short': '일,월,화,수,목,금,토',
+  'holiday.badge': '공휴일',
+  'holiday.title': '공휴일 관리',
+  'holiday.description': '등록된 공휴일은 주말과 동일하게 처리됩니다. 연차 신청 시 일수에서 제외되며, 해당 일자로의 연차 및 반차 신청은 불가합니다. 연차 승인 시점에 현재 공휴일 목록으로 일수를 다시 계산하므로, 신청 후 공휴일을 추가해도 승인에 반영됩니다.',
+  'holiday.date': '날짜',
+  'holiday.pickDate': '날짜 선택',
+  'holiday.name': '명칭',
+  'holiday.namePlaceholder': '예) 어린이날',
+  'holiday.add': '추가',
+  'holiday.addFailed': '공휴일 추가에 실패했습니다',
+  'holiday.added': '공휴일이 추가되었습니다',
+  'holiday.deleteConfirm': '{date} {name} 을(를) 삭제하시겠어요?',
+  'holiday.deleteFailed': '삭제에 실패했습니다',
+  'holiday.deleted': '공휴일이 삭제되었습니다',
+  'holiday.deleteLabel': '{name} 삭제',
+  'holiday.prevYear': '이전 연도',
+  'holiday.nextYear': '다음 연도',
+  'holiday.year': '{year}년',
+  'holiday.count': '{count}건',
+  'holiday.emptyYear': '{year}년에 등록된 공휴일이 없습니다',
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -476,6 +500,8 @@ const en: Messages = {
   'settings.missingOutExample': 'The DM reads: “No clock-out on record as of 19:00. Please clock out.”',
   'settings.missingOutHint': 'Nothing is sent right away; it starts on the next weekday at 19:00.',
   'settings.missingOutToggle': 'Toggle missing clock-out DMs',
+  'settings.subtitle': 'Admin only · app-wide settings',
+  'member.summary': '{total} people · {active} active',
   'settings.title': 'Settings',
 
   'appr.title': 'Approvals',
@@ -507,6 +533,27 @@ const en: Messages = {
   'appr.reasonLabel': 'Reason: {reason}',
   'appr.approver': 'Handled by {name}',
   'appr.cancelled': 'Cancelled',
+
+  'weekday.short': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
+  'holiday.badge': 'Holidays',
+  'holiday.title': 'Public holidays',
+  'holiday.description': 'Holidays you add here behave like weekends: they are excluded from the day count on a leave request, and nobody can request leave or a half day on them. The count is recalculated against the current holiday list when leave is approved, so adding a holiday after a request still applies.',
+  'holiday.date': 'Date',
+  'holiday.pickDate': 'Pick a date',
+  'holiday.name': 'Name',
+  'holiday.namePlaceholder': "e.g. New Year's Day",
+  'holiday.add': 'Add',
+  'holiday.addFailed': "Couldn't add the holiday",
+  'holiday.added': 'Holiday added',
+  'holiday.deleteConfirm': 'Delete {name} on {date}?',
+  'holiday.deleteFailed': "Couldn't delete it",
+  'holiday.deleted': 'Holiday deleted',
+  'holiday.deleteLabel': 'Delete {name}',
+  'holiday.prevYear': 'Previous year',
+  'holiday.nextYear': 'Next year',
+  'holiday.year': '{year}',
+  'holiday.count': '{count}',
+  'holiday.emptyYear': 'No holidays recorded for {year}',
 };
 
 export const MESSAGES: Record<Locale, Messages> = { ko, en };

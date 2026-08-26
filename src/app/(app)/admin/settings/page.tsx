@@ -20,7 +20,7 @@ export default async function AdminSettingsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t('settings.title')}</h1>
         <p className="text-sm text-muted-foreground">
-          Admin only · manage the application-wide settings
+          {t('settings.subtitle')}
         </p>
       </header>
       <SettingsPanel initial={settings} />

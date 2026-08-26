@@ -73,7 +73,7 @@ export default async function MembersPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('member.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            {rows.length} people · {rows.filter((r) => r.active).length} active
+            {t('member.summary', { total: rows.length, active: rows.filter((r) => r.active).length })}
           </p>
         </div>
       </header>

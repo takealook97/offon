@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useTranslation } from '@/lib/i18n/client';
 
 type Holiday = { id: number; date: string; name: string };
 
@@ -31,11 +32,12 @@ type Props = {
   initial: Holiday[];
 };
 
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function weekdayOf(dateStr: string): string {
+
+/** A calendar date's weekday does not depend on a timezone, so it is read at midnight UTC. */
+function weekdayOf(dateStr: string, weekdays: string[]): string {
   const dow = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
-  return KO_WEEKDAY[dow] ?? '';
+  return weekdays[dow] ?? '';
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -51,6 +53,8 @@ const fromYmd = (s: string): Date | undefined =>
     : undefined;
 
 export function HolidaysPanel({ initial }: Props) {
+  const { t } = useTranslation();
+  const weekdays = t('weekday.short').split(',');
   const [holidays, setHolidays] = useState<Holiday[]>(initial);
   const [date, setDate] = useState('');
   const [name, setName] = useState('');
@@ -89,7 +93,7 @@ export function HolidaysPanel({ initial }: Props) {
         error?: string;
       };
       if (!res.ok || !data.ok || !data.holiday) {
-        toast.error(data.error ?? 'Could not add that holiday');
+        toast.error(data.error ?? t('holiday.addFailed'));
         return;
       }
       const added = data.holiday!;
@@ -99,12 +103,12 @@ export function HolidaysPanel({ initial }: Props) {
       setViewYear(Number(added.date.slice(0, 4)));
       setDate('');
       setName('');
-      toast.success('Holiday added');
+      toast.success(t('holiday.added'));
     });
   };
 
   const remove = (h: Holiday) => {
-    if (!confirm(`Delete ${h.date} ${h.name}?`)) return;
+    if (!confirm(t('holiday.deleteConfirm', { date: h.date, name: h.name }))) return;
     setDeletingId(h.id);
     fetch(`/api/admin/holidays/${h.id}`, { method: 'DELETE' })
       .then(async (res) => {
@@ -113,11 +117,11 @@ export function HolidaysPanel({ initial }: Props) {
           error?: string;
         };
         if (!res.ok || !data.ok) {
-          toast.error(data.error ?? 'Could not delete that');
+          toast.error(data.error ?? t('holiday.deleteFailed'));
           return;
         }
         setHolidays((prev) => prev.filter((x) => x.id !== h.id));
-        toast.success('Holiday deleted');
+        toast.success(t('holiday.deleted'));
       })
       .finally(() => setDeletingId(null));
   };
@@ -126,19 +130,17 @@ export function HolidaysPanel({ initial }: Props) {
     <Card>
       <CardHeader className="pb-3">
         <CardDescription className="flex items-center gap-1.5">
-          <CalendarDays className="size-3.5" /> Holidays
+          <CalendarDays className="size-3.5" /> {t('holiday.badge')}
         </CardDescription>
-        <CardTitle className="text-lg">Public holidays</CardTitle>
+        <CardTitle className="text-lg">{t('holiday.title')}</CardTitle>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          A holiday is treated exactly as a weekend is. It drops out of the day count,
-          Neither leave nor a half day can be requested on that date. At <b>approval</b>, the days are recounted
-          against the holidays as they stand, so one added after the request still counts.
+          {t('holiday.description')}
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[200px_1fr_auto]">
           <div className="space-y-1.5">
-            <Label htmlFor="holiday-date">Date</Label>
+            <Label htmlFor="holiday-date">{t('holiday.date')}</Label>
             <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -153,7 +155,7 @@ export function HolidaysPanel({ initial }: Props) {
                       {format(selectedDate, 'yyyy-MM-dd (EEE)', { locale: ko })}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">Pick a date</span>
+                    <span className="text-muted-foreground">{t('holiday.pickDate')}</span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -173,11 +175,11 @@ export function HolidaysPanel({ initial }: Props) {
             </Popover>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="holiday-name">Name</Label>
+            <Label htmlFor="holiday-name">{t('holiday.name')}</Label>
             <Input
               id="holiday-name"
               type="text"
-              placeholder="e.g. New Year's Day"
+              placeholder={t('holiday.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="h-10"
@@ -195,7 +197,7 @@ export function HolidaysPanel({ initial }: Props) {
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <>
-                  <Plus className="size-4" /> Add
+                  <Plus className="size-4" /> {t('holiday.add')}
                 </>
               )}
             </Button>
@@ -208,30 +210,30 @@ export function HolidaysPanel({ initial }: Props) {
               <button
                 type="button"
                 onClick={() => setViewYear((y) => y - 1)}
-                aria-label="Previous year"
+                aria-label={t('holiday.prevYear')}
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
               >
                 <ChevronLeft className="size-4" />
               </button>
               <h3 className="min-w-[4.5rem] text-center text-sm font-semibold">
-                {viewYear}
+                {t('holiday.year', { year: viewYear })}
               </h3>
               <button
                 type="button"
                 onClick={() => setViewYear((y) => y + 1)}
-                aria-label="Next year"
+                aria-label={t('holiday.nextYear')}
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
               >
                 <ChevronRight className="size-4" />
               </button>
             </div>
             <span className="text-xs text-muted-foreground">
-              {yearItems.length}
+              {t('holiday.count', { count: yearItems.length })}
             </span>
           </div>
           {yearItems.length === 0 ? (
             <p className="rounded-md border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
-              No holidays have been added for {viewYear}
+              {t('holiday.emptyYear', { year: viewYear })}
             </p>
           ) : (
             <ul className="divide-y divide-border/60 rounded-md border border-border/60">
@@ -243,7 +245,7 @@ export function HolidaysPanel({ initial }: Props) {
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="font-mono tabular-nums">{h.date}</span>
                     <span className="text-muted-foreground">
-                      ({weekdayOf(h.date)})
+                      ({weekdayOf(h.date, weekdays)})
                     </span>
                     <span className="truncate">{h.name}</span>
                   </div>
@@ -251,7 +253,7 @@ export function HolidaysPanel({ initial }: Props) {
                     type="button"
                     onClick={() => remove(h)}
                     disabled={deletingId === h.id}
-                    aria-label={`${h.name} Remove`}
+                    aria-label={t('holiday.deleteLabel', { name: h.name })}
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                   >
                     {deletingId === h.id ? (
