@@ -43,6 +43,7 @@ import {
 import { AttendeePicker, type AttendeeOption } from './AttendeePicker';
 import { useTranslation } from '@/lib/i18n/client';
 import type { MessageKey } from '@/lib/i18n/dictionary';
+import { gridNow } from '@/lib/time';
 
 type Item = [value: string, label: string];
 
@@ -95,12 +96,8 @@ function TimeSel({
 const hourOf = (wall: string) => wall.slice(11, 13);
 const minuteOf = (wall: string) => wall.slice(14, 16);
 
-/**
- * This grid assumes the browser's clock matches the org timezone. One deployment serves one organisation
- * and an organisation mostly works in one zone, so it holds in practice, but someone in another
- * sees today off by a day. See the known limitations in the README.
- */
-const nowWall = () => format(new Date(), "yyyy-MM-dd'T'HH:mm");
+/** The org's wall clock right now. The same value whichever zone the browser is in. */
+const nowWall = () => format(gridNow(), "yyyy-MM-dd'T'HH:mm");
 
 export type BookingDraft = {
   mode: 'create' | 'edit';

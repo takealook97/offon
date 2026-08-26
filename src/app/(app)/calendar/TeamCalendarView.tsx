@@ -15,6 +15,7 @@ import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
 import { useTranslation } from '@/lib/i18n/client';
+import { toGridDate, gridNow, fromGridDate } from '@/lib/time';
 
 const VIEWS_ALLOWED: View[] = [Views.MONTH];
 
@@ -46,7 +47,7 @@ export function TeamCalendarView() {
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(gridNow);
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
   const ToolbarWithJump = useMemo(
     () => {
@@ -73,8 +74,8 @@ export function TeamCalendarView() {
   useEffect(() => {
     let cancelled = false;
     const qs = new URLSearchParams({
-      start: range.start.toISOString(),
-      end: range.end.toISOString(),
+      start: fromGridDate(range.start).toISOString(),
+      end: fromGridDate(range.end).toISOString(),
     });
     // This screen fetches inside an effect rather than through a data library. The loading flag
     // is set immediately before the request, which is not the cascading render the lint rule warns about.
@@ -95,8 +96,8 @@ export function TeamCalendarView() {
             data.events.map((e) => ({
               id: e.id,
               title: e.title,
-              start: new Date(e.start),
-              end: new Date(e.end),
+              start: toGridDate(new Date(e.start)),
+              end: toGridDate(new Date(e.end)),
               allDay: e.allDay,
               resource: e.resource,
             })),
@@ -189,6 +190,8 @@ export function TeamCalendarView() {
       >
         <Calendar
           localizer={localizer}
+          // RBC's idea of today defaults to the local clock. Make it follow the org timezone.
+          getNow={gridNow}
           culture="ko"
           formats={calendarFormats(locale)}
           events={events}

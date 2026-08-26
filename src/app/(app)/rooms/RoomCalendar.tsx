@@ -34,6 +34,7 @@ import { CalendarToolbar } from '../calendar/CalendarToolbar';
 import { BookingDialog, type BookingDraft } from './BookingDialog';
 import { BookingDetailDialog } from './BookingDetailDialog';
 import { useTranslation } from '@/lib/i18n/client';
+import { toGridDate, gridNow, fromGridDate } from '@/lib/time';
 
 /**
  * Kept at module scope. A fresh Date on every render changes the key of the library's slot cache
@@ -64,7 +65,7 @@ type UiBooking = {
   resource: RoomBookingDTO;
 };
 
-/** A Date to a wall clock, assuming the browser matches the org timezone; see the note in BookingDialog. */
+/** A grid Date to a wall-clock string. In grid coordinates the local fields are the org's wall clock. */
 const toWall = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
 
 /**
@@ -87,7 +88,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
   const [rooms, setRooms] = useState<RoomDTO[]>([]);
   const [bookings, setBookings] = useState<RoomBookingDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(() => new Date());
+  const [date, setDate] = useState(gridNow);
   const [refreshKey, setRefreshKey] = useState(0);
   const [draft, setDraft] = useState<BookingDraft | null>(null);
   const [detail, setDetail] = useState<RoomBookingDTO | null>(null);
@@ -120,8 +121,9 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
   useEffect(() => {
     let cancelled = false;
     const qs = new URLSearchParams({
-      start: range.start.toISOString(),
-      end: range.end.toISOString(),
+      // The range is in grid coordinates, so convert it back to real instants before sending.
+      start: fromGridDate(range.start).toISOString(),
+      end: fromGridDate(range.end).toISOString(),
     });
     // This screen fetches inside an effect rather than through a data library. The loading flag
     // is set immediately before the request, which is not the cascading render the lint rule warns about.
@@ -174,8 +176,8 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
     () =>
       bookings.map((b) => ({
         id: b.id,
-        start: toWall(new Date(b.start)),
-        end: toWall(new Date(b.end)),
+        start: toWall(toGridDate(new Date(b.start))),
+        end: toWall(toGridDate(new Date(b.end))),
       })),
     [bookings],
   );
@@ -267,7 +269,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       // Ignore this if it is the click that just dismissed the dialog leaking through.
       if (Date.now() < reopenBlockedUntil.current) return;
 
-      const now = new Date();
+      const now = gridNow();
       const day = wallDate(startWall);
       const today = wallDate(toWall(now));
       if (day < today) {
@@ -392,7 +394,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
         label={weekLabel}
         onPrev={() => shiftWeek(-1)}
         onNext={() => shiftWeek(1)}
-        onToday={() => setDate(new Date())}
+        onToday={() => setDate(gridNow())}
         right={<Legend />}
       />
 
@@ -420,6 +422,8 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           >
             <Calendar
               localizer={localizer}
+              // RBC's idea of today defaults to the local clock. Make it follow the org timezone.
+              getNow={gridNow}
               culture="ko"
               formats={roomFormats(locale)}
               events={events}
@@ -476,7 +480,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           onEdit={() => {
             setDraft({
               mode: 'edit',
-              start: toWall(new Date(detail.start)),
+              start: toWall(toGridDate(new Date(detail.start))),
               end: toWall(new Date(detail.end)),
               booking: detail,
             });

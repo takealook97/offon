@@ -323,3 +323,34 @@ export function clipSegmentLabel(
   }
   return { startLabel, endLabel, minutes };
 }
+
+/**
+ * An instant to a "grid Date", whose local fields match the org timezone's wall clock.
+ *
+ * react-big-calendar picks a cell from the **local** fields of the Date it is handed. Passing the real instant
+ * places events in the viewer's browser timezone, which then disagrees with the labels the server
+ * built in the org timezone: seen from another zone, everything sits a day off.
+ *
+ * This Date is for placement on screen only. Never store it or send it via toISOString().
+ */
+export function toGridDate(instant: Date): Date {
+  return zoneWallClock(instant);
+}
+
+/** The inverse of `toGridDate`: reads a grid Date's local fields as a wall clock and returns the instant. */
+export function fromGridDate(gridDate: Date): Date {
+  return new Date(
+    wallToUtcMs(
+      gridDate.getFullYear(),
+      gridDate.getMonth() + 1,
+      gridDate.getDate(),
+      gridDate.getHours(),
+      gridDate.getMinutes(),
+    ),
+  );
+}
+
+/** 'Now' in the org timezone as a grid Date. The grid's today marker follows this. */
+export function gridNow(): Date {
+  return toGridDate(new Date());
+}

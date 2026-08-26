@@ -31,6 +31,7 @@ import { EditRequestDialog } from './EditRequestDialog';
 import { PendingEditRequests } from './PendingEditRequests';
 import { useTranslation } from '@/lib/i18n/client';
 import { formatDuration } from '@/lib/i18n/format';
+import { toGridDate, gridNow, fromGridDate } from '@/lib/time';
 import {
   attendanceMinutesIn,
   rangeForView,
@@ -74,7 +75,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>(Views.MONTH);
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(gridNow);
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
   const [editSession, setEditSession] = useState<EditableSession | null>(null);
   const [pendingRefresh, setPendingRefresh] = useState(0);
@@ -94,9 +95,11 @@ export function CalendarView({ memberId }: { memberId?: number }) {
 
   useEffect(() => {
     let cancelled = false;
+    // The range is in grid coordinates, whose local fields are the org's wall clock, so sending
+    // it as-is would be hours out. The server needs real instants, so it is converted back.
     const qs = new URLSearchParams({
-      start: range.start.toISOString(),
-      end: range.end.toISOString(),
+      start: fromGridDate(range.start).toISOString(),
+      end: fromGridDate(range.end).toISOString(),
     });
     if (memberId) qs.set('memberId', String(memberId));
     // This screen fetches inside an effect rather than through a data library. The loading flag
@@ -118,8 +121,8 @@ export function CalendarView({ memberId }: { memberId?: number }) {
             data.events.map((e) => ({
               id: e.id,
               title: e.title,
-              start: new Date(e.start),
-              end: new Date(e.end),
+              start: toGridDate(new Date(e.start)),
+              end: toGridDate(new Date(e.end)),
               allDay: e.allDay,
               resource: e.resource,
             })),
@@ -241,6 +244,8 @@ export function CalendarView({ memberId }: { memberId?: number }) {
       >
         <Calendar
           localizer={localizer}
+          // RBC's idea of today defaults to the local clock. Make it follow the org timezone.
+          getNow={gridNow}
           culture="ko"
           formats={calendarFormats(locale)}
           events={events}
@@ -324,7 +329,7 @@ function WeeklySummary({
   date: Date;
 }) {
   const { t } = useTranslation();
-  const today = new Date();
+  const today = gridNow();
   const weeks = useMemo(() => weeksInMonth(date), [date]);
   const monthTotal = useMemo(
     () => attendanceMinutesIn(dailyTotals, rangeForView('month', date)),

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   wallToUtc,
   utcToWall,
+  toGridDate,
+  fromGridDate,
   isWeekendDateStr,
   countWeekdays,
   isBusinessDayDateStr,
@@ -227,5 +229,37 @@ test('an unknown timezone is rejected rather than silently wrong', () => {
   inTimezone('Mars/Olympus_Mons', () => {
     // Falling back to UTC quietly would record attendance hours off. Throwing is better.
     assert.throws(() => dayKey(new Date('2026-08-25T00:00:00Z')), RangeError);
+  });
+});
+
+test('a grid date carries the organization wall clock in its local fields', () => {
+  inTimezone('America/New_York', () => {
+    // 09:49 in Seoul is 20:49 EDT the previous day. The grid has to place it at 20:49 for the label and the cell to agree.
+    const grid = toGridDate(new Date('2026-08-26T00:49:00Z'));
+    assert.equal(grid.getHours(), 20);
+    assert.equal(grid.getMinutes(), 49);
+    assert.equal(grid.getDate(), 25);
+  });
+});
+
+test('grid conversion round-trips back to the same instant', () => {
+  for (const zone of ['Asia/Seoul', 'America/New_York', 'Asia/Kolkata', 'UTC']) {
+    inTimezone(zone, () => {
+      const instant = new Date('2026-08-26T00:49:00Z');
+      // The round trip is exact to the minute; the grid does not use seconds.
+      assert.equal(
+        fromGridDate(toGridDate(instant)).toISOString(),
+        '2026-08-26T00:49:00.000Z',
+        `round trip failed in ${zone}`,
+      );
+    });
+  }
+});
+
+test('grid conversion round-trips across a DST transition', () => {
+  inTimezone('America/New_York', () => {
+    // Just after daylight saving starts. Measuring the offset from the input rather than the result lands an hour out.
+    const instant = new Date('2026-03-08T12:00:00Z');
+    assert.equal(fromGridDate(toGridDate(instant)).toISOString(), '2026-03-08T12:00:00.000Z');
   });
 });
