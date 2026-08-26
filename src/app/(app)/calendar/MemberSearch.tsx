@@ -47,6 +47,9 @@ export function MemberSearch() {
   }, [members, query]);
 
   useEffect(() => {
+    // When the query or the open state changes, the highlight may point at an entry that is
+    // gone, so it returns to the first. This reset cannot be derived during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHighlight(0);
   }, [query, open]);
 

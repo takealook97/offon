@@ -10,6 +10,9 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
+  // The server does not know the viewer's theme, so the icon can only be settled after the
+  // first paint. This setState is the hydration-avoidance pattern next-themes documents.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   const isDark = mounted && resolvedTheme === 'dark';

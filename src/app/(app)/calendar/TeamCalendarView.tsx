@@ -49,8 +49,13 @@ export function TeamCalendarView() {
   const [date, setDate] = useState(new Date());
   const [showMore, setShowMore] = useState<{ date: Date; events: UiEvent[] } | null>(null);
   const ToolbarWithJump = useMemo(
-    () => (props: ToolbarProps<UiEvent>) =>
-      <CustomToolbar {...props} date={date} onJump={setDate} />,
+    () => {
+      // react/display-name: an anonymous arrow component shows up nameless in DevTools.
+      function ToolbarWithJump(props: ToolbarProps<UiEvent>) {
+        return <CustomToolbar {...props} date={date} onJump={setDate} />;
+      }
+      return ToolbarWithJump;
+    },
     [date],
   );
 
@@ -71,6 +76,9 @@ export function TeamCalendarView() {
       start: range.start.toISOString(),
       end: range.end.toISOString(),
     });
+    // This screen fetches inside an effect rather than through a data library. The loading flag
+    // is set immediately before the request, which is not the cascading render the lint rule warns about.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const fromStr = format(range.start, 'yyyy-MM-dd');
     const toStr = format(range.end, 'yyyy-MM-dd');

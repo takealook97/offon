@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest something offon should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you or your team unable to do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you'd like instead
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      description: >
+        offon deliberately stays small — attendance and leave for one
+        organization, driven from Slack. It is not a payroll system, an HRIS,
+        or a multi-tenant SaaS.
+      options:
+        - label: This fits that scope

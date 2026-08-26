@@ -123,6 +123,9 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       start: range.start.toISOString(),
       end: range.end.toISOString(),
     });
+    // This screen fetches inside an effect rather than through a data library. The loading flag
+    // is set immediately before the request, which is not the cascading render the lint rule warns about.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/rooms/bookings?${qs}`)
       .then((r) => r.json())

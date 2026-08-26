@@ -10,7 +10,11 @@ Your team already types "morning!" in `#general`. offon turns that into a real a
 
 Self-hosted. MIT licensed. Deploys to Vercel in about 10 minutes.
 
-[Quick start](#quick-start) · [Slack setup](docs/slack-app.md) · [Self-hosting](docs/self-hosting.md)
+[![CI](https://github.com/takealook97/offon/actions/workflows/ci.yml/badge.svg)](https://github.com/takealook97/offon/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org)
+
+[Quick start](#quick-start) · [Slack setup](docs/slack-app.md) · [Self-hosting](docs/self-hosting.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -167,7 +171,9 @@ docs/                     # Slack app setup, self-hosting guide
 
 ## Contributing
 
-Issues and pull requests are welcome. If you're adding behavior, add a test for it — the domain rules live in `src/lib` and are covered by `pnpm test`.
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what a good change looks like. The *Known limitations* above are all fair game; the timezone one would help the most people.
+
+Found a security problem? Please report it privately — see [SECURITY.md](SECURITY.md).
 
 ## License
 

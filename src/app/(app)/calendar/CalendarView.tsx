@@ -99,6 +99,9 @@ export function CalendarView({ memberId }: { memberId?: number }) {
       end: range.end.toISOString(),
     });
     if (memberId) qs.set('memberId', String(memberId));
+    // This screen fetches inside an effect rather than through a data library. The loading flag
+    // is set immediately before the request, which is not the cascading render the lint rule warns about.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const fromStr = format(range.start, 'yyyy-MM-dd');
     const toStr = format(range.end, 'yyyy-MM-dd');
@@ -217,8 +220,13 @@ export function CalendarView({ memberId }: { memberId?: number }) {
     view === Views.DAY ? 'day' : view === Views.WEEK ? 'week' : 'month';
 
   const Toolbar = useMemo(
-    () => (props: ToolbarProps<UiEvent>) =>
-      <CustomToolbar {...props} date={date} onJump={setDate} />,
+    () => {
+      // react/display-name: an anonymous arrow component shows up nameless in DevTools.
+      function Toolbar(props: ToolbarProps<UiEvent>) {
+        return <CustomToolbar {...props} date={date} onJump={setDate} />;
+      }
+      return Toolbar;
+    },
     [date],
   );
 
