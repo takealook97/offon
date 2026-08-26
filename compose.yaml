@@ -11,8 +11,13 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://offon:offon@postgres:5432/offon?schema=public
-      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
-      OTP_PEPPER: ${OTP_PEPPER:?set OTP_PEPPER in .env}
+      # Not guarded with `:?` here. Compose interpolates every service in the file whether or
+      # not its profile was asked for, so a required-variable guard on the app service made
+      # `docker compose up -d postgres` — the first command in the quick start — fail on a
+      # fresh clone. The app checks these itself now (src/lib/env.ts), which names the missing
+      # variable and says how to generate one, and does it on Vercel too rather than only here.
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      OTP_PEPPER: ${OTP_PEPPER:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
       SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
       SLACK_OFFON_CHANNEL: ${SLACK_OFFON_CHANNEL:-}
