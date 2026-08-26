@@ -1,7 +1,7 @@
 import type { MessageKey } from './i18n/dictionary';
 import type { Failure, Translate } from './i18n/format';
 import { z } from 'zod';
-import { formatKST, kstDayKey, kstWallToUtc, utcToKstWall } from './time';
+import { formatZoned, dayKey, wallToUtc, utcToWall } from './time';
 
 /** What kind of break is being edited. Older stored JSON may not carry this, so a missing value reads as BREAK. */
 export type EditBreakKind = 'BREAK' | 'LUNCH';
@@ -71,14 +71,14 @@ export function buildEditableSession(
 ): EditableSession {
   return {
     id: session.id,
-    dateLabel: formatKST(session.startAt, 'yyyy-MM-dd (EEE)', locale),
-    clockIn: utcToKstWall(session.startAt),
-    clockOut: session.endAt ? utcToKstWall(session.endAt) : null,
+    dateLabel: formatZoned(session.startAt, 'yyyy-MM-dd (EEE)', locale),
+    clockIn: utcToWall(session.startAt),
+    clockOut: session.endAt ? utcToWall(session.endAt) : null,
     breaks: breaks
       .filter((b) => b.endAt)
       .map((b) => ({
-        start: utcToKstWall(b.startAt),
-        end: utcToKstWall(b.endAt!),
+        start: utcToWall(b.startAt),
+        end: utcToWall(b.endAt!),
         kind: normalizeBreakKind(b.kind),
       })),
   };
@@ -99,7 +99,7 @@ export function buildAndValidateTimeline(
   | { ok: true; timeline: EditTimeline }
   /** Failures are message keys. The screen and Slack each render them in their own language. */
   | ({ ok: false } & Failure) {
-  const start = kstWallToUtc(input.clockIn);
+  const start = wallToUtc(input.clockIn);
   if (Number.isNaN(start.getTime())) {
     return { ok: false, messageKey: 'valid.badClockInFormat' };
   }
@@ -109,7 +109,7 @@ export function buildAndValidateTimeline(
 
   let end: Date | null = null;
   if (input.clockOut) {
-    end = kstWallToUtc(input.clockOut);
+    end = wallToUtc(input.clockOut);
     if (Number.isNaN(end.getTime())) {
       return { ok: false, messageKey: 'valid.badClockOutFormat' };
     }
@@ -126,14 +126,14 @@ export function buildAndValidateTimeline(
   for (const b of input.breaks) {
     const kind = normalizeBreakKind(b.kind);
     const labelKey: MessageKey = kind === 'LUNCH' ? 'edit.meal' : 'edit.away';
-    const s = kstWallToUtc(b.start);
+    const s = wallToUtc(b.start);
     // A meal ends at its start plus the fixed length, never at an input value; it only moves.
     // Why it is not trimmed to the clock-out: its length would jump around on every unrelated edit,
     // such as correcting a clock-out. Anything out of range is reported as an error below.
     const e =
       kind === 'LUNCH'
         ? new Date(s.getTime() + LUNCH_MINUTES * 60_000)
-        : kstWallToUtc(b.end);
+        : wallToUtc(b.end);
     if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
       return { ok: false, messageKey: 'valid.breakBadFormat', kindKey: labelKey };
     }
@@ -377,20 +377,20 @@ export function mergeAttendanceEditTimeline(
 
 /** The date label, taken from the session start. Shown once, separately from the summary line. */
 export function formatTimelineDate(t: EditTimeline): string {
-  return formatKST(new Date(t.startAt), 'yyyy-MM-dd (EEE)');
+  return formatZoned(new Date(t.startAt), 'yyyy-MM-dd (EEE)');
 }
 
 /** How many days iso falls after baseIso, counted in local dates. */
 function dayOffset(baseIso: string, iso: string): number {
-  const a = kstDayKey(new Date(baseIso));
-  const b = kstDayKey(new Date(iso));
+  const a = dayKey(new Date(baseIso));
+  const b = dayKey(new Date(iso));
   if (a === b) return 0;
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
 }
 
 /** An HH:mm label, marked as next day or +N days when it falls after the session's own date. */
 function timeLabel(t: Translate, baseIso: string, iso: string): string {
-  const hhmm = formatKST(new Date(iso), 'HH:mm');
+  const hhmm = formatZoned(new Date(iso), 'HH:mm');
   const off = dayOffset(baseIso, iso);
   if (off <= 0) return hhmm;
   return off === 1 ? t('tl.nextDay', { time: hhmm }) : t('tl.plusDays', { days: off, time: hhmm });

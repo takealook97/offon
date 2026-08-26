@@ -1,7 +1,7 @@
 import type { Attendance } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
-import { formatKST, todayKST } from './time';
+import { formatZoned, zonedToday } from './time';
 import { logAudit } from './audit';
 import { getDeploymentT, getDeploymentLocale } from './i18n/deployment';
 import type { MessageKey } from './i18n/dictionary';
@@ -206,7 +206,7 @@ export function computeAttendanceTotals(
 export async function notifyChannelIn(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = getDeploymentT()('announce.clockIn', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
+  const text = getDeploymentT()('announce.clockIn', { time: formatZoned(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
@@ -221,7 +221,7 @@ export async function notifyChannelIn(name: string, at: Date, memberId: number) 
 export async function notifyChannelOut(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = getDeploymentT()('announce.clockOut', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
+  const text = getDeploymentT()('announce.clockOut', { time: formatZoned(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
@@ -236,7 +236,7 @@ export async function notifyChannelOut(name: string, at: Date, memberId: number)
 export async function notifyChannelLunch(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = getDeploymentT()('announce.meal', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
+  const text = getDeploymentT()('announce.meal', { time: formatZoned(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
@@ -251,7 +251,7 @@ export async function notifyChannelLunch(name: string, at: Date, memberId: numbe
 export async function notifyChannelBreak(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = getDeploymentT()('announce.away', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
+  const text = getDeploymentT()('announce.away', { time: formatZoned(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
@@ -265,7 +265,7 @@ export async function notifyChannelBreak(name: string, at: Date, memberId: numbe
 
 /** The wording of a return notice. Shared by the immediate one (coming back from a break) and the scheduled one (a meal ending on its own). */
 function buildBackText(name: string, at: Date): string {
-  return getDeploymentT()('announce.back', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
+  return getDeploymentT()('announce.back', { time: formatZoned(at, 'yyyy.MM.dd(EEEEE) HH:mm', getDeploymentLocale()), name });
 }
 
 export async function notifyChannelBack(name: string, at: Date, memberId: number) {
@@ -288,7 +288,7 @@ export async function clockInMember(
   source: AttendanceSource,
 ): Promise<ClockInResult> {
   const now = new Date();
-  const date = todayKST();
+  const date = zonedToday();
 
   const activeOpen = await prisma.attendanceSession.findFirst({
     where: {

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
-import { kstClipSegmentLabel } from '@/lib/time';
+import { clipSegmentLabel } from '@/lib/time';
 import type { CalendarEvent, DailyAttendanceTotal } from '@/lib/api-types';
 import { useTranslation } from '@/lib/i18n/client';
 import { formatDuration } from '@/lib/i18n/format';
@@ -102,7 +102,7 @@ export function ShowMoreDialog({
   const titleFor = (e: UiEvent): string => {
     if (e.resource.kind !== 'ATTENDANCE' || !dayKey) return e.title;
     const segEnd: Date | null = e.resource.isOpenSession ? null : e.end;
-    const { startLabel, endLabel, minutes } = kstClipSegmentLabel(e.start, segEnd, dayKey, {
+    const { startLabel, endLabel, minutes } = clipSegmentLabel(e.start, segEnd, dayKey, {
       now,
       openLabel: t('status.inProgress'),
     });

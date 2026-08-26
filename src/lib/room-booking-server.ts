@@ -1,7 +1,7 @@
 import { prisma } from './prisma';
 import { logAudit } from './audit';
 import { cancelScheduledChannel, scheduleDm, sendDm } from './slack';
-import { formatKST } from './time';
+import { formatZoned } from './time';
 import { MEETING_TYPE_KEY } from './room-booking';
 import { getDeploymentT, getDeploymentLocale } from './i18n/deployment';
 import type { RoomBookingDTO } from './api-types';
@@ -85,7 +85,7 @@ export async function findRoomConflict(
     select: { startAt: true, endAt: true, title: true },
   });
   if (!conflict) return null;
-  const range = `${formatKST(conflict.startAt, 'HH:mm')}~${formatKST(conflict.endAt, 'HH:mm')}`;
+  const range = `${formatZoned(conflict.startAt, 'HH:mm')}~${formatZoned(conflict.endAt, 'HH:mm')}`;
   return getDeploymentT()('dm.slotTaken', { range, title: conflict.title });
 }
 
@@ -187,8 +187,8 @@ function bookingDetailLines(booking: NotifiableBooking): string[] {
 
 /** Formats a booking's date and time range for display. */
 function bookingWhen(booking: NotifiableBooking): string {
-  const date = formatKST(booking.startAt, 'yyyy-MM-dd (EEE)', getDeploymentLocale());
-  return `${date} ${formatKST(booking.startAt, 'a h:mm')} ~ ${formatKST(booking.endAt, 'a h:mm')}`;
+  const date = formatZoned(booking.startAt, 'yyyy-MM-dd (EEE)', getDeploymentLocale());
+  return `${date} ${formatZoned(booking.startAt, 'a h:mm')} ~ ${formatZoned(booking.endAt, 'a h:mm')}`;
 }
 
 /**

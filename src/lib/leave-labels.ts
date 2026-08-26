@@ -1,5 +1,5 @@
 import type { MessageKey } from './i18n/dictionary';
-import { formatKST } from '@/lib/time';
+import { formatZoned } from '@/lib/time';
 
 export type LeaveTypeValue = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
@@ -24,7 +24,7 @@ export function withWeekdayKST(dateStr: string, weekdays: readonly string[]): st
 }
 
 /** The date range used in notices, from local date strings. A single day reads as one date, with no dash. */
-export function formatLeaveDateRangeKST(
+export function formatLeaveDateRangeStr(
   startStr: string,
   endStr: string,
   weekdays: readonly string[],
@@ -40,9 +40,9 @@ export function formatLeaveDateRange(
   endDate: Date,
   weekdays: readonly string[],
 ): string {
-  return formatLeaveDateRangeKST(
-    formatKST(startDate, 'yyyy-MM-dd'),
-    formatKST(endDate, 'yyyy-MM-dd'),
+  return formatLeaveDateRangeStr(
+    formatZoned(startDate, 'yyyy-MM-dd'),
+    formatZoned(endDate, 'yyyy-MM-dd'),
     weekdays,
   );
 }

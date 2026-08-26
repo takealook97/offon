@@ -1,8 +1,8 @@
 import {
   clipMinutes,
-  kstDayBoundsUtc,
-  kstDayKey,
-  nextKstDayKey,
+  dayBoundsUtc,
+  dayKey,
+  nextDayKey,
 } from '@/lib/time';
 
 type SessionLite = { startAt: Date; endAt: Date | null };
@@ -83,14 +83,14 @@ export function clippedDailyTotals(
     visit: (key: string, dayStart: Date, dayEnd: Date) => void,
   ) => {
     if (end.getTime() <= start.getTime()) return;
-    let cursor = kstDayKey(start);
-    const endKey = kstDayKey(new Date(end.getTime() - 1));
+    let cursor = dayKey(start);
+    const endKey = dayKey(new Date(end.getTime() - 1));
     // A safety bound. Normal data takes one or two iterations; this stops a session years long from looping forever.
     for (let i = 0; i < 400; i++) {
-      const { start: ds, end: de } = kstDayBoundsUtc(cursor);
+      const { start: ds, end: de } = dayBoundsUtc(cursor);
       visit(cursor, ds, de);
       if (cursor === endKey) return;
-      cursor = nextKstDayKey(cursor);
+      cursor = nextDayKey(cursor);
     }
   };
 

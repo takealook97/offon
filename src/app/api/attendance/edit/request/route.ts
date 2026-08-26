@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { kstDayKey } from '@/lib/time';
+import { dayKey } from '@/lib/time';
 import {
   EditRequestBody,
   buildAndValidateTimeline,
@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
     // The clock-in has to fall on the same day as the work date. Moving it elsewhere
     // contradicts the work date, which robs the one-row-per-day constraint of meaning and misdirects the reminders.
     // A clock-out crossing midnight is supported, so only the start date is checked.
-    const workDateKey = kstDayKey(target.attendance.workDate);
-    if (kstDayKey(new Date(built.timeline.startAt)) !== workDateKey) {
+    const workDateKey = dayKey(target.attendance.workDate);
+    if (dayKey(new Date(built.timeline.startAt)) !== workDateKey) {
       return NextResponse.json(
         { ok: false, error: t('api.clockInDayMismatch', { date: workDateKey }) },
         { status: 400 },

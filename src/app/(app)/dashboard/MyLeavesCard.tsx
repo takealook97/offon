@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { todayKST, formatKST } from '@/lib/time';
+import { zonedToday, formatZoned } from '@/lib/time';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CalendarX } from 'lucide-react';
@@ -15,7 +15,7 @@ const TYPE_KEY: Record<string, MessageKey> = {
 
 export async function MyLeavesCard({ memberId }: { memberId: number }) {
   const t = await getT();
-  const today = todayKST();
+  const today = zonedToday();
   const items = await prisma.leaveRequest.findMany({
     where: {
       memberId,
@@ -44,9 +44,9 @@ export async function MyLeavesCard({ memberId }: { memberId: number }) {
           <ul className="divide-y divide-border/60">
             {items.map((l) => {
               const range =
-                formatKST(l.startDate, 'yyyy-MM-dd') === formatKST(l.endDate, 'yyyy-MM-dd')
-                  ? formatKST(l.startDate, 'yyyy-MM-dd')
-                  : `${formatKST(l.startDate, 'yyyy-MM-dd')} ~ ${formatKST(l.endDate, 'yyyy-MM-dd')}`;
+                formatZoned(l.startDate, 'yyyy-MM-dd') === formatZoned(l.endDate, 'yyyy-MM-dd')
+                  ? formatZoned(l.startDate, 'yyyy-MM-dd')
+                  : `${formatZoned(l.startDate, 'yyyy-MM-dd')} ~ ${formatZoned(l.endDate, 'yyyy-MM-dd')}`;
               return (
                 <li
                   key={l.id}

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { todayKST } from '@/lib/time';
+import { zonedToday } from '@/lib/time';
 import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    if (target.startDate < todayKST()) {
+    if (target.startDate < zonedToday()) {
       return NextResponse.json(
         { ok: false, error: t('api.leaveAlreadyStarted') },
         { status: 400 },

@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
-import { formatKST } from '@/lib/time';
+import { formatZoned } from '@/lib/time';
 import { asTimeline, formatTimelineSummary } from '@/lib/attendance-edit';
 import { Badge } from '@/components/ui/badge';
 import { PendingList, type PendingRow } from './PendingList';
@@ -57,7 +57,7 @@ export default async function ApprovalsPage() {
       id: l.id,
       name: l.member.name,
       position: l.member.position,
-      range: `${formatKST(l.startDate, 'yyyy-MM-dd')} ~ ${formatKST(l.endDate, 'yyyy-MM-dd')}`,
+      range: `${formatZoned(l.startDate, 'yyyy-MM-dd')} ~ ${formatZoned(l.endDate, 'yyyy-MM-dd')}`,
       typeLabel: TYPE_LABEL[l.type] ?? l.type,
       days: Number(l.days),
     } satisfies PendingRow,
@@ -72,7 +72,7 @@ export default async function ApprovalsPage() {
         id: r.id,
         name: r.member.name,
         position: r.member.position,
-        dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)', locale),
+        dateLabel: formatZoned(new Date(before.startAt), 'yyyy-MM-dd (EEE)', locale),
         before: formatTimelineSummary(t, before),
         after: formatTimelineSummary(t, after),
         reason: r.reason,
@@ -92,7 +92,7 @@ export default async function ApprovalsPage() {
       name: l.member.name,
       approverName: l.approver?.name ?? null,
       badgeLabel: l.type === 'FULL_DAY' ? t('appr.leave') : t(TYPE_LABEL[l.type] ?? 'leave.fullDay'),
-      range: `${formatKST(l.startDate, 'yyyy-MM-dd')} ~ ${formatKST(l.endDate, 'yyyy-MM-dd')}`,
+      range: `${formatZoned(l.startDate, 'yyyy-MM-dd')} ~ ${formatZoned(l.endDate, 'yyyy-MM-dd')}`,
       days: Number(l.days),
       status: l.status as 'APPROVED' | 'REJECTED' | 'CANCELLED',
     } satisfies RecentItem,
@@ -107,7 +107,7 @@ export default async function ApprovalsPage() {
         key: `att-${r.id}`,
         name: r.member.name,
         approverName: r.approver?.name ?? null,
-        dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)', locale),
+        dateLabel: formatZoned(new Date(before.startAt), 'yyyy-MM-dd (EEE)', locale),
         before: formatTimelineSummary(t, before),
         after: formatTimelineSummary(t, after),
         status: r.status as 'APPROVED' | 'REJECTED' | 'CANCELLED',

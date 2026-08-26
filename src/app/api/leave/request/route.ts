@@ -6,11 +6,11 @@ import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import {
-  countBusinessDaysKST,
-  isBusinessDayKSTDateStr,
-  todayKST,
+  countBusinessDays,
+  isBusinessDayDateStr,
+  zonedToday,
 } from '@/lib/time';
-import { leaveTypeKey, formatLeaveDateRangeKST } from '@/lib/leave-labels';
+import { leaveTypeKey, formatLeaveDateRangeStr } from '@/lib/leave-labels';
 import { getHolidaySet } from '@/lib/holidays';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
@@ -28,7 +28,7 @@ function dayCount(
   holidays: ReadonlySet<string>,
 ) {
   if (type !== 'FULL_DAY') return new Prisma.Decimal(0.5);
-  return new Prisma.Decimal(countBusinessDaysKST(start, end, holidays));
+  return new Prisma.Decimal(countBusinessDays(start, end, holidays));
 }
 
 export async function POST(req: NextRequest) {
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const today = todayKST();
+    const today = zonedToday();
     if (new Date(startDate) < today) {
       return NextResponse.json(
         { ok: false, error: t('leave.errPast') },
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const holidays = await getHolidaySet(startDate, endDate);
     if (type !== 'FULL_DAY') {
       // A half day is refused when its date is a weekend or a holiday.
-      if (!isBusinessDayKSTDateStr(startDate, holidays)) {
+      if (!isBusinessDayDateStr(startDate, holidays)) {
         return NextResponse.json(
           { ok: false, error: t('api.leaveWeekend') },
           { status: 400 },
@@ -66,13 +66,13 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Full leave is refused when either end falls on a non-business day. Any inside the range are excluded automatically.
-      if (!isBusinessDayKSTDateStr(startDate, holidays)) {
+      if (!isBusinessDayDateStr(startDate, holidays)) {
         return NextResponse.json(
           { ok: false, error: t('leave.errStartHoliday') },
           { status: 400 },
         );
       }
-      if (!isBusinessDayKSTDateStr(endDate, holidays)) {
+      if (!isBusinessDayDateStr(endDate, holidays)) {
         return NextResponse.json(
           { ok: false, error: t('leave.errEndHoliday') },
           { status: 400 },
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', deletedAt: null },
     });
-    const dateRange = formatLeaveDateRangeKST(startDate, endDate, weekdays);
+    const dateRange = formatLeaveDateRangeStr(startDate, endDate, weekdays);
     await Promise.all(
       admins.map((a) =>
         sendDm(

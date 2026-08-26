@@ -37,7 +37,9 @@ CI runs exactly these three. They pass on `main`, so a red build means the chang
 
 ## Things that would genuinely help
 
-The README lists what's missing under *Known limitations*. The timezone one is the biggest: `src/lib/time.ts` uses a fixed UTC+9 offset, which makes the app unusable outside Korea and Japan. Generalizing that — without breaking the existing day-boundary behavior the aggregation depends on — would open the project up to everyone else.
+The README lists what's missing under *Known limitations*. Meeting-room hours and the meal length are still constants rather than settings, and there are no tests for the paths that need a database — approvals, the yearly leave rollover, the cron handlers.
+
+If you touch `src/lib/time.ts`, run the timezone tests. They cover half-hour zones and both daylight-saving transitions, which is where this kind of code goes wrong.
 
 ## Reporting a bug
 

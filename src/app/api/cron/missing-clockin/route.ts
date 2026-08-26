@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { todayKST, isWeekdayKST, formatKST } from '@/lib/time';
+import { zonedToday, isWeekday, formatZoned } from '@/lib/time';
 import { getHolidaySet } from '@/lib/holidays';
 import { logAudit } from '@/lib/audit';
 import { getAppSettings } from '@/lib/settings';
@@ -17,10 +17,10 @@ export async function GET(req: NextRequest) {
       { status: auth.reason === 'misconfigured' ? 500 : 401 },
     );
   }
-  if (!isWeekdayKST()) return NextResponse.json({ ok: true, skipped: 'weekend' });
+  if (!isWeekday()) return NextResponse.json({ ok: true, skipped: 'weekend' });
 
-  const date = todayKST();
-  const dateStr = formatKST(date, 'yyyy-MM-dd');
+  const date = zonedToday();
+  const dateStr = formatZoned(date, 'yyyy-MM-dd');
   const holidays = await getHolidaySet(dateStr, dateStr);
   if (holidays.has(dateStr)) {
     return NextResponse.json({ ok: true, skipped: 'holiday' });

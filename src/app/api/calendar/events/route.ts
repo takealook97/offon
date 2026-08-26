@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
-import { formatKST } from '@/lib/time';
+import { formatZoned } from '@/lib/time';
 import {
   parseDate,
   kstIsoFromDate,
@@ -96,8 +96,8 @@ export async function GET(req: NextRequest) {
       a.sessions.forEach((s, idx) => {
         const endAt = s.endAt ?? now;
         const minutes = sessionMinutes[idx];
-        const inLabel = formatKST(s.startAt, 'HH:mm');
-        const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : t('status.inProgress');
+        const inLabel = formatZoned(s.startAt, 'HH:mm');
+        const outLabel = s.endAt ? formatZoned(s.endAt, 'HH:mm') : t('status.inProgress');
         events.push({
           id: `sess-${s.id}`,
           title: `${inLabel} ~ ${outLabel} · ${formatDuration(t, minutes)}`,

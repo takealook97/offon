@@ -1,7 +1,7 @@
 import { getT } from '@/lib/i18n/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
-import { kstDayKey } from '@/lib/time';
+import { dayKey } from '@/lib/time';
 import { MembersPanel, type MemberRow } from './MembersPanel';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export default async function MembersPage() {
 
   // leave_requests.endDate is a @db.Date, midnight UTC of the calendar date.
   // Today's local date is turned into the same shape so the two compare directly.
-  const todayStr = kstDayKey(new Date());
+  const todayStr = dayKey(new Date());
   const [ty, tm, td] = todayStr.split('-').map(Number);
   const todayUtc = new Date(Date.UTC(ty, tm - 1, td));
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { checkCronAuth } from '@/lib/cron-auth';
-import { kstMonthDay, kstYear } from '@/lib/time';
+import { zonedMonthDay, zonedYear } from '@/lib/time';
 import { logAudit } from '@/lib/audit';
 
 export const runtime = 'nodejs';
@@ -20,8 +20,8 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
-  const { month, day } = kstMonthDay(now);
-  const year = kstYear(now);
+  const { month, day } = zonedMonthDay(now);
+  const year = zonedYear(now);
 
   if (month !== 1 || day > ROLLOVER_WINDOW_MAX_DAY) {
     await logAudit({

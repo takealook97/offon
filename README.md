@@ -59,6 +59,7 @@ Everything else — leave requests, approvals, the calendar, corrections when so
 - **Passwordless login** — A 6-digit code, DM'd on Slack, hashed with argon2.
 - **Scheduled nudges** — Missing clock-in and clock-out reminders, and yearly leave rollover.
 - **English and Korean** — Each person picks their language from the header; Slack messages follow `DEFAULT_LOCALE`.
+- **Any timezone** — Set `NEXT_PUBLIC_TIMEZONE` to your IANA zone. Day boundaries and totals follow it, daylight saving included.
 
 ## What it looks like
 
@@ -109,6 +110,7 @@ Copy `.env.example` to `.env.local` and fill in these:
 | `SLACK_BOT_TOKEN` | yes | Bot User OAuth Token (`xoxb-…`) |
 | `SLACK_SIGNING_SECRET` | yes | Verifies slash commands really came from Slack |
 | `SLACK_OFFON_CHANNEL` | yes | Channel ID for clock-event announcements |
+| `NEXT_PUBLIC_TIMEZONE` | no | The IANA timezone your team works in (default `Asia/Seoul`) |
 | `DEFAULT_LOCALE` | no | Language for Slack messages and reminders (`ko` or `en`, default `ko`) |
 | `CRON_SECRET` | production | Authorizes the scheduled-job endpoints |
 | `SEED_ADMIN_*` | seed only | Used once by `pnpm db:seed` to create the first admin |
@@ -119,7 +121,6 @@ Generate the two secrets with `openssl rand -base64 32`.
 
 Worth knowing before you deploy — these are real, and PRs are welcome on all of them.
 
-- **Timezone is fixed to UTC+9 (Asia/Seoul).** `src/lib/time.ts` uses a constant offset rather than a timezone database. If your team isn't in Korea or Japan, times will be wrong until this is generalized.
 - **Postgres only.** The schema and migrations are Postgres-specific. Supabase, Neon, Railway, RDS all qualify; MySQL and SQLite do not.
 - **One organization per deployment.** There's no tenant concept in the schema — run a second deployment for a second org.
 - **Meeting-room hours and meal length are constants**, not settings. Rooms run 08:00–19:00 in 10-minute slots; a meal is 60 minutes.
@@ -142,7 +143,7 @@ Worth knowing before you deploy — these are real, and PRs are welcome on all o
 
 - **Stateless sessions.** Identity lives in a signed JWT in the `session` cookie, verified in `proxy.ts` and again in route guards (`requireSession` / `requireAdmin`). There's no session store to run.
 - **Ownership is enforced on the server.** Employees can only read and edit their own attendance; corrections and cancellations are scoped to the owner, and approvals require an admin. The client is never trusted for this.
-- **Wall-clock times, stored as UTC instants.** Formatting is timezone-independent, so a record renders the same whether the runtime clock is UTC or local.
+- **Wall-clock times, stored as UTC instants.** Day boundaries come from `Intl`'s timezone database rather than a fixed offset, so a day that loses or gains an hour to daylight saving is 23 or 25 hours long and the totals still add up. Formatting is independent of the runtime clock.
 - **Soft deletes everywhere.** Records carry `deletedAt` rather than disappearing, because attendance is a record of what happened.
 
 ## Scripts

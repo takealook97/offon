@@ -17,7 +17,7 @@ import { cn } from '@/lib/cn';
 // The front end and the request route decide **weekends by the same rule**,
 // so both use the shared helpers in `@/lib/time`. That module depends on nothing but date-fns and
 // has no server-only imports, so it is safe to pull across the 'use client' boundary.
-import { countBusinessDaysKST, isBusinessDayKSTDateStr } from '@/lib/time';
+import { countBusinessDays, isBusinessDayDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
@@ -112,18 +112,18 @@ export function LeaveRequestForm({
   const requestedDays = useMemo(() => {
     if (!startDate) return 0;
     if (type !== 'FULL_DAY') {
-      return isBusinessDayKSTDateStr(startDate, holidays) ? 0.5 : 0;
+      return isBusinessDayDateStr(startDate, holidays) ? 0.5 : 0;
     }
     if (!endDate) return 0;
-    return countBusinessDaysKST(startDate, endDate, holidays);
+    return countBusinessDays(startDate, endDate, holidays);
   }, [type, startDate, endDate, holidays]);
 
   const exceeds = requestedDays > availableDays;
   const invalidRange = type === 'FULL_DAY' && startDate && endDate && endDate < startDate;
   const isPast = !!startDate && startDate < todayStr;
-  const startIsNonBusiness = !!startDate && !isBusinessDayKSTDateStr(startDate, holidays);
+  const startIsNonBusiness = !!startDate && !isBusinessDayDateStr(startDate, holidays);
   const endIsNonBusiness =
-    type === 'FULL_DAY' && !!endDate && !isBusinessDayKSTDateStr(endDate, holidays);
+    type === 'FULL_DAY' && !!endDate && !isBusinessDayDateStr(endDate, holidays);
   const canSubmit =
     !!startDate &&
     !missingEndDate &&

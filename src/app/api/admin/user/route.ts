@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
-import { kstYear } from '@/lib/time';
+import { zonedYear } from '@/lib/time';
 import { getT } from '@/lib/i18n/server';
 
 const CreateBody = z.object({
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         data: {
           memberId: member.id,
           baseDays: new Prisma.Decimal(d.baseDays),
-          rolloverYear: kstYear(),
+          rolloverYear: zonedYear(),
         },
       });
       return member;
@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest) {
             memberId: id,
             baseDays: new Prisma.Decimal(baseDays ?? 0),
             bonusDays: new Prisma.Decimal(bonusDays ?? 0),
-            rolloverYear: kstYear(),
+            rolloverYear: zonedYear(),
           },
           update: {
             ...(baseDays !== undefined && { baseDays: new Prisma.Decimal(baseDays) }),

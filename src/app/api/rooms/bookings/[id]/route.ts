@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
-import { kstWallToUtc, utcToKstWall } from '@/lib/time';
+import { wallToUtc, utcToWall } from '@/lib/time';
 import { RoomBookingPatchBody, validateBookingRange } from '@/lib/room-booking';
 import {
   allMembersActive,
@@ -108,7 +108,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
     const { type, title, start, end, memberIds, externalAttendees } = parsed.data;
 
-    const check = validateBookingRange(start, end, utcToKstWall(new Date()));
+    const check = validateBookingRange(start, end, utcToWall(new Date()));
     if (!check.ok) {
       return NextResponse.json({ ok: false, error: t(check.messageKey, check.vars) }, { status: 400 });
     }
@@ -121,8 +121,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       );
     }
 
-    const startAt = kstWallToUtc(start);
-    const endAt = kstWallToUtc(end);
+    const startAt = wallToUtc(start);
+    const endAt = wallToUtc(end);
 
     const conflict = await findRoomConflict(target.roomId, startAt, endAt, target.id);
     if (conflict) {
@@ -156,8 +156,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       target: String(target.id),
       metadata: {
         before: {
-          start: utcToKstWall(target.startAt),
-          end: utcToKstWall(target.endAt),
+          start: utcToWall(target.startAt),
+          end: utcToWall(target.endAt),
         },
         after: { start, end },
         type,
@@ -199,8 +199,8 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       action: 'ROOM_BOOKING_CANCEL',
       target: String(target.id),
       metadata: {
-        start: utcToKstWall(target.startAt),
-        end: utcToKstWall(target.endAt),
+        start: utcToWall(target.startAt),
+        end: utcToWall(target.endAt),
       },
     });
 

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { formatKST, countBusinessDaysKST } from '@/lib/time';
+import { formatZoned, countBusinessDays } from '@/lib/time';
 import { getHolidaySet } from '@/lib/holidays';
 import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
@@ -36,13 +36,13 @@ export async function POST(req: NextRequest) {
 
     // The day count is recomputed against the holidays as they stand at approval. A half day is
     // a fixed 0.5, but it cannot be approved if its date has since become a holiday.
-    const startStr = formatKST(target.startDate, 'yyyy-MM-dd');
-    const endStr = formatKST(target.endDate, 'yyyy-MM-dd');
+    const startStr = formatZoned(target.startDate, 'yyyy-MM-dd');
+    const endStr = formatZoned(target.endDate, 'yyyy-MM-dd');
     const holidays = await getHolidaySet(startStr, endStr);
     let recomputedDays: Prisma.Decimal;
     if (target.type === 'FULL_DAY') {
       recomputedDays = new Prisma.Decimal(
-        countBusinessDaysKST(startStr, endStr, holidays),
+        countBusinessDays(startStr, endStr, holidays),
       );
     } else {
       recomputedDays = holidays.has(startStr)

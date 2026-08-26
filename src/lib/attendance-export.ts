@@ -1,11 +1,11 @@
 import type { MessageKey } from './i18n/dictionary';
 import { prisma } from './prisma';
 import {
-  kstDayKey,
-  kstYear,
-  kstMonthDay,
-  nextKstDayKey,
-  isBusinessDayKSTDateStr,
+  dayKey,
+  zonedYear,
+  zonedMonthDay,
+  nextDayKey,
+  isBusinessDayDateStr,
 } from './time';
 import { getHolidaySet } from './holidays';
 import { clippedDailyTotals, type SourceAttendance } from './calendar-aggregation';
@@ -109,7 +109,7 @@ function enumerateKeys(startKey: string, endKey: string): string[] {
   for (let i = 0; i < MAX_ENUMERATE_DAYS; i++) {
     out.push(cur);
     if (cur === endKey) break;
-    cur = nextKstDayKey(cur);
+    cur = nextDayKey(cur);
   }
   return out;
 }
@@ -135,8 +135,8 @@ export function resolveMonthRange(year: number, month: number, now: Date): Month
       vars: { year: FEATURE_START_YEAR, month: FEATURE_START_MONTH },
     };
   }
-  const curYear = kstYear(now);
-  const curMonth = kstMonthDay(now).month;
+  const curYear = zonedYear(now);
+  const curMonth = zonedMonthDay(now).month;
   const inFuture = year > curYear || (year === curYear && month > curMonth);
   if (inFuture) {
     return { ok: false, messageKey: 'xls.futureMonth' as const };
@@ -148,7 +148,7 @@ export function resolveMonthRange(year: number, month: number, now: Date): Month
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const lastDayKey = `${year}-${pad2(month)}-${pad2(daysInMonth)}`;
   // Today is excluded, so the end is the earlier of the last day and yesterday.
-  const yesterdayKey = prevDayKey(kstDayKey(now));
+  const yesterdayKey = prevDayKey(dayKey(now));
   const endKey = lastDayKey < yesterdayKey ? lastDayKey : yesterdayKey;
   const dayKeys = enumerateKeys(startKey, endKey);
 
@@ -211,7 +211,7 @@ function computeReport(
     const brk = d?.breakMinutes ?? 0;
     const gross = net + brk;
     const leaveType = leaveMap.get(key);
-    const isHoliday = !isBusinessDayKSTDateStr(key, holidays);
+    const isHoliday = !isBusinessDayDateStr(key, holidays);
 
     let sum: number;
     if (leaveType === 'FULL_DAY') {

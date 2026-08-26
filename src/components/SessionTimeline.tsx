@@ -1,6 +1,6 @@
 'use client';
 
-import { formatKST } from '@/lib/time';
+import { formatZoned } from '@/lib/time';
 import { cn } from '@/lib/cn';
 import { useTranslation } from '@/lib/i18n/client';
 import { formatDuration } from '@/lib/i18n/format';
@@ -47,7 +47,7 @@ function SessionChip({ session, now }: { session: Session; now: Date }) {
         <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
       )}
       <span className="font-mono tabular-nums">
-        {formatKST(session.startAt, 'HH:mm')} – {ongoing ? t('status.inProgress') : formatKST(session.endAt!, 'HH:mm')}
+        {formatZoned(session.startAt, 'HH:mm')} – {ongoing ? t('status.inProgress') : formatZoned(session.endAt!, 'HH:mm')}
       </span>
       <span className="text-muted-foreground">· {formatDuration(t, minutes)}</span>
     </span>

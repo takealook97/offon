@@ -2,12 +2,12 @@ import { Calendar, CalendarClock, Clock3, CalendarCheck, CalendarPlus } from 'lu
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import {
-  formatKST,
-  kstDayBoundsUtc,
-  kstDayKey,
-  monthRangeKST,
-  todayKST,
-  weekRangeKST,
+  formatZoned,
+  dayBoundsUtc,
+  dayKey,
+  monthRange,
+  zonedToday,
+  weekRange,
 } from '@/lib/time';
 import { clippedDailyTotals } from '@/lib/calendar-aggregation';
 import type { DailyAttendanceTotal } from '@/lib/api-types';
@@ -36,7 +36,7 @@ function sumMinutesInRange(
   // start and end are local midnights. Enumerating day keys with a 24h step is safe in a zone with no DST.
   let total = 0;
   for (let t = start.getTime(); t <= end.getTime(); t += MS_PER_DAY) {
-    total += totals[kstDayKey(new Date(t))]?.workedMinutes ?? 0;
+    total += totals[dayKey(new Date(t))]?.workedMinutes ?? 0;
   }
   return total;
 }
@@ -44,14 +44,14 @@ function sumMinutesInRange(
 export default async function DashboardPage() {
   const session = await requireSession();
   const t = await getT();
-  const today = todayKST();
-  const week = weekRangeKST();
-  const month = monthRangeKST();
-  // clippedDailyTotals needs a real UTC instant. The shifted value is a sentinel, and
+  const today = zonedToday();
+  const week = weekRange();
+  const month = monthRange();
+  // clippedDailyTotals needs a real UTC instant. zonedNow() is a shifted sentinel, and using
   // it to clamp an open session inflates the worked time by the whole offset.
   const now = new Date();
 
-  const todayStr = formatKST(today, 'yyyy-MM-dd');
+  const todayStr = formatZoned(today, 'yyyy-MM-dd');
   const year = Number(todayStr.slice(0, 4));
   const holidayFrom = `${year}-01-01`;
   const holidayTo = `${year + 1}-12-31`;
@@ -157,7 +157,7 @@ export default async function DashboardPage() {
     now,
   );
 
-  const todayKey = kstDayKey(today);
+  const todayKey = dayKey(today);
   const todayWorked = dailyTotals[todayKey]?.workedMinutes ?? 0;
   const weekTotal = sumMinutesInRange(dailyTotals, week.start, week.end);
   const monthTotal = sumMinutesInRange(dailyTotals, month.start, month.end);
@@ -166,7 +166,7 @@ export default async function DashboardPage() {
     if (start.getTime() > end.getTime()) return 0;
     let count = 0;
     for (let t = start.getTime(); t <= end.getTime(); t += MS_PER_DAY) {
-      const minutes = dailyTotals[kstDayKey(new Date(t))]?.workedMinutes ?? 0;
+      const minutes = dailyTotals[dayKey(new Date(t))]?.workedMinutes ?? 0;
       if (minutes > 0) count += 1;
     }
     return count;
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
   const monthBaseDays = monthDaysWorked - todayWorkedDay;
 
   // Only rows touching today go to the client, including yesterday's session if it crossed midnight.
-  const todayBounds = kstDayBoundsUtc(todayKey);
+  const todayBounds = dayBoundsUtc(todayKey);
   const touchesToday = (segments: { startAt: Date; endAt: Date | null }[]) =>
     segments.some((seg) => {
       const segEnd = seg.endAt ?? now;
@@ -208,7 +208,7 @@ export default async function DashboardPage() {
 
   // Data for the \"today\" card.
   const todayRow =
-    allRows.find((r) => kstDayKey(r.workDate) === todayKey) ?? null;
+    allRows.find((r) => dayKey(r.workDate) === todayKey) ?? null;
   const status = (activeOpenRow?.status ?? todayRow?.status ?? 'NOT_STARTED') as
     | 'NOT_STARTED'
     | 'WORKING'
@@ -218,7 +218,7 @@ export default async function DashboardPage() {
   const isWorking = status === 'WORKING';
   const isOnBreak = status === 'ON_BREAK';
   const isCrossMidnightActive =
-    !!activeOpenRow && kstDayKey(activeOpenRow.workDate) !== todayKey;
+    !!activeOpenRow && dayKey(activeOpenRow.workDate) !== todayKey;
   const sessions: SessionLite[] = todayRow?.sessions ?? [];
 
   // The start of the open break while the status is ON_BREAK, as a UTC ISO string.
@@ -247,7 +247,7 @@ export default async function DashboardPage() {
   // The clock-in label prefers today's own value, falling back to midnight when today's worked time came from a session that crossed it.
   let clockInLabel: string;
   if (todayRow?.clockInAt) {
-    clockInLabel = formatKST(todayRow.clockInAt, 'HH:mm');
+    clockInLabel = formatZoned(todayRow.clockInAt, 'HH:mm');
   } else if (isCrossMidnightActive || todayWorked > 0) {
     clockInLabel = '00:00';
   } else {
@@ -259,12 +259,12 @@ export default async function DashboardPage() {
   if (isWorking) {
     clockOutLabel = t('status.inProgress');
   } else if (todayRow?.clockOutAt) {
-    clockOutLabel = formatKST(todayRow.clockOutAt, 'HH:mm');
+    clockOutLabel = formatZoned(todayRow.clockOutAt, 'HH:mm');
   } else {
     const todayEndMs = today.getTime() + MS_PER_DAY;
     let crossEnd: Date | null = null;
     for (const r of allRows) {
-      if (kstDayKey(r.workDate) === todayKey) continue;
+      if (dayKey(r.workDate) === todayKey) continue;
       for (const s of r.sessions) {
         if (!s.endAt) continue;
         const endMs = s.endAt.getTime();
@@ -273,7 +273,7 @@ export default async function DashboardPage() {
         }
       }
     }
-    clockOutLabel = crossEnd ? formatKST(crossEnd, 'HH:mm') : '—';
+    clockOutLabel = crossEnd ? formatZoned(crossEnd, 'HH:mm') : '—';
   }
   const hasClockIn = clockInLabel !== '—';
 
@@ -293,7 +293,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm text-muted-foreground">
-          {formatKST(new Date(), 'yyyy-MM-dd (EEEE)', await getLocale())}
+          {formatZoned(new Date(), 'yyyy-MM-dd (EEEE)', await getLocale())}
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
           {t('dashboard.greeting', { name: me?.name ?? '' })}

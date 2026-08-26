@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import { logAudit } from '@/lib/audit';
 import { parseDate } from '@/lib/calendar-utils';
-import { kstWallToUtc, utcToKstWall } from '@/lib/time';
+import { wallToUtc, utcToWall } from '@/lib/time';
 import { RoomBookingBody, validateBookingRange } from '@/lib/room-booking';
 import {
   allMembersActive,
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     const { roomId, type, title, start, end, memberIds, externalAttendees } =
       parsed.data;
 
-    const check = validateBookingRange(start, end, utcToKstWall(new Date()));
+    const check = validateBookingRange(start, end, utcToWall(new Date()));
     if (!check.ok) {
       return NextResponse.json({ ok: false, error: t(check.messageKey, check.vars) }, { status: 400 });
     }
@@ -100,8 +100,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const startAt = kstWallToUtc(start);
-    const endAt = kstWallToUtc(end);
+    const startAt = wallToUtc(start);
+    const endAt = wallToUtc(end);
 
     const conflict = await findRoomConflict(roomId, startAt, endAt);
     if (conflict) {

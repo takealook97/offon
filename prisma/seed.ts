@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { kstYear } from '../src/lib/time';
+import { zonedYear } from '../src/lib/time';
 
 const prisma = new PrismaClient();
 
@@ -31,7 +31,7 @@ async function main() {
       data: {
         memberId: m.id,
         baseDays: new Prisma.Decimal(totalDays),
-        rolloverYear: kstYear(),
+        rolloverYear: zonedYear(),
       },
     });
     return m;

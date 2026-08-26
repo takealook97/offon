@@ -6,6 +6,8 @@ This is the page to hand your team. It assumes someone has already deployed offo
 
 ## Your day, from Slack
 
+You can do all of this from the dashboard too, if you'd rather click than type. The dashboard puts clock-in and clock-out on the same button — it flips to whichever one is next — so there are three buttons rather than four: **clock**, **meal**, **away**.
+
 Five slash commands. Type them in Slack — a dedicated channel like `#offon` keeps the noise in one place, though they work anywhere the app is installed.
 
 | Command | What it does |
@@ -18,9 +20,13 @@ Five slash commands. Type them in Slack — a dedicated channel like `#offon` ke
 
 Everything you do here shows up on the web app immediately — they're the same records, not a sync.
 
-**A meal runs itself.** `/lunch` fixes the end an hour later, so there's no second command to remember. You'll get a DM when you're back on the clock. Until then you can't clock out or start a break, and offon will tell you how many minutes are left if you try.
+**Why a meal is its own command.** Break time is usually a fixed entitlement — an hour, in Korea's case. When everyone marked it with a free-form away/back, the recorded break came out different for every person, and nobody's total meant quite the same thing. `/lunch` settles it: one hour, counted the same way for everyone.
+
+So it runs itself. `/lunch` fixes the end an hour later, there's no second command to remember, and you get a DM when you're back on the clock. Until then you can't clock out or start a break — offon will tell you how many minutes are left if you try.
 
 **`/back` is only for `/break`.** If you're on a meal, waiting is the only option.
+
+**Use `/break` for everything else** — a coffee run, an errand, an appointment. Both meals and breaks are subtracted from your worked total; the difference is that a meal is a fixed hour and a break is however long you're actually gone.
 
 ## Signing in to the web app
 
@@ -40,9 +46,13 @@ Forgot to clock out? Clocked in late because you were in a meeting? You can ask 
 4. Adjust the clock-in, clock-out, meal, or away times
 5. Submit — an admin sees it in their approvals queue
 
+**You can add or remove meals and breaks, not just move them.** Forgot to press `/lunch` at all? Add the meal in the dialog. Pressed `/break` and never left? Delete it. Only the times themselves exist on the clock-in and clock-out — those you can only correct, not remove.
+
 **Meals are the exception.** You can move when a meal *started*, but not when it ended: it's always exactly an hour later. To remove a meal entirely, delete it.
 
-You can correct a day you haven't clocked out of yet. You can't correct one while you're marked away — come back first.
+You can correct a day you haven't clocked out of yet.
+
+**An open break has to be closed first.** If you're currently marked away, come back before requesting a correction — offon can't reason about a period that hasn't ended.
 
 ## Requesting leave
 
