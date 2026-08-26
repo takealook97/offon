@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/cn';
 import { MemberPicker, type PickerMember } from './MemberPicker';
+import { useTranslation } from '@/lib/i18n/client';
 
 const MIN_YEAR = 2026;
 const MIN_MONTH = 5; // the feature went live in 2026-05
@@ -52,6 +53,7 @@ function triggerDownload(blob: Blob, filename: string): void {
 }
 
 export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation();
   const now = new Date();
   const curYear = now.getFullYear();
   const curMonth = now.getMonth() + 1;
@@ -112,7 +114,7 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
         credentials: 'include',
       });
       if (!res.ok) {
-        let msg = 'The download failed';
+        let msg = t('exp.failed');
         try {
           const j = await res.json();
           if (j?.error) msg = j.error;
@@ -122,13 +124,13 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
         throw new Error(msg);
       }
       const blob = await res.blob();
-      const fallback = `attendance_${year}${String(month).padStart(2, '0')}.xlsx`;
+      const fallback = t('exp.filename', { year, month: String(month).padStart(2, '0') });
       const filename =
         filenameFromDisposition(res.headers.get('Content-Disposition')) ?? fallback;
       triggerDownload(blob, filename);
       setOpen(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The download failed');
+      setError(e instanceof Error ? e.message : t('exp.failed'));
     } finally {
       setLoading(false);
     }
@@ -145,18 +147,18 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
           <Download className="size-4" />
-          Download
+          {t('exp.download')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-base">Download attendance</DialogTitle>
-          <DialogDescription>Pick a year and month to export attendance as a spreadsheet.</DialogDescription>
+          <DialogTitle className="text-base">{t('exp.title')}</DialogTitle>
+          <DialogDescription>{t('exp.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Year">
+            <Field label={t('exp.year')}>
               <Select value={String(year)} onValueChange={handleYearChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -164,13 +166,13 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
                 <SelectContent>
                   {years.map((y) => (
                     <SelectItem key={y} value={String(y)}>
-                      {y}
+                      {t('exp.yearValue', { year: y })}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Month">
+            <Field label={t('exp.month')}>
               <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -178,7 +180,7 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                     <SelectItem key={m} value={String(m)} disabled={!isMonthValid(year, m)}>
-                      {m}Month
+                      {t('exp.monthValue', { month: m })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -188,16 +190,16 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
 
           {isAdmin && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Scope</p>
+              <p className="text-xs font-medium text-muted-foreground">{t('exp.target')}</p>
               <div className="inline-flex w-full gap-1 rounded-md bg-muted p-0.5">
                 <ToggleBtn active={adminTarget === 'all'} onClick={() => setAdminTarget('all')}>
-                  Everyone
+                  {t('exp.all')}
                 </ToggleBtn>
                 <ToggleBtn
                   active={adminTarget === 'individual'}
                   onClick={() => setAdminTarget('individual')}
                 >
-                  Just me
+                  {t('exp.personal')}
                 </ToggleBtn>
               </div>
               {adminTarget === 'individual' && (
@@ -212,11 +214,11 @@ export function ExportButton({ isAdmin }: { isAdmin: boolean }) {
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost" size="sm">
-              Cancelled
+              {t('common.cancel')}
             </Button>
           </DialogClose>
           <Button size="sm" onClick={handleDownload} disabled={!canDownload}>
-            {loading ? 'Building…' : 'Download'}
+            {loading ? t('exp.generating') : t('exp.download')}
           </Button>
         </DialogFooter>
       </DialogContent>

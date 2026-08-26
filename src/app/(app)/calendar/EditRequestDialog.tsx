@@ -17,6 +17,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useTranslation } from '@/lib/i18n/client';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 import {
   Select,
   SelectContent,
@@ -34,14 +36,12 @@ type BreakDraft = { start: string; end: string }; // 'yyyy-MM-ddTHH:mm'
 
 type Item = [value: string, label: string];
 
-const HOUR_ITEMS: Item[] = Array.from({ length: 24 }, (_, i) => [
-  String(i).padStart(2, '0'),
-  `${i}:00`,
-]);
-const MIN_ITEMS: Item[] = Array.from({ length: 60 }, (_, i) => [
-  String(i).padStart(2, '0'),
-  `${i}m`,
-]);
+/** The hour and minute labels are language-dependent, so these cannot be module constants. */
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+const hourItems = (t: Translate): Item[] =>
+  Array.from({ length: 24 }, (_, i) => [String(i).padStart(2, '0'), t('edit.hour', { h: i })]);
+const minuteItems = (t: Translate): Item[] =>
+  Array.from({ length: 60 }, (_, i) => [String(i).padStart(2, '0'), t('edit.minute', { m: i })]);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -112,6 +112,7 @@ function DateTimePicker({
   min?: Date;
   max?: Date;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const selectedDate = wallToLocalDate(value);
   const h = value.slice(11, 13);
@@ -171,14 +172,14 @@ function DateTimePicker({
       <TimeSel
         value={h}
         onValueChange={(v) => onChange(`${value.slice(0, 10)}T${v}:${mi}`)}
-        items={HOUR_ITEMS}
+        items={hourItems(t)}
         isDisabled={hourDisabled}
       />
       <span className="text-sm text-muted-foreground">:</span>
       <TimeSel
         value={mi}
         onValueChange={(v) => onChange(`${value.slice(0, 10)}T${h}:${v}`)}
-        items={MIN_ITEMS}
+        items={minuteItems(t)}
         isDisabled={minuteDisabled}
       />
     </div>
@@ -196,6 +197,7 @@ export function EditRequestDialog({
   onOpenChange: (o: boolean) => void;
   onDone?: () => void;
 }) {
+  const { t } = useTranslation();
   const [pending, start] = useTransition();
   const [clockIn, setClockIn] = useState(session.clockIn);
   const [clockOut, setClockOut] = useState<string | null>(session.clockOut);
@@ -232,7 +234,7 @@ export function EditRequestDialog({
       JSON.stringify(breaks) === JSON.stringify(initialBreaks.map(({ start: s, end }) => ({ start: s, end }))) &&
       JSON.stringify(lunches) === JSON.stringify(initialLunches);
     if (unchanged) {
-      toast.error('Nothing changed');
+      toast.error(t('edit.noChanges'));
       return;
     }
     const payload = {
@@ -260,10 +262,10 @@ export function EditRequestDialog({
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Edit Request failed');
+        toast.error(data.error ?? t('edit.failed'));
         return;
       }
-      toast.success('Correction requested');
+      toast.success(t('edit.sent'));
       onOpenChange(false);
       onDone?.();
     });
@@ -284,12 +286,12 @@ export function EditRequestDialog({
         className="max-h-[85svh] overflow-x-hidden overflow-y-auto p-4 sm:max-w-lg sm:p-6"
       >
         <DialogHeader>
-          <DialogTitle>Request a correction</DialogTitle>
+          <DialogTitle>{t('edit.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="min-w-0 space-y-4">
           <div className="space-y-1.5">
-            <Label>Clock in</Label>
+            <Label>{t('edit.clockIn')}</Label>
             <DateTimePicker
               value={clockIn}
               onChange={setClockIn}
@@ -300,7 +302,7 @@ export function EditRequestDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Clock out</Label>
+            <Label>{t('edit.clockOut')}</Label>
             {clockOut !== null ? (
               <DateTimePicker
                 value={clockOut}
@@ -312,14 +314,14 @@ export function EditRequestDialog({
               />
             ) : (
               <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                Still running — it can be corrected after clocking out
+                {t('edit.inProgress')}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Meal</Label>
+              <Label>{t('edit.meal')}</Label>
               <Button
                 type="button"
                 size="sm"
@@ -329,14 +331,14 @@ export function EditRequestDialog({
                 className="h-7 gap-1 text-xs"
               >
                 <Plus className="size-3.5" />
-                Add
+                {t('edit.add')}
               </Button>
             </div>
             {lunches.length === 0 ? (
               <p className="text-xs text-muted-foreground">
                 {canAddLunch
-                  ? 'No meal'
-                  : `The working span is shorter than ${LUNCH_MINUTES} minutes, so a meal will not fit`}
+                  ? t('edit.noMeal')
+                  : t('edit.tooShortForMeal', { minutes: LUNCH_MINUTES })}
               </p>
             ) : (
               <div className="space-y-2">
@@ -344,7 +346,7 @@ export function EditRequestDialog({
                   <div key={i} className="space-y-2 rounded-lg border border-border/60 p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-muted-foreground">
-                        Meal {i + 1}
+                        {t('edit.mealN', { n: i + 1 })}
                       </span>
                       <Button
                         type="button"
@@ -354,11 +356,11 @@ export function EditRequestDialog({
                         className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="size-3.5" />
-                        Remove
+                        {t('edit.delete')}
                       </Button>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Start</Label>
+                      <Label className="text-xs text-muted-foreground">{t('edit.start')}</Label>
                       <DateTimePicker
                         value={s}
                         onChange={(v) => updateLunch(i, v)}
@@ -369,7 +371,7 @@ export function EditRequestDialog({
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Ends {lunchEndWall(s).slice(11)} · fixed at {LUNCH_MINUTES}m
+                      {t('edit.mealEndFixed', { time: lunchEndWall(s).slice(11), minutes: LUNCH_MINUTES })}
                     </p>
                   </div>
                 ))}
@@ -379,7 +381,7 @@ export function EditRequestDialog({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Away</Label>
+              <Label>{t('edit.away')}</Label>
               <Button
                 type="button"
                 size="sm"
@@ -388,11 +390,11 @@ export function EditRequestDialog({
                 className="h-7 gap-1 text-xs"
               >
                 <Plus className="size-3.5" />
-                Add
+                {t('edit.add')}
               </Button>
             </div>
             {breaks.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No away time</p>
+              <p className="text-xs text-muted-foreground">{t('edit.noAway')}</p>
             ) : (
               <div className="space-y-2">
                 {breaks.map((b, i) => {
@@ -402,7 +404,7 @@ export function EditRequestDialog({
                     <div key={i} className="space-y-2 rounded-lg border border-border/60 p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">
-                          Away {i + 1}
+                          {t('edit.awayN', { n: i + 1 })}
                         </span>
                         <Button
                           type="button"
@@ -412,12 +414,12 @@ export function EditRequestDialog({
                           className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="size-3.5" />
-                          Remove
+                          {t('edit.delete')}
                         </Button>
                       </div>
                       <div className="space-y-2">
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Start</Label>
+                          <Label className="text-xs text-muted-foreground">{t('edit.start')}</Label>
                           <DateTimePicker
                             value={b.start}
                             onChange={(v) => updateBreak(i, { start: v })}
@@ -428,7 +430,7 @@ export function EditRequestDialog({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">End</Label>
+                          <Label className="text-xs text-muted-foreground">{t('edit.end')}</Label>
                           <DateTimePicker
                             value={b.end}
                             onChange={(v) => updateBreak(i, { end: v })}
@@ -449,10 +451,10 @@ export function EditRequestDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancelled
+            {t('common.cancel')}
           </Button>
           <Button onClick={submit} disabled={pending}>
-            {pending ? 'Requesting…' : 'Request a correction'}
+            {pending ? t('edit.submitting') : t('edit.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>
