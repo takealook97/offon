@@ -4,11 +4,12 @@ import { requireSession } from '@/lib/session';
 import { formatZoned } from '@/lib/time';
 import {
   parseDate,
-  kstIsoFromDate,
+  zonedIsoFromDate,
   addDaysUtc,
   halfDayIsoRange,
 } from '@/lib/calendar-utils';
 import { clippedDailyTotals } from '@/lib/calendar-aggregation';
+import { resolveCalendarTarget } from '@/lib/calendar-access';
 import type { CalendarEvent } from '@/lib/api-types';
 import { getT } from '@/lib/i18n/server';
 import { formatDuration } from '@/lib/i18n/format';
@@ -23,17 +24,11 @@ export async function GET(req: NextRequest) {
     if (!start || !end) {
       return NextResponse.json({ ok: false, error: t('api.needRange') }, { status: 400 });
     }
-    const memberIdRaw = req.nextUrl.searchParams.get('memberId');
-    const parsedMemberId = memberIdRaw ? Number(memberIdRaw) : null;
-    const targetMemberId =
-      parsedMemberId && Number.isInteger(parsedMemberId) && parsedMemberId > 0
-        ? parsedMemberId
-        : session.memberId;
-    // Anyone may see their own calendar. Seeing a colleague's attendance and leave is
-    // Admin-only, as the search is. Sharing leave across the team is handled by its own endpoint.
-    if (targetMemberId !== session.memberId && session.role !== 'ADMIN') {
+    const target = resolveCalendarTarget(req.nextUrl.searchParams.get('memberId'), session);
+    if (!target.ok) {
       return NextResponse.json({ ok: false, error: t('api.forbidden') }, { status: 403 });
     }
+    const targetMemberId = target.memberId;
 
     const [attendances, leaves] = await Promise.all([
       prisma.attendance.findMany({
@@ -122,8 +117,8 @@ export async function GET(req: NextRequest) {
         events.push({
           id: `leave-${l.id}`,
           title: t('evt.leaveFull'),
-          start: kstIsoFromDate(l.startDate),
-          end: kstIsoFromDate(addDaysUtc(l.endDate, 1)),
+          start: zonedIsoFromDate(l.startDate),
+          end: zonedIsoFromDate(addDaysUtc(l.endDate, 1)),
           allDay: true,
           resource: {
             kind: 'LEAVE',

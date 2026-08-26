@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
 import {
   parseDate,
-  kstIsoFromDate,
+  zonedIsoFromDate,
   addDaysUtc,
   halfDayIsoRange,
 } from '@/lib/calendar-utils';
@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
         return {
           id: `team-leave-${l.id}`,
           title,
-          start: kstIsoFromDate(l.startDate),
-          end: kstIsoFromDate(addDaysUtc(l.endDate, 1)),
+          start: zonedIsoFromDate(l.startDate),
+          end: zonedIsoFromDate(addDaysUtc(l.endDate, 1)),
           allDay: true,
           resource: {
             kind: 'LEAVE',
