@@ -64,7 +64,7 @@ type UiBooking = {
   resource: RoomBookingDTO;
 };
 
-/** A Date to a wall clock, assuming the browser matches the org timezone, as the rest of the calendar does. */
+/** A Date to a wall clock, assuming the browser matches the org timezone; see the note in BookingDialog. */
 const toWall = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
 
 /**

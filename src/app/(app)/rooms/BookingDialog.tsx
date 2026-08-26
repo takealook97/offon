@@ -95,7 +95,11 @@ function TimeSel({
 const hourOf = (wall: string) => wall.slice(11, 13);
 const minuteOf = (wall: string) => wall.slice(14, 16);
 
-/** Assumes the browser clock matches the org timezone, as the rest of the calendar does. */
+/**
+ * This grid assumes the browser's clock matches the org timezone. One deployment serves one organisation
+ * and an organisation mostly works in one zone, so it holds in practice, but someone in another
+ * sees today off by a day. See the known limitations in the README.
+ */
 const nowWall = () => format(new Date(), "yyyy-MM-dd'T'HH:mm");
 
 export type BookingDraft = {

@@ -121,6 +121,7 @@ Generate the two secrets with `openssl rand -base64 32`.
 
 Worth knowing before you deploy — these are real, and PRs are welcome on all of them.
 
+- **The calendar grids read the viewer's browser clock.** Day totals, boundaries, and every stored time follow `NEXT_PUBLIC_TIMEZONE` correctly, but which cell the month and week grids highlight as "today" comes from the browser. Someone viewing from another timezone sees the highlight a day off. Fine when the team shares a timezone, which is the premise; wrong for a traveller.
 - **Postgres only.** The schema and migrations are Postgres-specific. Supabase, Neon, Railway, RDS all qualify; MySQL and SQLite do not.
 - **One organization per deployment.** There's no tenant concept in the schema — run a second deployment for a second org.
 - **Meeting-room hours and meal length are constants**, not settings. Rooms run 08:00–19:00 in 10-minute slots; a meal is 60 minutes.

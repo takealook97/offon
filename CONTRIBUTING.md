@@ -39,6 +39,8 @@ CI runs exactly these three. They pass on `main`, so a red build means the chang
 
 The README lists what's missing under *Known limitations*. Meeting-room hours and the meal length are still constants rather than settings, and there are no tests for the paths that need a database — approvals, the yearly leave rollover, the cron handlers.
 
+The calendar grids still take "today" from the browser clock rather than the configured timezone — see *Known limitations*. Fixing that means feeding react-big-calendar dates built in the organization's zone instead of local ones.
+
 If you touch `src/lib/time.ts`, run the timezone tests. They cover half-hour zones and both daylight-saving transitions, which is where this kind of code goes wrong.
 
 ## Reporting a bug
