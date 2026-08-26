@@ -12,6 +12,7 @@ import {
 } from '@/lib/room-booking-server';
 import { getT } from '@/lib/i18n/server';
 import { roomHours } from '@/lib/settings';
+import { canManageBooking } from '@/lib/room-booking-access';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -58,32 +59,15 @@ async function guardManage(
       ),
     };
   }
-  if (booking.status !== 'CONFIRMED') {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { ok: false, error: t('api.bookingCancelled') },
-        { status: 400 },
-      ),
-    };
-  }
-  if (booking.memberId !== viewer.memberId && viewer.role !== 'ADMIN') {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { ok: false, error: t('api.ownBookingOnly') },
-        { status: 403 },
-      ),
-    };
-  }
-  if (booking.endAt < new Date()) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { ok: false, error: t('api.bookingEnded') },
-        { status: 400 },
-      ),
-    };
+  const access = canManageBooking(booking, viewer, new Date());
+  if (!access.ok) {
+    const [key, status] =
+      access.reason === 'not_owner'
+        ? (['api.ownBookingOnly', 403] as const)
+        : access.reason === 'not_confirmed'
+          ? (['api.bookingCancelled', 400] as const)
+          : (['api.bookingEnded', 400] as const);
+    return { ok: false, response: NextResponse.json({ ok: false, error: t(key) }, { status }) };
   }
   return { ok: true, booking };
 }
