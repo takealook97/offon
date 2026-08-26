@@ -2,9 +2,12 @@ import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LocaleToggle } from '@/components/LocaleToggle';
+import { getT } from '@/lib/i18n/server';
 import { LoginForm } from './LoginForm';
 
 export default async function LoginPage() {
+  const t = await getT();
   const session = await getSession();
   if (session) redirect('/dashboard');
 
@@ -15,16 +18,19 @@ export default async function LoginPage() {
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-[420px]">
+        <div className="mb-2 flex justify-end">
+          <LocaleToggle />
+        </div>
         <div className="mb-8 flex flex-col items-center text-center">
           <Image src="/logo.png" alt="offon" width={72} height={72} className="rounded-2xl" priority />
           <h1 className="mt-4 text-3xl font-semibold tracking-tight">offon</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in with Slack</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('login.tagline')}</p>
         </div>
         <Card className="shadow-sm">
           <CardHeader className="space-y-1.5">
-            <CardTitle className="text-lg">Sign in</CardTitle>
+            <CardTitle className="text-lg">{t('login.cardTitle')}</CardTitle>
             <CardDescription>
-              Enter your email and a six-digit code is sent to you on Slack.
+              {t('login.cardDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -33,7 +39,7 @@ export default async function LoginPage() {
         </Card>
         {isDev && !slackReady && (
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Development: no Slack token, so the code is printed to the server console
+            {t('login.devNoSlack')}
           </p>
         )}
       </div>

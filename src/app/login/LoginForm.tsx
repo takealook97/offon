@@ -7,6 +7,7 @@ import { ArrowRight, Loader2, Mail, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from '@/lib/i18n/client';
 
 async function postJson(path: string, body: unknown) {
   const res = await fetch(path, {
@@ -20,6 +21,7 @@ async function postJson(path: string, body: unknown) {
 
 export function LoginForm() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -36,19 +38,19 @@ export function LoginForm() {
     start(async () => {
       const res = await postJson('/api/auth/request-code', { email });
       if (!res.ok) {
-        toast.error(res.error ?? 'Request failed');
+        toast.error(res.error ?? t('login.requestFailed'));
         return;
       }
       if (!resend) setStep('code');
       setCooldown(30);
-      toast.success('Code sent to your Slack DM');
+      toast.success(t('login.codeSent'));
     });
 
   const verify = () =>
     start(async () => {
       const res = await postJson('/api/auth/verify-code', { email, code });
       if (!res.ok) {
-        toast.error(res.error ?? 'Could not sign in');
+        toast.error(res.error ?? t('login.loginFailed'));
         return;
       }
       router.replace('/dashboard');
@@ -65,7 +67,7 @@ export function LoginForm() {
         }}
       >
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('login.email')}</Label>
           <div className="relative">
             <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -83,7 +85,7 @@ export function LoginForm() {
           </div>
         </div>
         <Button type="submit" disabled={pending || !email} className="h-11 w-full">
-          {pending ? <Loader2 className="size-4 animate-spin" /> : <>Send me a code <ArrowRight className="size-4" /></>}
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <>{t('login.requestCode')} <ArrowRight className="size-4" /></>}
         </Button>
       </form>
     );
@@ -98,7 +100,7 @@ export function LoginForm() {
       }}
     >
       <div className="rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-sm">
-        <span className="text-muted-foreground">Sent to</span>
+        <span className="text-muted-foreground">{t('login.sentTo')}</span>
         <div className="mt-0.5 flex items-center justify-between gap-3">
           <span className="truncate font-medium">{email}</span>
           <button
@@ -109,12 +111,12 @@ export function LoginForm() {
             }}
             className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
-            Now
+            {t('login.change')}
           </button>
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="code">Verification code</Label>
+        <Label htmlFor="code">{t('login.code')}</Label>
         <Input
           id="code"
           inputMode="numeric"
@@ -130,7 +132,7 @@ export function LoginForm() {
         />
       </div>
       <Button type="submit" disabled={pending || code.length !== 6} className="h-11 w-full">
-        {pending ? <Loader2 className="size-4 animate-spin" /> : 'Sign in'}
+        {pending ? <Loader2 className="size-4 animate-spin" /> : t('login.submit')}
       </Button>
       <Button
         type="button"
@@ -141,7 +143,7 @@ export function LoginForm() {
         className="w-full gap-2 text-muted-foreground"
       >
         <RotateCcw className="size-3.5" />
-        {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend the code'}
+        {cooldown > 0 ? t('login.resendIn', { seconds: cooldown }) : t('login.resend')}
       </Button>
     </form>
   );

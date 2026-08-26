@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import {
   Calendar,
   DoorOpen,
@@ -8,6 +7,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LocaleToggle } from '@/components/LocaleToggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { MobileNav } from '@/components/MobileNav';
 import { DesktopNav } from '@/components/DesktopNav';
@@ -80,7 +80,8 @@ export function AppShell({
               {me.name}
               {me.role === 'ADMIN' && <span className="ml-1.5">· admin</span>}
             </span>
-            <div className="hidden md:block">
+            <div className="hidden items-center gap-1 md:flex">
+              <LocaleToggle />
               <ThemeToggle />
             </div>
             <div className="hidden md:block">
