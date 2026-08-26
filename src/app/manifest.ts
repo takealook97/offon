@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'offon - attendance and leave',
+    name: 'offon · attendance for Slack teams',
     short_name: 'offon',
-    description: 'offon - attendance and leave',
+    description: 'Self-hosted attendance and leave management, driven from Slack.',
     lang: 'ko',
     start_url: '/',
     scope: '/',

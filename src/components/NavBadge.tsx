@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/client';
 
 /**
  * The red dot saying something is waiting to be dealt with.
@@ -9,11 +10,12 @@ import { cn } from '@/lib/cn';
  * sits there.
  */
 export function NavBadge({ count, className }: { count: number; className?: string }) {
+  const { t } = useTranslation();
   return (
     <span
       className={cn('relative flex size-1.5 shrink-0', className)}
       role="status"
-      aria-label={`Approvals pending ${count}`}
+      aria-label={t('nav.pendingBadge', { count })}
     >
       <span className="absolute inline-flex size-full rounded-full bg-red-500 opacity-75 motion-safe:animate-ping" />
       <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />

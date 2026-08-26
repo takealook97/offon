@@ -4,21 +4,23 @@ import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const isDark = mounted && resolvedTheme === 'dark';
-  const label = !mounted ? 'Switch theme' : isDark ? 'Dark' : 'Light';
+  const label = !mounted ? t('theme.toggle') : isDark ? t('theme.dark') : t('theme.light');
 
   return (
     <Button
       variant="ghost"
       size="icon"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label={!mounted ? 'Switch theme' : `Switch theme (currently ${label})`}
+      aria-label={!mounted ? t('theme.toggle') : t('theme.toggleCurrent', { mode: label })}
       title={label}
       suppressHydrationWarning
     >

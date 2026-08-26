@@ -19,6 +19,7 @@ import { LogoutButton } from '@/components/LogoutButton';
 import { cn } from '@/lib/cn';
 import { NavBadge } from '@/components/NavBadge';
 import { iconFor, type NavItem } from '@/components/AppShell';
+import { useTranslation } from '@/lib/i18n/client';
 
 export function MobileNav({
   items,
@@ -27,6 +28,7 @@ export function MobileNav({
   items: NavItem[];
   me: { name: string; role: 'EMPLOYEE' | 'ADMIN' };
 }) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isActive = (href: string) =>
@@ -41,7 +43,7 @@ export function MobileNav({
           size="icon"
           className="relative md:hidden"
           aria-label={
-            pendingTotal > 0 ? `Open the menu (${pendingTotal} waiting)` : 'Open the menu'
+            pendingTotal > 0 ? t('nav.openMenuPending', { count: pendingTotal }) : t('nav.openMenu')
           }
         >
           <Menu className="size-5" />
@@ -77,7 +79,7 @@ export function MobileNav({
                 )}
               >
                 <Icon className="size-4 shrink-0" />
-                {item.label}
+                {t(item.labelKey)}
                 {/* Pushed to the far right so it never overlaps the label. */}
                 {item.badge ? <NavBadge count={item.badge} className="ml-auto" /> : null}
               </Link>
@@ -90,7 +92,7 @@ export function MobileNav({
             <div className="flex flex-col">
               <span className="font-medium">{me.name}</span>
               <span className="text-xs text-muted-foreground">
-                {me.role === 'ADMIN' ? 'Admin' : 'An employee'}
+                {me.role === 'ADMIN' ? t('member.roleAdmin') : t('member.roleEmployee')}
               </span>
             </div>
             <ThemeToggle />

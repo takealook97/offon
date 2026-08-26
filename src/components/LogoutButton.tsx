@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/client';
 
 export function LogoutButton({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -24,7 +26,7 @@ export function LogoutButton({ className }: { className?: string }) {
       className={cn('gap-2', className)}
     >
       <LogOut className="size-4" />
-      Sign out
+      {t('nav.logout')}
     </Button>
   );
 }

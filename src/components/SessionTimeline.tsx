@@ -1,15 +1,9 @@
 import { formatKST } from '@/lib/time';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/client';
+import { formatDuration } from '@/lib/i18n/format';
 
 type Session = { startAt: Date; endAt: Date | null };
-
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
-}
 
 export function SessionTimeline({
   sessions,
@@ -18,10 +12,11 @@ export function SessionTimeline({
   sessions: Session[];
   now?: Date;
 }) {
+  const { t } = useTranslation();
   if (sessions.length <= 1) return null;
   return (
     <div className="flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
-      <span className="w-full text-xs font-medium text-muted-foreground">Work sessions</span>
+      <span className="w-full text-xs font-medium text-muted-foreground">{t('timeline.title')}</span>
       {sessions.map((s, i) => (
         <SessionChip key={i} session={s} now={now} />
       ))}
@@ -30,6 +25,7 @@ export function SessionTimeline({
 }
 
 function SessionChip({ session, now }: { session: Session; now: Date }) {
+  const { t } = useTranslation();
   const ongoing = !session.endAt;
   const endAt = session.endAt ?? now;
   const minutes = Math.max(
@@ -49,9 +45,9 @@ function SessionChip({ session, now }: { session: Session; now: Date }) {
         <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
       )}
       <span className="font-mono tabular-nums">
-        {formatKST(session.startAt, 'HH:mm')} – {ongoing ? 'in progress' : formatKST(session.endAt!, 'HH:mm')}
+        {formatKST(session.startAt, 'HH:mm')} – {ongoing ? t('status.inProgress') : formatKST(session.endAt!, 'HH:mm')}
       </span>
-      <span className="text-muted-foreground">· {formatDuration(minutes)}</span>
+      <span className="text-muted-foreground">· {formatDuration(t, minutes)}</span>
     </span>
   );
 }

@@ -11,10 +11,12 @@ import { LocaleToggle } from '@/components/LocaleToggle';
 import { LogoutButton } from '@/components/LogoutButton';
 import { MobileNav } from '@/components/MobileNav';
 import { DesktopNav } from '@/components/DesktopNav';
+import { getT } from '@/lib/i18n/server';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 
 export type NavItem = {
   href: string;
-  label: string;
+  labelKey: MessageKey;
   iconName: 'dashboard' | 'calendar' | 'rooms' | 'users' | 'clipboard' | 'settings';
   admin?: boolean;
   /** How much is waiting to be dealt with. Anything above zero puts a red mark beside the menu item. */
@@ -25,12 +27,12 @@ export type NavItem = {
 const APPROVALS_HREF = '/admin/approvals';
 
 const NAV: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', iconName: 'dashboard' },
-  { href: '/calendar', label: 'Calendar', iconName: 'calendar' },
-  { href: '/rooms', label: 'Rooms', iconName: 'rooms' },
-  { href: '/admin/members', label: 'Members', iconName: 'users', admin: true },
-  { href: APPROVALS_HREF, label: 'Approvals', iconName: 'clipboard', admin: true },
-  { href: '/admin/settings', label: 'Settings', iconName: 'settings', admin: true },
+  { href: '/dashboard', labelKey: 'nav.dashboard', iconName: 'dashboard' },
+  { href: '/calendar', labelKey: 'nav.calendar', iconName: 'calendar' },
+  { href: '/rooms', labelKey: 'nav.rooms', iconName: 'rooms' },
+  { href: '/admin/members', labelKey: 'nav.members', iconName: 'users', admin: true },
+  { href: APPROVALS_HREF, labelKey: 'nav.approvals', iconName: 'clipboard', admin: true },
+  { href: '/admin/settings', labelKey: 'nav.settings', iconName: 'settings', admin: true },
 ];
 
 export function iconFor(name: NavItem['iconName']) {
@@ -50,7 +52,7 @@ export function iconFor(name: NavItem['iconName']) {
   }
 }
 
-export function AppShell({
+export async function AppShell({
   me,
   children,
   pendingApprovals = 0,
@@ -60,6 +62,7 @@ export function AppShell({
   /** How many approvals are waiting. Anything above zero marks the approvals menu item. */
   pendingApprovals?: number;
 }) {
+  const t = await getT();
   const items = NAV.filter((item) => (item.admin ? me.role === 'ADMIN' : true)).map(
     (item) =>
       item.href === APPROVALS_HREF && pendingApprovals > 0
@@ -78,7 +81,7 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-1">
             <span className="hidden text-sm text-muted-foreground md:inline">
               {me.name}
-              {me.role === 'ADMIN' && <span className="ml-1.5">· admin</span>}
+              {me.role === 'ADMIN' && <span className="ml-1.5">{t('nav.adminSuffix')}</span>}
             </span>
             <div className="hidden items-center gap-1 md:flex">
               <LocaleToggle />
