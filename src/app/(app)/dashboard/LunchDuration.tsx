@@ -2,15 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/lib/i18n/client';
+import { formatDuration } from '@/lib/i18n/format';
 import { useMinuteTick } from './useMinuteTick';
-
-function format(elapsedMin: number): string {
-  const h = Math.floor(elapsedMin / 60);
-  const m = elapsedMin % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m On meal`;
-  if (h > 0) return `${h}h On meal`;
-  return `${m}m On meal`;
-}
 
 /**
  * The badge counting through a meal. A meal's end is already fixed, so nothing has to happen
@@ -24,6 +18,7 @@ export function LunchDuration({
   endsAt: string;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const start = new Date(startedAt).getTime();
   const end = new Date(endsAt).getTime();
   const now = useMinuteTick();
@@ -45,5 +40,5 @@ export function LunchDuration({
   }, [now, checkedAt, end, router]);
 
   const elapsedMin = Math.max(0, Math.floor((Math.min(now, end) - start) / 60_000));
-  return <>{format(elapsedMin)}</>;
+  return <>{t('attendance.mealFor', { duration: formatDuration(t, elapsedMin) })}</>;
 }

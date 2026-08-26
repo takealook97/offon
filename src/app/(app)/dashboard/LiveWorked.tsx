@@ -2,6 +2,8 @@
 
 import { useMemo } from 'react';
 import { clippedDailyTotals, type SourceAttendance } from '@/lib/calendar-aggregation';
+import { useTranslation } from '@/lib/i18n/client';
+import { formatDuration } from '@/lib/i18n/format';
 import { useMinuteTick } from './useMinuteTick';
 
 /** The working spans touching today, serialised by the server. Times are UTC ISO strings. */
@@ -10,14 +12,6 @@ export type LiveRow = {
   sessions: { startAt: string; endAt: string | null }[];
   breaks: { startAt: string; endAt: string | null }[];
 };
-
-function formatMinutes(m: number): string {
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h > 0 && mm > 0) return `${h}h ${mm}m`;
-  if (h > 0) return `${h}h`;
-  return `${mm}m`;
-}
 
 /**
  * Recomputes today's net worked minutes in the browser, once a minute.
@@ -57,8 +51,9 @@ export function TodayWorked({
   dayKey: string;
   hasClockIn: boolean;
 }) {
+  const { t } = useTranslation();
   const minutes = useLiveTodayMinutes(rows, dayKey);
-  return <>{hasClockIn ? formatMinutes(minutes) : '—'}</>;
+  return <>{hasClockIn ? formatDuration(t, minutes) : '—'}</>;
 }
 
 /** Week and month totals. `base` is the server total with today removed; only today's share is added live. */
@@ -71,8 +66,9 @@ export function RangeWorked({
   dayKey: string;
   baseMinutes: number;
 }) {
+  const { t } = useTranslation();
   const minutes = useLiveTodayMinutes(rows, dayKey);
-  return <>{formatMinutes(baseMinutes + minutes)}</>;
+  return <>{formatDuration(t, baseMinutes + minutes)}</>;
 }
 
 /** The days-worked count for a week or month. The moment today rises above zero it has to count as a day. */
@@ -87,8 +83,9 @@ export function RangeWorkedDays({
   baseDays: number;
   emptyLabel?: string;
 }) {
+  const { t } = useTranslation();
   const minutes = useLiveTodayMinutes(rows, dayKey);
   const days = baseDays + (minutes > 0 ? 1 : 0);
   if (days === 0 && emptyLabel) return <>{emptyLabel}</>;
-  return <>{days} days worked</>;
+  return <>{t('attendance.daysWorked', { days })}</>;
 }

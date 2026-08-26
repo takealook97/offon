@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ export function CancelLeaveButton({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const cancel = () =>
@@ -33,10 +35,10 @@ export function CancelLeaveButton({
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Could not cancel that');
+        toast.error(data.error ?? t('leave.cancelFailed'));
         return;
       }
-      toast.success('Cancelled');
+      toast.success(t('leave.cancelled'));
       setOpen(false);
       router.refresh();
     });
@@ -50,24 +52,24 @@ export function CancelLeaveButton({
         disabled={pending}
         className="border-destructive/40 text-destructive hover:bg-destructive/10"
       >
-        Cancelled
+        {t('leave.cancel')}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel leave request</DialogTitle>
+            <DialogTitle>{t('leave.cancelTitle')}</DialogTitle>
             <DialogDescription>
               {wasApproved
-                ? 'Cancelling approved leave returns the days to your balance. Continue?'
-                : 'Cancel this request?'}
+                ? t('leave.cancelApprovedConfirm')
+                : t('leave.cancelConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
-              Go back
+              {t('leave.cancelBack')}
             </Button>
             <Button variant="destructive" onClick={cancel} disabled={pending}>
-              {pending ? 'Working…' : 'Cancel'}
+              {pending ? t('leave.cancelling') : t('leave.cancelDo')}
             </Button>
           </DialogFooter>
         </DialogContent>

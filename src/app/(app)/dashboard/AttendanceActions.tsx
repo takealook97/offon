@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 import { cn } from '@/lib/cn';
 
 type Status = 'NOT_STARTED' | 'WORKING' | 'ON_BREAK' | 'DONE' | 'MISSING';
@@ -28,13 +29,14 @@ export function AttendanceActions({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const { t } = useTranslation();
 
   const call = (path: string, successMsg: string) =>
     start(async () => {
       const res = await fetch(path, { method: 'POST' });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Request failed');
+        toast.error(data.error ?? t('attendance.requestFailed'));
         return;
       }
       toast.success(successMsg);
@@ -60,39 +62,39 @@ export function AttendanceActions({
   // Disabling it swallows the click and hides the reason, so it stays pressable and explains.
   const onToggle = () => {
     if (lunchOngoing()) {
-      toast.info(`You cannot clock out during a meal. It ends by itself in ${remainingLunchMin()} minutes.`);
+      toast.info(t('attendance.blockedByMeal', { minutes: remainingLunchMin() }));
       return;
     }
     if (isOnBreak) {
-      toast.info('You cannot clock out while away. Come back first.');
+      toast.info(t('attendance.blockedByBreak'));
       return;
     }
     if (isOn) {
-      call('/api/attendance/clock-out', 'Clocked out');
+      call('/api/attendance/clock-out', t('attendance.clockedOut'));
       return;
     }
-    call('/api/attendance/clock-in', 'Clocked in');
+    call('/api/attendance/clock-in', t('attendance.clockedIn'));
   };
 
   const onLunch = () => {
     // There is nothing to come back from on a meal. Pressing it sends no request and just says how long is left.
     if (lunchOngoing()) {
-      toast.info(`It ends by itself in ${remainingLunchMin()} minutes.`);
+      toast.info(t('attendance.mealAutoBack', { minutes: remainingLunchMin() }));
       return;
     }
-    call('/api/attendance/lunch', 'Meal started');
+    call('/api/attendance/lunch', t('attendance.mealStarted'));
   };
 
   const onBreakToggle = () => {
     if (lunchOngoing()) {
-      toast.info(`That cannot be used during a meal. It ends by itself in ${remainingLunchMin()} minutes.`);
+      toast.info(t('attendance.unavailableDuringMeal', { minutes: remainingLunchMin() }));
       return;
     }
     if (isOnBreak) {
-      call('/api/attendance/back', 'Welcome back');
+      call('/api/attendance/back', t('attendance.backDone'));
       return;
     }
-    call('/api/attendance/break', 'Marked away');
+    call('/api/attendance/break', t('attendance.awayStarted'));
   };
 
   return (
@@ -110,7 +112,7 @@ export function AttendanceActions({
         className={cn(BTN, toggleBlocked && BLOCKED)}
       >
         {isOn ? <LogOut className={ICON} /> : <LogIn className={ICON} />}
-        <span className="truncate">{isOn ? 'Clock out' : 'Clock in'}</span>
+        <span className="truncate">{isOn ? t('attendance.clockOut') : t('attendance.clockIn')}</span>
       </Button>
       <Button
         type="button"
@@ -122,7 +124,7 @@ export function AttendanceActions({
         className={cn(BTN, isOnLunch && BLOCKED)}
       >
         <UtensilsCrossed className={ICON} />
-        <span className="truncate">{isOnLunch ? 'On meal' : 'Meal'}</span>
+        <span className="truncate">{isOnLunch ? t('status.onMeal') : t('attendance.meal')}</span>
       </Button>
       <Button
         type="button"
@@ -134,7 +136,7 @@ export function AttendanceActions({
         className={cn(BTN, isOnLunch && BLOCKED)}
       >
         {isOnBreak ? <Undo2 className={ICON} /> : <Coffee className={ICON} />}
-        <span className="truncate">{isOnBreak ? 'Back' : 'Away'}</span>
+        <span className="truncate">{isOnBreak ? t('attendance.back') : t('attendance.away')}</span>
       </Button>
     </div>
   );

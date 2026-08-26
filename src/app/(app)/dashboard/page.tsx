@@ -15,6 +15,7 @@ import { listHolidays } from '@/lib/holidays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SessionTimeline } from '@/components/SessionTimeline';
+import { getT } from '@/lib/i18n/server';
 import { AttendanceActions } from './AttendanceActions';
 import { RangeWorked, RangeWorkedDays, TodayWorked, type LiveRow } from './LiveWorked';
 import { BreakDuration } from './BreakDuration';
@@ -42,6 +43,7 @@ function sumMinutesInRange(
 
 export default async function DashboardPage() {
   const session = await requireSession();
+  const t = await getT();
   const today = todayKST();
   const week = weekRangeKST();
   const month = monthRangeKST();
@@ -255,7 +257,7 @@ export default async function DashboardPage() {
   // The clock-out label reads as in progress while working, otherwise today's value, otherwise yesterday's end where it crossed midnight.
   let clockOutLabel: string;
   if (isWorking) {
-    clockOutLabel = 'In progress';
+    clockOutLabel = t('status.inProgress');
   } else if (todayRow?.clockOutAt) {
     clockOutLabel = formatKST(todayRow.clockOutAt, 'HH:mm');
   } else {
@@ -291,10 +293,10 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm text-muted-foreground">
-          {formatKST(new Date(), 'EEEE, d MMMM yyyy')}
+          {formatKST(new Date(), 'yyyy-MM-dd (EEEE)')}
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-          Hello, {me?.name ?? ''}
+          {t('dashboard.greeting', { name: me?.name ?? '' })}
         </h1>
       </header>
 
@@ -302,20 +304,20 @@ export default async function DashboardPage() {
         <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
           <div className="space-y-1">
             <CardDescription className="flex items-center gap-1.5">
-              <CalendarClock className="size-3.5" /> Today
+              <CalendarClock className="size-3.5" /> {t('dashboard.today')}
             </CardDescription>
             <CardTitle className="text-xl">
               {isOnLunch
-                ? 'On meal'
+                ? t('status.onMeal')
                 : status === 'DONE'
-                ? 'Clocked out'
+                ? t('status.done')
                 : status === 'WORKING'
-                ? 'Working'
+                ? t('status.working')
                 : status === 'ON_BREAK'
-                ? 'Away'
+                ? t('status.onBreak')
                 : status === 'MISSING'
-                ? 'Missing'
-                : 'Not started'}
+                ? t('status.missing')
+                : t('status.notStarted')}
             </CardTitle>
           </div>
           <AttendanceStatusBadge
@@ -327,13 +329,13 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4 rounded-lg border border-border/60 bg-muted/40 p-4">
-            <ClockSlot label="Clock in" value={clockInLabel} />
+            <ClockSlot label={t('attendance.clockIn')} value={clockInLabel} />
             <ClockSlot
-              label={isOnLunch ? 'Meal' : isOnBreak ? 'Away' : 'Clock out'}
-              value={isOnLunch || isOnBreak ? 'In progress' : clockOutLabel}
+              label={isOnLunch ? t('attendance.meal') : isOnBreak ? t('attendance.away') : t('attendance.clockOut')}
+              value={isOnLunch || isOnBreak ? t('status.inProgress') : clockOutLabel}
             />
             <ClockSlot
-              label="Worked"
+              label={t('dashboard.workTime')}
               value={<TodayWorked rows={liveRows} dayKey={todayKey} hasClockIn={hasClockIn} />}
             />
           </div>
@@ -345,30 +347,30 @@ export default async function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={Clock3}
-          label="This week"
+          label={t('dashboard.thisWeek')}
           value={<RangeWorked rows={liveRows} dayKey={todayKey} baseMinutes={weekBaseMinutes} />}
           sub={
             <RangeWorkedDays
               rows={liveRows}
               dayKey={todayKey}
               baseDays={weekBaseDays}
-              emptyLabel="No records"
+              emptyLabel={t('dashboard.noRecord')}
             />
           }
         />
         <StatCard
           icon={Calendar}
-          label="This month"
+          label={t('dashboard.thisMonth')}
           value={<RangeWorked rows={liveRows} dayKey={todayKey} baseMinutes={monthBaseMinutes} />}
           sub={<RangeWorkedDays rows={liveRows} dayKey={todayKey} baseDays={monthBaseDays} />}
         />
         <StatCard
           icon={CalendarCheck}
-          label="Leave remaining"
-          value={`${remainingDays}Day`}
+          label={t('dashboard.leaveRemaining')}
+          value={t('duration.days', { days: remainingDays })}
           sub={
-            `base ${baseDays} · bonus ${bonusDays} · scheduled ${scheduledDays} · used ${consumedDays}` +
-            (pendingDays > 0 ? ` · ${pendingDays} pending` : '')
+            t('dashboard.leaveBreakdown', { base: baseDays, bonus: bonusDays, scheduled: scheduledDays, consumed: consumedDays }) +
+            (pendingDays > 0 ? t('dashboard.leavePending', { pending: pendingDays }) : '')
           }
         />
       </div>
@@ -376,9 +378,9 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardDescription className="flex items-center gap-1.5">
-            <CalendarPlus className="size-3.5" /> Request leave
+            <CalendarPlus className="size-3.5" /> {t('leave.request')}
           </CardDescription>
-          <CardTitle className="text-lg">Request leave</CardTitle>
+          <CardTitle className="text-lg">{t('leave.request')}</CardTitle>
         </CardHeader>
         <CardContent>
           <LeaveRequestForm
@@ -428,7 +430,7 @@ function StatCard({
   );
 }
 
-function AttendanceStatusBadge({
+async function AttendanceStatusBadge({
   status,
   breakStartedAt,
   lunchStartedAt,
@@ -439,6 +441,7 @@ function AttendanceStatusBadge({
   lunchStartedAt?: string | null;
   lunchEndsAt?: string | null;
 }) {
+  const t = await getT();
   // A meal does not change the stored status, so it is checked before the away state.
   if (lunchStartedAt && lunchEndsAt)
     return (
@@ -451,27 +454,27 @@ function AttendanceStatusBadge({
     return (
       <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
         <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-amber-500" />
-        Working
+        {t('status.working')}
       </Badge>
     );
   if (status === 'ON_BREAK')
     return (
       <Badge variant="outline" className="border-sky-500/40 text-sky-700 dark:text-sky-300">
         <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-sky-500" />
-        {breakStartedAt ? <BreakDuration startedAt={breakStartedAt} /> : 'Away'}
+        {breakStartedAt ? <BreakDuration startedAt={breakStartedAt} /> : t('status.onBreak')}
       </Badge>
     );
   if (status === 'DONE')
     return (
       <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
-        Done
+        {t('status.complete')}
       </Badge>
     );
   if (status === 'MISSING')
     return (
       <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-300">
-        Missing
+        {t('status.missing')}
       </Badge>
     );
-  return <Badge variant="secondary">pending</Badge>;
+  return <Badge variant="secondary">{t('status.pending')}</Badge>;
 }

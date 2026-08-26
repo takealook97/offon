@@ -4,11 +4,13 @@ import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { enUS, ko } from 'date-fns/locale';
 import type { Matcher } from 'react-day-picker';
 import { Loader2, Info, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from '@/lib/i18n/client';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/cn';
@@ -19,10 +21,10 @@ import { countBusinessDaysKST, isBusinessDayKSTDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
-const TYPE_OPTIONS: { value: LeaveType; label: string }[] = [
-  { value: 'FULL_DAY', label: 'Full day' },
-  { value: 'HALF_DAY_AM', label: 'Morning' },
-  { value: 'HALF_DAY_PM', label: 'Afternoon' },
+const TYPE_OPTIONS: { value: LeaveType; labelKey: MessageKey }[] = [
+  { value: 'FULL_DAY', labelKey: 'leave.fullDay' },
+  { value: 'HALF_DAY_AM', labelKey: 'leave.am' },
+  { value: 'HALF_DAY_PM', labelKey: 'leave.pm' },
 ];
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -41,6 +43,7 @@ function DateField({
   minYmd: string;
   holidays: ReadonlySet<string>;
 }) {
+  const { t, locale } = useTranslation();
   const [open, setOpen] = useState(false);
   const selected = fromYmd(value);
   const minDate = fromYmd(minYmd);
@@ -62,9 +65,9 @@ function DateField({
         >
           <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
           {value ? (
-            <span className="truncate">{format(selected!, 'yyyy-MM-dd (EEE)', { locale: ko })}</span>
+            <span className="truncate">{format(selected!, 'yyyy-MM-dd (EEE)', { locale: locale === 'en' ? enUS : ko })}</span>
           ) : (
-            <span className="text-muted-foreground">Pick a date</span>
+            <span className="text-muted-foreground">{t('leave.pickDate')}</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -96,6 +99,7 @@ export function LeaveRequestForm({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const { t } = useTranslation();
   const [type, setType] = useState<LeaveType>('FULL_DAY');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -145,10 +149,10 @@ export function LeaveRequestForm({
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Request failed');
+        toast.error(data.error ?? t('attendance.requestFailed'));
         return;
       }
-      toast.success('Leave requested');
+      toast.success(t('leave.submitted'));
       setStartDate('');
       setEndDate('');
       router.refresh();
@@ -169,7 +173,7 @@ export function LeaveRequestForm({
                 : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
             )}
           >
-            {opt.label}
+            {t(opt.labelKey)}
           </button>
         ))}
       </div>
@@ -177,11 +181,11 @@ export function LeaveRequestForm({
       {type === 'FULL_DAY' ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="min-w-0 space-y-1.5">
-            <Label>Start date</Label>
+            <Label>{t('leave.startDate')}</Label>
             <DateField value={startDate} onChange={setStartDate} minYmd={todayStr} holidays={holidays} />
           </div>
           <div className="min-w-0 space-y-1.5">
-            <Label>End date</Label>
+            <Label>{t('leave.endDate')}</Label>
             <DateField
               value={endDate}
               onChange={setEndDate}
@@ -192,7 +196,7 @@ export function LeaveRequestForm({
         </div>
       ) : (
         <div className="space-y-1.5 sm:max-w-[16rem]">
-          <Label>Date</Label>
+          <Label>{t('leave.date')}</Label>
           <DateField value={startDate} onChange={setStartDate} minYmd={todayStr} holidays={holidays} />
         </div>
       )}
@@ -214,28 +218,28 @@ export function LeaveRequestForm({
         <Info className="mt-0.5 size-3.5 shrink-0" />
         <div className="space-y-0.5">
           <p>
-            Available <span className="font-mono tabular-nums">{availableDays}</span>Day
+            {t('leave.available')} <span className="font-mono tabular-nums">{availableDays}</span>{t('leave.dayUnit')}
             {startDate && (
               <>
                 {' '}
-                · requested <span className="font-mono tabular-nums">{requestedDays}</span>d
+                · {t('leave.requesting')} <span className="font-mono tabular-nums">{requestedDays}</span>{t('leave.dayUnit')}
               </>
             )}
           </p>
-          {missingEndDate && <p className="text-destructive">Pick an end date</p>}
-          {missingStartDate && <p className="text-destructive">Pick a start date</p>}
-          {exceeds && <p className="text-destructive">That exceeds your available leave</p>}
-          {invalidRange && <p className="text-destructive">The end date is before the start date</p>}
-          {isPast && <p className="text-destructive">A date in the past cannot be requested</p>}
+          {missingEndDate && <p className="text-destructive">{t('leave.errEndRequired')}</p>}
+          {missingStartDate && <p className="text-destructive">{t('leave.errStartRequired')}</p>}
+          {exceeds && <p className="text-destructive">{t('leave.errExceeds')}</p>}
+          {invalidRange && <p className="text-destructive">{t('leave.errInvalidRange')}</p>}
+          {isPast && <p className="text-destructive">{t('leave.errPast')}</p>}
           {startIsNonBusiness && (
             <p className="text-destructive">
               {type === 'FULL_DAY'
-                ? 'The start date cannot be a weekend or a holiday'
-                : 'A half day cannot be requested on a weekend or a holiday'}
+                ? t('leave.errStartHoliday')
+                : t('leave.errHalfOnHoliday')}
             </p>
           )}
           {endIsNonBusiness && (
-            <p className="text-destructive">The end date cannot be a weekend or a holiday</p>
+            <p className="text-destructive">{t('leave.errEndHoliday')}</p>
           )}
         </div>
       </div>
@@ -249,9 +253,9 @@ export function LeaveRequestForm({
         {pending ? (
           <Loader2 className="size-4 animate-spin" />
         ) : type === 'FULL_DAY' ? (
-          'Request leave'
+          t('leave.request')
         ) : (
-          'Request half day'
+          t('leave.requestHalf')
         )}
       </Button>
     </div>
