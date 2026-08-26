@@ -5,7 +5,10 @@ import type { MessageKey } from './i18n/dictionary';
 
 /**
  * Shared react-big-calendar configuration, kept in one place so the attendance month view
- * kept in one place so both write dates the same way. A pure constant, bound to no props or state.
+ * and the meeting-room week grid write dates the same way.
+ *
+ * Weekday names are language-dependent, so `formats` is a function of the locale rather than
+ * a constant. The localizer itself registers both locales once and never needs rebuilding.
  */
 
 /** Weeks start on Sunday. The calendar grid and the weekly summary have to agree on this. */
@@ -16,24 +19,27 @@ export const localizer = dateFnsLocalizer({
   parse,
   startOfWeek: (d: Date) => startOfWeek(d, WEEK_OPTS),
   getDay,
-  locales: { ko },
+  locales: { ko, en: enUS },
 });
 
-export const formats = {
-  monthHeaderFormat: (date: Date) => format(date, 'yyyy-MM', { locale: ko }),
+export function calendarFormats(locale: 'ko' | 'en') {
+  const fnsLocale = locale === 'en' ? enUS : ko;
+  return {
+  monthHeaderFormat: (date: Date) => format(date, 'yyyy-MM', { locale: fnsLocale }),
   dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${format(start, 'yyyy-MM-dd', { locale: ko })} – ${format(end, 'dd', { locale: ko })}`,
-  dayHeaderFormat: (date: Date) => format(date, 'yyyy-MM-dd (EEEE)', { locale: ko }),
-  weekdayFormat: (date: Date) => format(date, 'EEE', { locale: ko }),
-  dayFormat: (date: Date) => format(date, 'd (EEE)', { locale: ko }),
-  timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: ko }),
+    `${format(start, 'yyyy-MM-dd', { locale: fnsLocale })} – ${format(end, 'dd', { locale: fnsLocale })}`,
+  dayHeaderFormat: (date: Date) => format(date, 'yyyy-MM-dd (EEEE)', { locale: fnsLocale }),
+  weekdayFormat: (date: Date) => format(date, 'EEE', { locale: fnsLocale }),
+  dayFormat: (date: Date) => format(date, 'd (EEE)', { locale: fnsLocale }),
+  timeGutterFormat: (date: Date) => format(date, 'HH:mm', { locale: fnsLocale }),
   eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${format(start, 'HH:mm', { locale: ko })} ~ ${format(end, 'HH:mm', { locale: ko })}`,
-  agendaDateFormat: (date: Date) => format(date, 'MMM d (EEE)', { locale: ko }),
-  agendaTimeFormat: (date: Date) => format(date, 'HH:mm', { locale: ko }),
+    `${format(start, 'HH:mm', { locale: fnsLocale })} ~ ${format(end, 'HH:mm', { locale: fnsLocale })}`,
+  agendaDateFormat: (date: Date) => format(date, 'MMM d (EEE)', { locale: fnsLocale }),
+  agendaTimeFormat: (date: Date) => format(date, 'HH:mm', { locale: fnsLocale }),
   agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${format(start, 'HH:mm', { locale: ko })} – ${format(end, 'HH:mm', { locale: ko })}`,
-};
+    `${format(start, 'HH:mm', { locale: fnsLocale })} – ${format(end, 'HH:mm', { locale: fnsLocale })}`,
+  };
+}
 
 /**
  * The calendar's own wording. RBC uses these labels internally even where the view-switching

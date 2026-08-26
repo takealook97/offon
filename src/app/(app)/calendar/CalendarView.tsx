@@ -14,7 +14,7 @@ import { cn } from '@/lib/cn';
 import {
   calendarMessages,
   WEEK_OPTS,
-  formats,
+  calendarFormats,
   localizer,
 } from '@/lib/rbc-localizer';
 import type {
@@ -68,7 +68,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 }
 
 export function CalendarView({ memberId }: { memberId?: number }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [dailyTotals, setDailyTotals] = useState<Record<string, DailyAttendanceTotal>>({});
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
@@ -234,7 +234,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
         <Calendar
           localizer={localizer}
           culture="ko"
-          formats={formats}
+          formats={calendarFormats(locale)}
           events={events}
           view={view}
           onView={setView}

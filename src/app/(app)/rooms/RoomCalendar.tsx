@@ -12,7 +12,7 @@ import { Calendar, Views, type SlotInfo } from 'react-big-calendar';
 import { addDays, addWeeks, endOfWeek, format, getDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
-import { calendarMessages, WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
+import { calendarMessages, WEEK_OPTS, calendarFormats, localizer } from '@/lib/rbc-localizer';
 import type { RoomBookingDTO, RoomBookingsResponse, RoomDTO } from '@/lib/api-types';
 import {
   DEFAULT_BOOKING_MINUTES,
@@ -72,7 +72,7 @@ const toWall = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
  * the title, which is the part people actually need. The full range is in the detail view.
  */
 const roomFormats = {
-  ...formats,
+  ...calendarFormats,
   eventTimeRangeFormat: ({ start }: { start: Date }) => format(start, 'HH:mm'),
 };
 

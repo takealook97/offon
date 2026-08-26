@@ -10,7 +10,7 @@ import {
 import { format, startOfWeek, getDay } from 'date-fns';
 import { toast } from 'sonner';
 import type { CalendarEvent, CalendarEventsResponse } from '@/lib/api-types';
-import { WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
+import { WEEK_OPTS, calendarFormats, localizer } from '@/lib/rbc-localizer';
 import { CalendarToolbar } from './CalendarToolbar';
 import { DateHeader } from './DateHeader';
 import { ShowMoreDialog } from './ShowMoreDialog';
@@ -41,7 +41,7 @@ function eventsOnDate(all: UiEvent[], d: Date): UiEvent[] {
 }
 
 export function TeamCalendarView() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [events, setEvents] = useState<UiEvent[]>([]);
   const [holidays, setHolidays] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
@@ -182,7 +182,7 @@ export function TeamCalendarView() {
         <Calendar
           localizer={localizer}
           culture="ko"
-          formats={formats}
+          formats={calendarFormats(locale)}
           events={events}
           view={view}
           onView={setView}
