@@ -124,9 +124,10 @@ const p2002 = (target: unknown, modelName = 'AttendanceEditRequest') =>
   });
 
 test('the shape Postgres actually sends is recognised', () => {
-  // Prisma reports the column, not the index name. The version that looked only for the name
-  // never matched, so a request losing the race fell through to a 500 instead of a 409.
-  // This shape was printed from a real collision: {modelName:'AttendanceEditRequest', target:['session_id']}
+  // Prisma reports the column, not the index name. The earlier version looked only for the
+  // name and never matched once, so a request losing the race fell through to a 500 instead
+  // of a 409. This shape was printed from a real collision:
+  // {modelName:'AttendanceEditRequest', target:['session_id']}
   assert.equal(isPendingConflict(p2002(['session_id'])), true);
 });
 

@@ -11,6 +11,7 @@ import {
 import { clippedDailyTotals } from '@/lib/calendar-aggregation';
 import { resolveCalendarTarget } from '@/lib/calendar-access';
 import type { CalendarEvent } from '@/lib/api-types';
+import { workHours } from '@/lib/settings';
 import { getT } from '@/lib/i18n/server';
 import { formatDuration } from '@/lib/i18n/format';
 
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
 
     const events: CalendarEvent[] = [];
     const now = new Date();
+    const hours = await workHours();
 
     for (const a of attendances) {
       if (a.sessions.length === 0) continue;
@@ -130,6 +132,7 @@ export async function GET(req: NextRequest) {
         const { start: s, end: e } = halfDayIsoRange(
           l.startDate,
           l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
+          hours,
         );
         const suffix = l.type === 'HALF_DAY_AM' ? t('evt.am') : t('evt.pm');
         events.push({

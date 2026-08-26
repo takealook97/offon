@@ -30,7 +30,7 @@ export function canManageBooking(
   if (booking.status !== 'CONFIRMED') return { ok: false, reason: 'not_confirmed' };
 
   // Moving someone else's meeting changes the schedule of everyone attending, with no notice.
-  // Somebody has to free a room booked by a person who has left.
+  // Admins are the exception: somebody has to free a room booked by a person who has left.
   if (booking.memberId !== viewer.memberId && viewer.role !== 'ADMIN') {
     return { ok: false, reason: 'not_owner' };
   }

@@ -174,8 +174,9 @@ export default async function DashboardPage() {
   const weekDaysWorked = countWorkedDays(week.start, week.end);
   const monthDaysWorked = countWorkedDays(month.start, month.end);
 
-  // The browser recomputes today every minute, so it is subtracted from the server total and passed as a base.
-  // Today always falls inside this week and this month, so subtracting is exact.
+  // The browser recomputes today's share every minute, so it is subtracted from the server
+  // totals and passed along as a base. Today always falls inside this week and this month,
+  // so subtracting is exact.
   const todayWorkedDay = todayWorked > 0 ? 1 : 0;
   const weekBaseMinutes = weekTotal - todayWorked;
   const monthBaseMinutes = monthTotal - todayWorked;
@@ -206,7 +207,7 @@ export default async function DashboardPage() {
       })),
     }));
 
-  // Data for the \"today\" card.
+  // Data for the "today" card.
   const todayRow =
     allRows.find((r) => dayKey(r.workDate) === todayStr) ?? null;
   const status = (activeOpenRow?.status ?? todayRow?.status ?? 'NOT_STARTED') as
@@ -232,8 +233,9 @@ export default async function DashboardPage() {
   const breakStartedAt =
     onBreakRow?.breaks.find((b) => b.endAt === null)?.startAt.toISOString() ?? null;
 
-  // A meal leaves the status at working, so if a meal break's end has not arrived yet,
-  // being on a meal is derived from it. Clocking out is blocked during one, so such a break only exists on an active day.
+  // A meal leaves the status at WORKING, so "on a meal" is derived from a meal break whose
+  // end has not arrived yet. Clocking out is blocked during a meal, so such a break only ever
+  // exists on an active working day.
   const ongoingLunch =
     allRows
       .flatMap((r) => r.breaks)
@@ -244,7 +246,8 @@ export default async function DashboardPage() {
   const lunchStartedAt = ongoingLunch?.startAt.toISOString() ?? null;
   const lunchEndsAt = ongoingLunch?.endAt?.toISOString() ?? null;
 
-  // The clock-in label prefers today's own value, falling back to midnight when today's worked time came from a session that crossed it.
+  // The clock-in label prefers today's own clockInAt, falling back to '00:00' when today's
+  // worked time comes from a session that carried over midnight.
   let clockInLabel: string;
   if (todayRow?.clockInAt) {
     clockInLabel = formatZoned(todayRow.clockInAt, 'HH:mm');
@@ -254,7 +257,8 @@ export default async function DashboardPage() {
     clockInLabel = '—';
   }
 
-  // The clock-out label reads as in progress while working, otherwise today's value, otherwise yesterday's end where it crossed midnight.
+  // The clock-out label reads as in progress while WORKING, otherwise today's clockOutAt,
+  // otherwise the end of yesterday's session where it crossed midnight.
   let clockOutLabel: string;
   if (isWorking) {
     clockOutLabel = t('status.inProgress');

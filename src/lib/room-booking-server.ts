@@ -8,8 +8,9 @@ import type { RoomBookingDTO } from './api-types';
 
 /**
  * Server-only helpers shared by the meeting-room route handlers.
- * Next's route.ts allows no exports beyond the HTTP methods, hence a separate file.
- * The time rules and overlap checks themselves live in room-booking.ts, which the front end shares.
+ * Next's `route.ts` allows no exports beyond the HTTP methods, hence a separate file.
+ * The time rules and overlap checks themselves live in `room-booking.ts`, which the front
+ * end shares.
  */
 
 export const bookingInclude = {
@@ -37,8 +38,9 @@ export type BookingRow = {
 };
 
 /**
- * A stored row as the DTO the client sees. canManage means the organiser or an admin.
- * People who have left are marked inactive rather than removed, so the record stays true to what happened.
+ * A stored row as the DTO the client sees. `canManage` means the organiser or an admin.
+ * People who have left are marked `inactive` rather than removed from the attendee list,
+ * so the record stays true to what happened.
  */
 export function toBookingDTO(
   row: BookingRow,
@@ -65,7 +67,8 @@ export function toBookingDTO(
 
 /**
  * Finds a clash in the same room and words it for the user, or null if there is none.
- * The interval is half-open, so bookings that merely touch do not clash.
+ * The interval is half-open, so bookings that merely touch — one ending at 10:00, the next
+ * starting at 10:00 — do not clash.
  */
 export async function findRoomConflict(
   roomId: number,
@@ -104,8 +107,9 @@ export const REMINDER_LEAD_MINUTES = 3;
 /**
  * Cancels every pre-meeting DM scheduled for a booking and clears the records.
  *
- * Slack refuses to cancel anything due within 60 seconds, so individual failures are swallowed.
- * A notice already sent cannot be recalled, and failing the edit or cancellation because of it would be worse.
+ * Slack refuses to cancel anything due within 60 seconds, so individual failures are
+ * swallowed. A notice already sent cannot be recalled, and failing the edit or cancellation
+ * because of it would be worse.
  */
 export async function cancelBookingReminders(bookingId: number): Promise<void> {
   const reminders = await prisma.roomBookingReminder.findMany({
@@ -167,8 +171,9 @@ function bookingMembers(booking: NotifiableBooking) {
 }
 
 /**
- * Who receives the DM: the organiser and the attendees. The organiser is included because they are in the meeting,
- * and because a booking with no attendees still needs a reminder. People who have left are dropped.
+ * Who receives the DM: the organiser and the attendees. The organiser is included because
+ * they are in the meeting too, and because a booking with no attendees still needs a
+ * reminder. People who have left are dropped.
  */
 function notifyTargets(booking: NotifiableBooking) {
   return bookingMembers(booking).filter((m) => m.deletedAt === null);
@@ -194,8 +199,9 @@ function bookingWhen(booking: NotifiableBooking): string {
 /**
  * DMs the organiser and attendees the moment a booking is made.
  *
- * Unlike the pre-meeting reminder this goes out now, so there is no scheduled message and nothing
- * to cancel later, so no record is kept. A Slack failure must not block the booking, so it only reaches the audit log.
+ * Unlike the pre-meeting reminder this goes out now, so there is no scheduled message and
+ * nothing to cancel later, and no record is kept. A Slack failure must not block the booking,
+ * so it only reaches the audit log.
  */
 export async function notifyBookingCreated(bookingId: number): Promise<void> {
   const booking = await loadNotifiableBooking(bookingId);

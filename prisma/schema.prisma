@@ -264,6 +264,10 @@ model AppSetting {
   roomCloseMinutes             Int      @default(1140) @map("room_close_minutes")
   /// The fixed meal length in minutes. Applies to meals started from now on and leaves the past alone.
   mealMinutes                  Int      @default(60) @map("meal_minutes")
+  /// The working hours, in minutes from midnight. Defaults to 09:00-18:00.
+  /// The standard day, the half-day credit and the half-day split all derive from these; see src/lib/work-hours.ts.
+  workStartMinutes             Int      @default(540) @map("work_start_minutes")
+  workEndMinutes               Int      @default(1080) @map("work_end_minutes")
   updatedAt                    DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")

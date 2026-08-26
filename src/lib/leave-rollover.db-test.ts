@@ -4,8 +4,9 @@ import { prisma, ensureSchema, resetDatabase, createMember } from '@/test/db';
 import { runLeaveRollover } from './leave-rollover';
 
 /**
- * This overwrites everyone's balance once a year. Getting it wrong takes a long time to notice
- * and hard to undo, so what is checked is less the rule than whether running it repeatedly changes anything.
+ * This overwrites everyone's balance once a year. Getting it wrong takes a long time to
+ * notice and is hard to undo, so what is checked here is less the rule than whether running
+ * it repeatedly changes anything.
  */
 
 // 2026-01-05 is inside the rollover window, the first week of January. 2026-06-01 is outside it.

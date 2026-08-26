@@ -10,8 +10,9 @@ import {
 } from './attendance';
 
 /**
- * The attendance state machine cannot be checked with pure functions: the unique index on an open session,
- * the row locks inside transactions and the re-entry guards all rest on database constraints.
+ * The attendance state machine cannot be checked with pure functions: the unique index on an
+ * open session, the row locks inside transactions and the re-entry guards all rest on
+ * database constraints.
  */
 
 before(() => ensureSchema());
@@ -108,8 +109,9 @@ test('a second meal while one is running is refused', async () => {
 });
 
 test('concurrent clock-ins still open exactly one session', async () => {
-  // A double-click, a second tab, the web and Slack at once. A check beforehand cannot stop any of them, so
-  // this confirms the unique index and the transaction are really in place.
+  // A double-click, a second tab, the web and Slack at once. A check beforehand cannot stop
+  // any of them, so what is confirmed here is that the unique index and the transaction are
+  // really in place.
   const m = await createMember();
   const results = await Promise.all([
     clockInMember(m.id, 'web'),

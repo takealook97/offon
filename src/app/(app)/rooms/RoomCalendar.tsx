@@ -36,18 +36,20 @@ import { useTranslation } from '@/lib/i18n/client';
 import { toGridDate, gridNow, fromGridDate } from '@/lib/time';
 
 /**
- * Kept at module scope. A fresh Date on every render changes the key of the library's slot cache
- * each time, forcing needless recomputation. Only the hours and minutes are read.
+ * Kept at module scope. A fresh Date on every render changes the key of RBC's internal
+ * slotMetrics cache each time, forcing needless recomputation. Only the hours and minutes
+ * are read; the date part is ignored.
  */
 
 /** step x timeslots = 60 minutes. A group is exactly an hour, so the gutter is labelled only on the hour. */
 const SLOTS_PER_GROUP = 60 / ROOM_STEP_MINUTES;
 
 /**
- * Where a touch stops being a tap and becomes a press-and-drag, in milliseconds.
- * It has to match the library's own threshold, which clears its long-press timer on touchend, so
- * Letting go inside this window runs only our tap handling; holding past it runs only the library's
- * drag selection. If the two numbers disagree, one touch either opens the dialog twice or not at all.
+ * Where a touch stops being a tap and becomes a press-and-drag, in milliseconds. It has to
+ * match RBC's longPressThreshold. RBC clears its long-press timer on touchend, so letting go
+ * inside this window runs only our tap handling and never RBC's, while holding past it runs
+ * only RBC's drag selection. If the two numbers disagree, one touch either opens the dialog
+ * twice or not at all.
  */
 const LONG_PRESS_MS = 400;
 
@@ -126,8 +128,9 @@ export function RoomCalendar({ viewerId, hours }: { viewerId: number; hours: Roo
       start: fromGridDate(range.start).toISOString(),
       end: fromGridDate(range.end).toISOString(),
     });
-    // This screen fetches inside an effect rather than through a data library. The loading flag
-    // is set immediately before the request, which is not the cascading render the lint rule warns about.
+    // This screen fetches inside an effect rather than through a data library. The loading
+    // flag is set immediately before the request, which is not the cascading render the lint
+    // rule warns about.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/rooms/bookings?${qs}`)
@@ -188,8 +191,9 @@ export function RoomCalendar({ viewerId, hours }: { viewerId: number; hours: Roo
   /** Moving a week at a time. Shared by the toolbar buttons and the arrow keys. */
   const shiftWeek = useCallback((delta: number) => setDate((d) => addWeeks(d, delta)), []);
 
-  // Left and right arrows move a week, but not while typing or while a dialog or dropdown is open.
-  // Those already use the arrow keys, and shifting the week behind them loses the context.
+  // Left and right arrows move a week. Not while typing, and not while a dialog or dropdown
+  // is open: those already use the arrow keys, and shifting the week behind them loses the
+  // context the person was looking at.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -234,8 +238,9 @@ export function RoomCalendar({ viewerId, hours }: { viewerId: number; hours: Roo
 
       // If the start lands inside an existing booking, push it to where that booking ends.
       // Clicking a past slot pulls the start forward to now, and if a meeting happens to be
-      // running right then, it used to be refused as already booked for no visible reason.
-      // Repeating lets it step over back-to-back bookings, bounded by the slots in a day.
+      // running right then, the request used to be refused as "already booked" for no reason
+      // the person could see. Repeating lets it step over back-to-back bookings, bounded by
+      // the number of slots in a day.
       let start = startWall;
       for (let i = 0; i < daySlots.length + 1; i += 1) {
         const blocking = daySlots.find((b) => b.start <= start && b.end > start);
@@ -445,8 +450,9 @@ export function RoomCalendar({ viewerId, hours }: { viewerId: number; hours: Roo
               scrollToTime={minTime}
               // 'ignoreEvents' keeps a drag begun on top of an event from turning into a slot selection.
               selectable="ignoreEvents"
-              // On touch a short swipe passes through as horizontal scrolling; only a held press starts a selection.
-              // Short taps are picked up by handleTouchEnd above, which shares this threshold.
+              // On touch a short swipe passes through as horizontal scrolling and only a held
+              // press starts a selection. Short taps are picked up by handleTouchEnd above,
+              // which shares this threshold.
               longPressThreshold={LONG_PRESS_MS}
               onSelectSlot={handleSelectSlot}
               onSelecting={handleSelecting}

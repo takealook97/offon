@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { SlidersHorizontal, UtensilsCrossed } from 'lucide-react';
+import { SlidersHorizontal, UtensilsCrossed, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,9 +14,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTranslation } from '@/lib/i18n/client';
+import { formatDuration } from '@/lib/i18n/format';
+import {
+  halfDayCreditMinutes,
+  halfDaySplitMinutes,
+  standardWorkMinutes,
+} from '@/lib/work-hours';
 
 type Props = {
-  initial: { roomOpenMinutes: number; roomCloseMinutes: number; mealMinutes: number };
+  initial: {
+    roomOpenMinutes: number;
+    roomCloseMinutes: number;
+    mealMinutes: number;
+    workStartMinutes: number;
+    workEndMinutes: number;
+  };
 };
 
 const MEAL_MIN = 5;
@@ -36,20 +48,34 @@ export function PolicyPanel({ initial }: Props) {
   const [open, setOpen] = useState(String(initial.roomOpenMinutes));
   const [close, setClose] = useState(String(initial.roomCloseMinutes));
   const [meal, setMeal] = useState(String(initial.mealMinutes));
+  const [workStart, setWorkStart] = useState(String(initial.workStartMinutes));
+  const [workEnd, setWorkEnd] = useState(String(initial.workEndMinutes));
   const [pending, start] = useTransition();
 
   const openMinutes = Number(open);
   const closeMinutes = Number(close);
   const mealMinutes = Number(meal);
+  const workStartMinutes = Number(workStart);
+  const workEndMinutes = Number(workEnd);
+
+  const hours = { workStartMinutes, workEndMinutes, mealMinutes };
 
   // Caught before saving. The server checks the same things, but there is no reason to let someone press the button and be refused.
   const orderError = closeMinutes <= openMinutes ? t('policy.errOrder') : null;
   const mealError =
     mealMinutes < MEAL_MIN || mealMinutes > MEAL_MAX ? t('policy.errMealRange') : null;
+  const workError =
+    workEndMinutes <= workStartMinutes
+      ? t('policy.errWorkOrder')
+      : workEndMinutes - workStartMinutes <= mealMinutes
+        ? t('policy.errWorkTooShort')
+        : null;
   const dirty =
     openMinutes !== initial.roomOpenMinutes ||
     closeMinutes !== initial.roomCloseMinutes ||
-    mealMinutes !== initial.mealMinutes;
+    mealMinutes !== initial.mealMinutes ||
+    workStartMinutes !== initial.workStartMinutes ||
+    workEndMinutes !== initial.workEndMinutes;
 
   const save = () =>
     start(async () => {
@@ -60,6 +86,8 @@ export function PolicyPanel({ initial }: Props) {
           roomOpenMinutes: openMinutes,
           roomCloseMinutes: closeMinutes,
           mealMinutes,
+          workStartMinutes,
+          workEndMinutes,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
@@ -156,11 +184,70 @@ export function PolicyPanel({ initial }: Props) {
         </CardContent>
       </Card>
 
-      {/* Both cards save together. A button per card blurs what was actually saved. */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardDescription className="flex items-center gap-1.5">
+            <Clock className="size-3.5" /> {t('policy.badge')}
+          </CardDescription>
+          <CardTitle className="text-lg">{t('policy.workTitle')}</CardTitle>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {t('policy.workBody')}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:max-w-md">
+            <div className="space-y-1.5">
+              <Label htmlFor="work-start">{t('policy.workStart')}</Label>
+              <Select value={workStart} onValueChange={setWorkStart} disabled={pending}>
+                <SelectTrigger id="work-start" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HOURS.slice(0, 24).map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {hhmm(m)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="work-end">{t('policy.workEnd')}</Label>
+              <Select value={workEnd} onValueChange={setWorkEnd} disabled={pending}>
+                <SelectTrigger id="work-end" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HOURS.slice(1).map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {hhmm(m)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {/* Shows what follows from the choice, where the choice is made. Finding out by
+              opening the exported spreadsheet afterwards is too late. */}
+          {workError ? (
+            <p className="text-xs text-destructive">{workError}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {t('policy.workDerived', {
+                standard: formatDuration(t, standardWorkMinutes(hours)),
+                half: formatDuration(t, halfDayCreditMinutes(hours)),
+                split: hhmm(halfDaySplitMinutes(hours)),
+              })}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* All three cards save together. A button per card blurs what was actually saved. */}
       <div className="flex justify-end">
         <Button
           onClick={save}
-          disabled={pending || !dirty || !!orderError || !!mealError}
+          disabled={pending || !dirty || !!orderError || !!mealError || !!workError}
           className="w-full sm:w-auto"
         >
           {pending ? t('policy.saving') : t('policy.save')}

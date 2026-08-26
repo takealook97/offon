@@ -16,9 +16,10 @@ export type LiveRow = {
 /**
  * Recomputes today's net worked minutes in the browser, once a minute.
  *
- * A value serialised by the server freezes at render time, so leaving the page open shows a figure that has stopped.
- * clippedDailyTotals is pure, depending on nothing but date-fns, so it produces exactly the same
- * so the browser reaches the same number the server would, and it advances on the clock alone.
+ * A value serialised by the server freezes at render time, so leaving the page open shows a
+ * worked figure that has stopped moving. `clippedDailyTotals` is pure, depending only on
+ * date-fns, so the browser produces exactly the same result the server would and the figure
+ * advances on the clock alone, with no round trip.
  *
  * An open session is clipped to now and so is a meal that has not finished, so the figure
  * climbs while working and holds still during a break or a meal, where both spans grow together.

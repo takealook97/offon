@@ -4,17 +4,20 @@ import { z } from 'zod';
 /**
  * The time rules and overlap checks for meeting-room bookings.
  *
- * Every time here is a wall-clock string (`yyyy-MM-ddTHH:mm`).
- * The format is fixed-width, so comparing lexicographically is comparing chronologically, and validation
- * becomes plain string arithmetic with no room for a timezone to intervene. Conversion to UTC happens only at the server boundary.
+ * Every time here is a wall-clock string (`yyyy-MM-ddTHH:mm`). The format is fixed-width,
+ * so comparing lexicographically is comparing chronologically, and validation becomes plain
+ * string arithmetic with no room for a timezone to intervene. Conversion to UTC happens only
+ * at the server boundary, in `wallToUtc`.
  *
- * This file imports nothing but zod. That constraint is what lets the front end, the back end
- * and the tests all run the same functions -- the same approach attendance-edit.ts takes.
+ * This file imports nothing but zod. That constraint is what lets the front end (for
+ * immediate feedback), the back end (as the trust boundary) and the tests all run the same
+ * functions — the same approach `attendance-edit.ts` takes.
  */
 
 /**
- * The bookable window, in minutes from midnight. It varies by organisation and comes from admin settings.
- * It has to match the week grid's bounds, or the grid offers slots that validation then refuses.
+ * The bookable window, in minutes from midnight. It varies by organisation and comes from
+ * admin settings. It has to match the week grid's `min` and `max`, or the grid will offer
+ * slots that validation then refuses.
  */
 export type RoomHours = { openMinutes: number; closeMinutes: number };
 
@@ -121,8 +124,9 @@ export function validateBookingRange(
 }
 
 /**
- * Overlap over the half-open interval. Bookings that merely touch do not overlap.
- * excludeId leaves a booking out of the comparison while it is being edited.
+ * Overlap over the half-open interval [start, end). Bookings that merely touch — one ending
+ * at 10:00, the next starting at 10:00 — do not overlap.
+ * `excludeId` leaves a booking out of the comparison while it is being edited.
  */
 export function findConflict(
   existing: readonly BookingSlot[],
@@ -150,9 +154,10 @@ export function defaultEndWall(
 }
 
 /**
- * Clamps the end to the start of the nearest booking after it,
- * so a click never pre-fills a range that runs over someone else's meeting.
- * Returns null when the start already sits inside another booking, since there is nothing to pre-fill.
+ * Clamps the end to the start of the nearest booking after `start`, so a click never
+ * pre-fills a range that runs over someone else's meeting.
+ * Returns `null` when the start already sits inside another booking, since there is nothing
+ * to pre-fill.
  */
 export function clampEndToNextBooking(
   existing: readonly BookingSlot[],

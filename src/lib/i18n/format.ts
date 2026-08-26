@@ -27,8 +27,9 @@ export type Failure = {
 };
 
 /**
- * A placeholder sometimes takes a value that needs translating itself, so the domain
- * leaves a key there and it is resolved one layer further here. Otherwise the screen prints the raw key.
+ * A placeholder such as `{kind}` sometimes takes a value that needs translating itself, so
+ * the domain leaves a key there and it is resolved one layer further here. Otherwise the
+ * screen prints the raw key.
  */
 export function translateFailure(t: Translate, failure: Failure): string {
   const vars = failure.kindKey

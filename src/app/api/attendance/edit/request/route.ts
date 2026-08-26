@@ -54,9 +54,10 @@ export async function POST(req: NextRequest) {
     if (!target) {
       return NextResponse.json({ ok: false, error: t('api.sessionNotFound') }, { status: 404 });
     }
-    // A session still running can have its clock-in and breaks corrected.
-    // The one exception is someone away right now, who is asked to come back first.
-    // A meal is a closed break with its end already fixed, so it does not trip this; even one in progress can be edited or removed.
+    // A session still running can have its clock-in and breaks corrected. The one exception is
+    // someone away right now, on an open break, who is asked to come back first.
+    // A meal is a closed break with its end already fixed, so it does not trip this: even a
+    // meal in progress can be corrected or removed.
     if (isAwayNow(target.breaks)) {
       return NextResponse.json(
         { ok: false, error: t('api.editWhileAway') },

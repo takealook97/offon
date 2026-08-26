@@ -82,10 +82,11 @@ export async function POST(req: NextRequest) {
       select: { slackId: true, name: true },
     });
 
-    // Cancel whatever was not carried across, then schedule afresh for the meals that need it.
-    // If a cancel fails -- Slack refuses to cancel anything due within 60 seconds -- the old message is still live, so
-    // nothing new is scheduled; doing so would send the same person two return notices.
-    // The attendance data is already correct, and one notice goes out as originally planned.
+    // Cancel whatever was not carried across, meaning meals that were deleted or moved, then
+    // schedule afresh for the meals that need it. If a cancel fails — Slack refuses to cancel
+    // anything due within 60 seconds — the old message is still live, so nothing new is
+    // scheduled; doing so would send the same person two return notices. The attendance data
+    // is already correct, and one notice goes out as originally planned.
     const cancelled = await cancelAutoBack(
       outcome.staleSchedules.map((s) => ({
         autoBackChannelId: s.channelId,
@@ -105,8 +106,9 @@ export async function POST(req: NextRequest) {
         if (!ok) autoBackWarning = t('api.mealScheduleFailed');
       }
     } else {
-      // A failed cancel is reported whether or not anything was rescheduled. Deleting a meal outright leaves
-      // nothing to reschedule but keeps the old message alive, so a notice for a meal that is gone still lands.
+      // A failed cancel is reported whether or not anything was rescheduled. Deleting a meal
+      // outright leaves nothing to reschedule but keeps the old message alive, so a return
+      // notice for a meal that no longer exists still lands in the channel.
       autoBackWarning =
         outcome.pendingLunches.length > 0
           ? t('api.mealRescheduleSkipped')

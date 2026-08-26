@@ -16,10 +16,11 @@ export type AttendeeOption = {
 /**
  * Multi-select for internal attendees.
  *
- * Follows the same interaction rules as the single-select picker used for exports:
- * a fixed-height list so the modal never resizes, arrow keys and Enter, and a guard for composing input.
- * Unlike the single-select it keeps the search text after a choice, so several can be picked in a row,
- * and each one is added as a chip above the list.
+ * Follows the same interaction rules as `MemberPicker`, the single-select used for exports:
+ * a fixed-height list so the modal never resizes, arrow keys and Enter, and a guard for
+ * composing input methods.
+ * Unlike the single-select it keeps the search text after a choice, so several people can be
+ * picked in a row, and each one is added as a chip above the list.
  */
 export function AttendeePicker({
   value,

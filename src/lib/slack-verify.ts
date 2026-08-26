@@ -3,10 +3,12 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 /**
  * Verification of Slack's request signing.
  *
- * - No signing secret gives a misconfigured result, which the router maps to a 500.
- * - A missing, non-numeric or stale timestamp gives unauthorized, which is what stops a replay.
- * - The hex of the HMAC over the versioned payload, prefixed, is compared against the signature header.
- * - Lengths are compared first, and the constant-time comparison runs only on equal lengths.
+ * - No SLACK_SIGNING_SECRET gives `misconfigured`, which the router maps to a 500.
+ * - A missing, non-numeric or more-than-five-minutes-old timestamp gives `unauthorized`,
+ *   which is what stops a replay.
+ * - The hex of HMAC-SHA256 over `v0:{ts}:{rawBody}`, prefixed with `v0=`, is compared against
+ *   x-slack-signature.
+ * - Lengths are compared first, and timingSafeEqual runs only on equal lengths.
  *
  * rawBody must be the request body verbatim. Never re-serialise it through URLSearchParams.
  */

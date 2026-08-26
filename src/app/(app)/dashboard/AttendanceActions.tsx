@@ -44,8 +44,9 @@ export function AttendanceActions({
     });
 
   const isOnLunch = !!lunchEndsAt;
-  // The meal end is a snapshot from the server render and may already have passed before the next refresh.
-  // The server already allows clocking out and stepping away by then, so this is measured again at click time.
+  // lunchEndsAt is a snapshot from the server render and the meal may already have finished
+  // before the next refresh, up to thirty seconds later. The server allows clocking out and
+  // stepping away by then, so this is measured again at click time rather than blocking.
   const lunchOngoing = () =>
     !!lunchEndsAt && new Date(lunchEndsAt).getTime() > Date.now();
   const isOnBreak = status === 'ON_BREAK';
@@ -58,8 +59,9 @@ export function AttendanceActions({
   const remainingLunchMin = () =>
     Math.max(1, Math.ceil((new Date(lunchEndsAt!).getTime() - Date.now()) / 60_000));
 
-  // Come back from a break, or wait out a meal, before clocking out. The server enforces the same.
-  // Disabling it swallows the click and hides the reason, so it stays pressable and explains.
+  // Come back from a break, or wait out a meal, before clocking out. The server enforces the
+  // same thing. Disabling the button swallows the click and hides the reason, so it stays
+  // pressable and explains instead.
   const onToggle = () => {
     if (lunchOngoing()) {
       toast.info(t('attendance.blockedByMeal', { minutes: remainingLunchMin() }));
@@ -98,8 +100,9 @@ export function AttendanceActions({
   };
 
   return (
-    // A three-column grid sizes each cell equally regardless of what is inside.
-    // With flex-1 the min-width:auto default kept a long label from shrinking below its own content width.
+    // grid-cols-3 is minmax(0, 1fr), so the three cells are exactly equal regardless of label
+    // length. With flex-1 the min-width:auto default kept a long label from shrinking below its
+    // own content width, and the row came out uneven.
     <div className="grid grid-cols-3 gap-2">
       <Button
         type="button"

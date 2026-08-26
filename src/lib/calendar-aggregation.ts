@@ -56,8 +56,9 @@ function resolveSegmentEnd(
  * Clips one member's attendance rows, and the sessions and breaks inside them, at local
  * midnight, producing per-day worked and break minutes plus a day-level status.
  *
- * - An open session or break is clamped to now only while the status is working or away.
- * - When several attendance rows touch one day the minutes are summed and the most active status wins.
+ * - An open session or break is clamped to `now` only while the status is WORKING or ON_BREAK.
+ * - When several attendance rows touch one day, the minutes are summed and the status is the
+ *   most active of them: WORKING over ON_BREAK over DONE.
  */
 export function clippedDailyTotals(
   attendances: SourceAttendance[],
@@ -85,7 +86,8 @@ export function clippedDailyTotals(
     if (end.getTime() <= start.getTime()) return;
     let cursor = dayKey(start);
     const endKey = dayKey(new Date(end.getTime() - 1));
-    // A safety bound. Normal data takes one or two iterations; this stops a session years long from looping forever.
+    // A safety bound. Normal data takes one or two iterations; this stops a session years
+    // long from looping forever.
     for (let i = 0; i < 400; i++) {
       const { start: ds, end: de } = dayBoundsUtc(cursor);
       visit(cursor, ds, de);

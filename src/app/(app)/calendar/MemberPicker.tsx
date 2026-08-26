@@ -15,8 +15,9 @@ export type PickerMember = {
 
 /**
  * The member search an admin uses to pick whose records to export.
- * The results area is always shown at a fixed height and scrolls internally, so whatever the query or count
- * the modal never resizes and the list cannot spill out of it. The same holds on mobile.
+ * The results area is always shown at a fixed height and scrolls internally, so the modal
+ * never resizes with the search text or the number of matches, and the list cannot spill out
+ * of it. The same holds on mobile.
  */
 export function MemberPicker({
   value,

@@ -13,8 +13,9 @@ export type MissingClockOutResult =
 /**
  * DMs anyone who clocked in but has no clock-out.
  *
- * Unlike the missing clock-in, nothing is written here. Clocking out on someone's behalf would put
- * a time that never happened into their hours. This only tells them, and they correct it themselves.
+ * Unlike the missing clock-in, nothing is written here. Clocking out on someone's behalf
+ * would put a time that never happened into their hours. This only tells them, and they
+ * correct it themselves.
  */
 export async function runMissingClockOut(): Promise<MissingClockOutResult> {
   const t = getDeploymentT();

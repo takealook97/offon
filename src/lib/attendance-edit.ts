@@ -107,11 +107,14 @@ export function buildEditableSession(
 
 /**
  * Converts wall-clock input into a UTC timeline while checking that it makes sense.
- * Used unchanged by the front end, for immediate feedback, and by the back end, as the trust boundary.
- * The rules: clock-in before clock-out where there is one; nothing in the future; a break starts before it ends;
- *       breaks sit inside [clock-in, clock-out or now], sorted and non-overlapping.
- * A meal takes no end from the input; it is derived as start plus the configured length, or the clock-out if earlier,
- * A meal in progress may legitimately end in the future, so the no-future rule is not applied to its end.
+ * Used unchanged by the front end, for immediate feedback, and by the back end, as the
+ * trust boundary.
+ * The rules: clock-in before clock-out where there is one; no time in the future; every
+ * break starts before it ends; breaks sit inside [clock-in, clock-out or now]; breaks are
+ * sorted and do not overlap.
+ * A meal takes no end from the input — it is derived as start plus the meal length, or the
+ * clock-out if that comes first. A meal in progress may legitimately end in the future, so
+ * the no-future rule is not applied to its end.
  */
 /** Decides whether an incoming meal keeps its existing length or takes the current setting. */
 function mealMinutesFor(
@@ -161,8 +164,9 @@ export function buildAndValidateTimeline(
     const kind = normalizeBreakKind(b.kind);
     const labelKey: MessageKey = kind === 'LUNCH' ? 'edit.meal' : 'edit.away';
     const s = wallToUtc(b.start);
-    // A meal's end is not the user's to set; it only moves. It is not trimmed to the clock-out either, because
-    // because its length would otherwise jump around on every unrelated edit.
+    // A meal's end is not the user's to set; a meal only moves left or right. It is not
+    // trimmed to fit the clock-out either, since that would make its length jump around on
+    // every unrelated edit.
     //
     // A length matching one already saved on this session is kept; anything else takes the
     // current setting. Without that allow-list, changing the setting would rewrite the past.
@@ -235,7 +239,8 @@ export function asTimeline(json: unknown): EditTimeline {
 
 /**
  * Whether two timelines are the same to the minute.
- * A stored snapshot carries seconds while the input does not, so nothing-changed is decided at minute precision.
+ * A stored snapshot carries seconds while the input does not, so "nothing changed" is
+ * decided at minute precision.
  */
 export function timelinesEqualAtMinute(a: EditTimeline, b: EditTimeline): boolean {
   const minute = (iso: string) => iso.slice(0, 16);
@@ -380,9 +385,10 @@ function timelineRangeIsValid(timeline: EditTimeline): boolean {
  *
  * - Clock-in and clock-out fields the request did not touch keep the live value.
  * - If the request did not touch breaks, every meal and break added since is kept.
- * - Even when both sides changed breaks, the request merges as long as the live side
- *   only added records and left the originals alone.
- * - The same field, or the same original break, changed differently is a conflict, as is an overlapping merge.
+ * - Even when both sides changed breaks, the request's change is merged as long as the live
+ *   side only added records and left the originals alone.
+ * - The same field, or the same original break, changed differently on both sides is a
+ *   conflict, and so is a merge result that overlaps.
  */
 export function mergeAttendanceEditTimeline(
   base: EditTimeline,

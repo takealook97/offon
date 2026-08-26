@@ -53,8 +53,9 @@ function zoneOffsetMs(instant: Date): number {
 /**
  * Wall-clock fields (year, month, day, hour, minute) to a UTC instant.
  *
- * The offset depends on the answer, so we measure twice and let it converge. Even at a DST transition,
- * even where a wall-clock time may not exist, or may exist twice, this settles on one stable value.
+ * The offset depends on the answer, so we measure twice and let it converge. Even at a
+ * DST transition, where a wall-clock time may not exist or may exist twice, this settles
+ * on one stable value.
  */
 function wallToUtcMs(y: number, mo: number, d: number, h: number, mi: number): number {
   const guess = Date.UTC(y, mo - 1, d, h, mi);
@@ -74,10 +75,11 @@ function zoneShifted(d: Date = new Date()): Date {
 }
 
 /**
- * Moves the shifted value's UTC fields, which hold the local wall clock, into the runtime's local fields.
- * The formatter reads a Date in the local zone, so handing it the shifted value is right on a UTC runtime but
- * is shifted again on a machine in another zone. Going through this conversion,
- * always formats the org timezone's wall clock.
+ * Moves zoneShifted's UTC fields, which hold the local wall clock, into the runtime's
+ * local-timezone fields. fnsFormat reads a Date in the local zone, so handing it
+ * zoneShifted directly is right on a UTC runtime but shifted again on a machine in
+ * another zone. Going through this conversion formats the org's wall clock regardless
+ * of where the code runs.
  */
 function zoneWallClock(d: Date): Date {
   const s = zoneShifted(d);
@@ -118,8 +120,9 @@ export function todayKey(): string {
 }
 
 /**
- * Formats against the local wall clock. Formats with weekday or month names take a locale.
- * It defaults to the primary locale because most callers use numeric-only formats.
+ * Formats against the org's wall clock. Formats with weekday or month names are
+ * language-dependent, so a locale can be passed. It defaults to 'ko' because most
+ * callers use numeric-only formats, where the locale makes no difference.
  */
 export function formatZoned(
   d: Date,
@@ -144,9 +147,10 @@ export function monthRange(ref: Date = zonedNow()): { start: Date; end: Date } {
 }
 
 export function isWeekday(d: Date = new Date()): boolean {
-  // The shift is applied internally, so the argument must be a real UTC instant.
-  // Defaulting to an already-shifted value shifts it again and pushes the weekday forward by a day.
-  // Friday afternoon read as Saturday, so the clock-out cron skipped a weekday evening.
+  // zoneShifted() applies the offset internally, so the argument must be a real UTC
+  // instant. Defaulting to zonedNow() would shift an already-shifted value a second time
+  // and push the weekday forward by a day (Friday 15:00 KST read as Saturday, so the
+  // missing-clockout cron would skip a weekday evening).
   const dow = zoneShifted(d).getDay();
   return dow >= 1 && dow <= 5;
 }
@@ -234,10 +238,11 @@ export function countBusinessDays(
  * Daily totals are clipped at local midnight, so every day-key conversion goes through here.
  */
 export function dayKey(d: Date): string {
-  // Passing the shifted Date straight in has the formatter read it in the runtime's local zone,
-  // shifting it again, so the day key lands a day off and totals attach to the wrong date.
-  // Going through the wall-clock conversion, as the formatter does, makes this independent of the runtime timezone.
-  // On a UTC runtime the behaviour is identical either way.
+  // Passing the shifted Date straight in would have fnsFormat read it in the runtime's
+  // local zone, shifting a machine in KST by another +9h: the day key lands a day off and
+  // totals attach to the wrong date. Going through the wall-clock conversion, as
+  // formatZoned does, makes this independent of the runtime timezone. (On a UTC runtime
+  // such as Vercel the behaviour is identical either way.)
   return fnsFormat(zoneWallClock(d), 'yyyy-MM-dd');
 }
 
@@ -343,9 +348,10 @@ export function clipSegmentLabel(
 /**
  * An instant to a "grid Date", whose local fields match the org timezone's wall clock.
  *
- * react-big-calendar picks a cell from the **local** fields of the Date it is handed. Passing the real instant
- * places events in the viewer's browser timezone, which then disagrees with the labels the server
- * built in the org timezone: seen from another zone, everything sits a day off.
+ * react-big-calendar picks a cell from the **local** fields of the Date it is handed.
+ * Passing the real instant places events in the viewer's browser timezone, which then
+ * disagrees with the labels the server built in the org timezone: seen from another
+ * zone, everything sits a day off.
  *
  * This Date is for placement on screen only. Never store it or send it via toISOString().
  */

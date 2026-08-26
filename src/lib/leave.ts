@@ -5,8 +5,9 @@ export type LeaveTypeValue = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 /**
  * The number of leave days, recounted against the holidays as they stand at approval.
  *
- * Counted at approval rather than at request, because a holiday can be added in between.
- * When that happens the person takes fewer days off, but the old count still comes out of their balance.
+ * Counted at approval rather than at request because a holiday can be added in between.
+ * When that happens the person actually takes fewer days off, but the old count would still
+ * come out of their balance.
  *
  * A half day covers one date, so it is a fixed 0.5 — unless that date is a holiday, in
  * which case it is 0. The caller reads 0 as nothing to approve and suggests rejecting:
@@ -35,8 +36,9 @@ export function isRolloverWindow(month: number, day: number): boolean {
 /**
  * The new baseline entitlement when the year turns over.
  *
- * At or above the baseline it grows by a day a year; below it, as with a pro-rated first year,
- * it rises to the baseline. It never falls: losing leave after another year of service would be wrong.
+ * At or above the baseline it grows by a day a year; below it, as happens with a pro-rated
+ * first year, it rises to the baseline. It never falls: losing leave after another year of
+ * service would simply be wrong.
  */
 export function nextBaseDays(currentBase: number): number {
   return currentBase >= BASE_DEFAULT ? currentBase + 1 : BASE_DEFAULT;

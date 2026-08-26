@@ -9,11 +9,17 @@ import {
 } from './time';
 import { getHolidaySet } from './holidays';
 import { clippedDailyTotals, type SourceAttendance } from './calendar-aggregation';
+import { workHours } from './settings';
+import {
+  DEFAULT_WORK_HOURS,
+  halfDayCreditMinutes,
+  standardWorkMinutes,
+  type WorkHours,
+} from './work-hours';
 
 /** The standard working minutes for one weekday. */
-const STANDARD_DAY_MINUTES = 480;
-/** The half-day credit. */
-const HALF_DAY_CREDIT_MINUTES = 240;
+
+
 /** The first month this feature was live. Nothing exists before it. */
 const FEATURE_START_YEAR = 2026;
 const FEATURE_START_MONTH = 5;
@@ -117,8 +123,9 @@ function enumerateKeys(startKey: string, endKey: string): string[] {
 /**
  * Validates the chosen year and month and works out the range to export.
  * - Start: the first of that month.
- * - End: the earlier of the last day and yesterday. Today is still in progress and is left out of both.
- *   so the current month runs to yesterday and any past month runs to its last day.
+ * - End: the earlier of the last day and yesterday. Today is still in progress and is left
+ *   out of both the daily table and the totals, so the current month runs to yesterday and
+ *   any past month runs to its last day.
  * - Months before the feature started, and months in the future, are refused.
  */
 export function resolveMonthRange(year: number, month: number, now: Date): MonthRange {
@@ -185,8 +192,10 @@ function leaveLabelFor(t: PrismaLeaveType | undefined): LeaveLabel {
 }
 
 /**
- * The daily rows and summary for one member. Shared by the per-person sheet and the org sheet.
- * - Time on the clock is net work plus breaks; credited minutes are net work plus any leave credit.
+ * The daily rows and summary for one member. Shared by the per-person sheet and the
+ * org sheet, which carries one row per member.
+ * - Time on the clock is net work plus breaks; break time is the breaks; credited minutes
+ *   are net work plus any leave credit.
  */
 function computeReport(
   attendances: SourceAttendance[],
@@ -195,14 +204,18 @@ function computeReport(
   holidays: ReadonlySet<string>,
   now: Date,
   weekdays: readonly string[],
+  hours: WorkHours = DEFAULT_WORK_HOURS,
 ): { rows: DailyRow[]; summary: ReportSummary } {
+  // The standard day and the half-day credit derive from the org's working hours.
+  const standardDayMinutes = standardWorkMinutes(hours);
+  const halfDayCredit = halfDayCreditMinutes(hours);
   const daily = clippedDailyTotals(attendances, now);
   const leaveMap = buildLeaveMap(leaves, range.startKey, range.endKey);
 
   const rows: DailyRow[] = [];
   let weekdaySum = 0;
   let holidaySum = 0;
-  let baselineMinutes = 0; // the per-business-day baseline, accumulated
+  let baselineMinutes = 0; // one standard day accumulated per business day
 
   // range.dayKeys already stops at yesterday, so the daily table and the totals cover the same span.
   for (const key of range.dayKeys) {
@@ -215,9 +228,9 @@ function computeReport(
 
     let sum: number;
     if (leaveType === 'FULL_DAY') {
-      sum = STANDARD_DAY_MINUTES; // Full day Leave = 8Time
+      sum = standardDayMinutes; // a full day of leave is worth one standard day
     } else if (leaveType === 'HALF_DAY_AM' || leaveType === 'HALF_DAY_PM') {
-      sum = net + HALF_DAY_CREDIT_MINUTES; // a half day is net work plus the credit
+      sum = net + halfDayCredit; // a half day is net work plus half a standard day
     } else {
       sum = net;
     }
@@ -226,7 +239,7 @@ function computeReport(
       holidaySum += sum;
     } else {
       weekdaySum += sum;
-      baselineMinutes += STANDARD_DAY_MINUTES;
+      baselineMinutes += standardDayMinutes;
     }
 
     rows.push({
@@ -272,8 +285,9 @@ function toSource(a: RawAttendance): SourceAttendance {
 }
 
 /**
- * The work-date range query. So a session that crossed midnight into the first day is not missed,
- * The lower bound reaches back a day. A session running past the upper bound falls outside the day keys anyway.
+ * The workDate range query. The lower bound reaches back a day so a session that crossed
+ * midnight into the first day, and is filed under the previous workDate, is not missed.
+ * A session running past the upper bound falls outside dayKeys and drops out on its own.
  */
 function rangeBoundsUtc(range: ResolvedMonthRange): { gte: Date; lte: Date } {
   const gte = new Date(Date.parse(`${range.startKey}T00:00:00Z`) - DAY_MS);
@@ -321,6 +335,7 @@ export async function buildIndividualReport(params: {
     holidays,
     now,
     weekdays,
+    await workHours(),
   );
   return { member, yyyymm: range.yyyymm, rows, summary };
 }
@@ -368,6 +383,7 @@ export async function buildOrgReport(params: {
     leaveByMember.set(l.memberId, list);
   }
 
+  const hours = await workHours();
   const rows: OrgReportRow[] = members
     // The CEO is left out of the org totals. People with no position stay in.
     .filter((m) => m.position !== 'CEO')
@@ -379,6 +395,7 @@ export async function buildOrgReport(params: {
         holidays,
         now,
         weekdays,
+        hours,
       );
       return { name: m.name, position: m.position, summary };
     });

@@ -12,8 +12,9 @@ const FONT_NAME = 'Arial';
 const THIN: Partial<Border> = { style: 'thin' };
 
 /**
- * Always writes both hours and minutes, including zeros, with the sign in front for negatives.
- * Mixing languages inside a cell reads badly in Excel, so this follows the locale's own notation.
+ * Always writes both hours and minutes, including zeros, with the sign in front for
+ * negatives. Mixing languages inside a cell reads badly in Excel, so this follows the
+ * locale's own notation.
  */
 export function formatHM(t: Translate, minutes: number): string {
   const negative = minutes < 0;
@@ -59,8 +60,9 @@ async function toBytes(wb: Workbook): Promise<Uint8Array<ArrayBuffer>> {
 }
 
 /**
- * The per-person sheet: the daily table in columns A to F and the summary in H and I.
- * Emphasis is a border box around H4:I5, weekday overtime and holiday work, rather than colour, matching the template.
+ * The per-person sheet: the daily table in columns A to F, and the summary in H and I,
+ * rows 2 to 6. Emphasis is a border box around H4:I5 — weekday overtime and holiday work —
+ * rather than colour, matching the original template.
  */
 export async function buildIndividualWorkbook(t: Translate, report: IndividualReport): Promise<Uint8Array<ArrayBuffer>> {
   const wb = new Workbook();

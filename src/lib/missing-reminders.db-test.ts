@@ -6,11 +6,13 @@ import { runMissingClockOut } from './missing-clockout';
 import { zonedToday, dayKey } from './time';
 
 /**
- * These two reminders chase people. Get them wrong and someone on leave is nagged,
- * or the same person is nagged several times a day. So what is checked is who gets picked and how often.
+ * These two reminders chase people. Get them wrong and someone on leave is nagged, or the
+ * same person is nagged several times a day. So what is checked here is who gets picked and
+ * how often they are told.
  *
- * Sending the DM itself is not checked. There is no Slack token in the test environment, so it throws
- * and the handler catches it and writes to the audit log, which is the more interesting branch anyway.
+ * Sending the DM itself is not checked. There is no Slack token in the test environment, so
+ * sendDm throws and the handler catches it and writes to the audit log — and that branch is
+ * the more interesting one to pin down anyway.
  */
 
 before(() => ensureSchema());
@@ -132,8 +134,9 @@ test('a holiday stops the run', async () => {
 });
 
 test('flagging happens even when the DM cannot be sent', async () => {
-  // There is no Slack token in the test environment. Even when sending fails the record must still be flagged, so an admin
-  // can see it on the calendar, and the failure must reach the audit log so the cause can be found.
+  // There is no Slack token in the test environment. Even when sending fails the record must
+  // still be flagged, so an admin can see it on the calendar, and the failure must reach the
+  // audit log so the cause can be found.
   const m = await createMember();
 
   const result = await runMissingClockIn();

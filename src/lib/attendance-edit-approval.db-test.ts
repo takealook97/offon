@@ -8,9 +8,10 @@ import { zonedToday } from './time';
  * One approval overwrites somebody's recorded hours.
  *
  * All three refusals exist to stop data being quietly corrupted. Without them an approval
- * writes to a session that is gone, or removes a break in progress and leaves someone able neither
- * to come back nor to clock out, or silently overwrites a change made since. Without tests the next person
- * looks at these checks, wonders why they are there, and deletes them.
+ * writes to a session that is gone, or removes a break in progress and leaves someone able
+ * neither to come back nor to clock out, or silently overwrites a change made since the
+ * request. Without tests, the next person looks at these checks, wonders why they are there,
+ * and deletes them.
  */
 
 const HOUR = 3_600_000;

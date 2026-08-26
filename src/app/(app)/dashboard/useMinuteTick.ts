@@ -7,9 +7,10 @@ const MINUTE_MS = 60_000;
 /**
  * Updates the current time at the moment the minute changes.
  *
- * A fixed interval starts wherever the timer happens to, so the display lags the minute boundary
- * The reading should change on the minute but flips twenty seconds late.
- * So only the first timer waits out the remainder of the minute, and it runs on a 60-second interval after that.
+ * A fixed interval starts wherever the timer happens to start, so the display lags the minute
+ * boundary by up to that interval: the reading should change at 12:13:00 but flips at 12:13:20.
+ * So only the first timer waits out the remainder of the current minute, and it runs on a
+ * 60-second interval after that.
  *
  * A hidden tab has its timers throttled or coalesced, which pulls the alignment off again,
  * so it is re-established every time the tab becomes visible.
@@ -31,7 +32,8 @@ export function useMinuteTick(): number {
     const align = () => {
       clear();
       setNow(Date.now());
-      // The epoch starts on a whole minute and offsets are whole minutes, so the remainder is the distance to the next.
+      // The epoch starts on a whole minute and timezone offsets are whole minutes, so the
+      // remainder is exactly the distance to the next minute boundary.
       timeout = setTimeout(() => {
         setNow(Date.now());
         interval = setInterval(() => setNow(Date.now()), MINUTE_MS);

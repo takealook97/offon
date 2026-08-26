@@ -14,9 +14,10 @@ import type { MessageKey } from '@/lib/i18n/dictionary';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/cn';
-// The front end and the request route decide **weekends by the same rule**,
-// so both use the shared helpers in `@/lib/time`. That module depends on nothing but date-fns and
-// has no server-only imports, so it is safe to pull across the 'use client' boundary.
+// The shared helpers in `@/lib/time` are used so the front end and
+// `src/app/api/leave/request/route.ts` decide **weekends by the same rule**. `time.ts`
+// depends on nothing but date-fns and has no server-only imports, so it is safe to pull
+// across the 'use client' boundary.
 import { countBusinessDays, isBusinessDayDateStr } from '@/lib/time';
 
 type LeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
@@ -48,7 +49,8 @@ function DateField({
   const selected = fromYmd(value);
   const minDate = fromYmd(minYmd);
 
-  // Past dates, weekends and holidays cannot be picked, the same rule the server applies. Non-business days inside a range drop out of the count automatically.
+  // Past dates, weekends and holidays cannot be picked, the same rule the server applies.
+  // Non-business days inside a range are excluded from the day count automatically.
   const disabled: Matcher[] = [
     ...(minDate ? [{ before: minDate }] : []),
     (d: Date) => d.getDay() === 0 || d.getDay() === 6,

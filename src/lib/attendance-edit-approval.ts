@@ -1,4 +1,6 @@
 import { prisma } from './prisma';
+import { workHours } from './settings';
+import { standardWorkMinutes } from './work-hours';
 import { computeAttendanceTotals, lockSession } from './attendance';
 import {
   asTimeline,
@@ -40,11 +42,14 @@ export async function applyAttendanceEditApproval(
 ): Promise<EditApprovalOutcome> {
   const proposed = asTimeline(target.proposed);
   const snapshot = asTimeline(target.snapshot);
+  // The overtime threshold derives from the org's working hours. Read once, outside the transaction.
+  const standardMinutes = standardWorkMinutes(await workHours());
 
   return prisma.$transaction(async (tx) => {
-    // The live state is read only after locking the session row. With the check and the write apart,
-    // a meal the employee starts in between is quietly soft-deleted below, and its scheduled id
-    // is not in the cancel list, so a ghost return notice lands in the channel an hour later.
+    // Read the live state only after locking the session row. With the check and the write
+    // apart, a meal the employee starts in between is quietly soft-deleted below, and since
+    // its scheduled id is not in the cancel list, a ghost "back at their desk" lands in the
+    // channel an hour later.
     await lockSession(tx, target.sessionId);
     const liveSession = await tx.attendanceSession.findFirst({
       where: { id: target.sessionId, deletedAt: null },
@@ -69,9 +74,10 @@ export async function applyAttendanceEditApproval(
     // employee unable to either come back or clock out.
     if (liveSession.breaks.some((b) => !b.endAt)) return { code: 'OPEN_BREAK' as const };
 
-    // Whatever happened legitimately since the request is kept, and only the fields the requester
-    // actually changed are merged in. Where the same field or break changed differently on both sides,
-    // Rather than guess which should win, the approval is blocked.
+    // Whatever happened legitimately since the request — a clock-out, a new meal or break —
+    // is kept, and only the fields the requester actually changed are merged in. When the
+    // same field, or the same existing break, was changed differently on both sides, we do
+    // not guess which should win and block the approval instead.
     const currentTimeline = buildTimelineFromSession(
       { startAt: liveSession.startAt, endAt: liveSession.endAt },
       liveSession.breaks,
@@ -82,14 +88,17 @@ export async function applyAttendanceEditApproval(
     }
     const approved = merged.timeline;
 
-    // A meal still running has a Slack return notice scheduled. Deleting and recreating the break rows
-    // Deleting and recreating would orphan it, so unchanged times carry the id straight to the new row
-    // with no cancel; a meal whose times moved, or that is gone, is cancelled and scheduled afresh.
-    // The key is taken to the minute because stored values keep seconds while the proposal is built
-    // from a wall clock and always has zero seconds. At millisecond precision nothing carries across, so
-    // even a correction that never touched the times, and a refused cancel means two notices.
-    // Meals are fixed blocks and cannot overlap, so a minute-level collision only comes from duplicate rows,
-    // The values are arrays so nothing is left uncancelled even then.
+    // A meal still running, its end still in the future, has a Slack return notice scheduled.
+    // Deleting and recreating the break rows below would orphan it, so a meal whose times are
+    // unchanged carries its scheduled id across to the new row with no cancel and no
+    // rescheduling. A meal whose times moved, or that is gone, is cancelled and scheduled afresh.
+    // The key is taken to the minute because stored values keep seconds and milliseconds while
+    // the proposed timeline is built from a wall clock and always has zero seconds. Comparing
+    // at millisecond precision would carry nothing across, so every correction — even one that
+    // never touched the times — would cancel and reschedule, and a refused cancel means two notices.
+    // Meals are fixed blocks and cannot overlap, so a minute-level key collision only arises
+    // from duplicate rows at the same instant; the values are arrays so nothing is left uncancelled
+    // even then.
     const pendingSchedules = new Map<string, { messageId: string; channelId: string }[]>();
     const scheduleKey = (start: Date, end: Date) =>
       `${Math.floor(start.getTime() / 60_000)}-${Math.floor(end.getTime() / 60_000)}`;
@@ -150,9 +159,10 @@ export async function applyAttendanceEditApproval(
         select: { startAt: true, endAt: true },
       }),
     ]);
-    const totals = computeAttendanceTotals(allSessions, allBreaks);
-    // The guard above guarantees no break is open, so the status follows purely from the session end.
-    // A proposal that fills in a clock-out moves the status to done, which keeps the row consistent.
+    const totals = computeAttendanceTotals(allSessions, allBreaks, standardMinutes);
+    // The guard above guarantees no break is open, so the status follows purely from whether
+    // the session has an endAt. A correction that fills in a clock-out moves WORKING to DONE,
+    // which keeps the row consistent rather than orphaned.
     const hasOpenSession = allSessions.some((s) => !s.endAt);
     const nextStatus: 'WORKING' | 'DONE' = hasOpenSession ? 'WORKING' : 'DONE';
     await tx.attendance.update({

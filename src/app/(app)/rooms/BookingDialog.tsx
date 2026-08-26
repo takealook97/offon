@@ -217,8 +217,9 @@ export function BookingDialog({
       };
       if (!res.ok || !data.ok) {
         toast.error(data.error ?? t('room.requestFailed'));
-        // On a 409, where someone booked it first, only the view refreshes and the dialog stays open.
-        // So the reason and attendees already typed survive and only the time has to change.
+        // On a 409, where someone booked it first, only the view is refreshed and the dialog
+        // stays open, so the reason and attendees already typed survive and only the time has
+        // to be changed.
         if (res.status === 409) onDone();
         return;
       }

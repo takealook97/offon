@@ -1,25 +1,26 @@
 import type { Locale } from './locale';
 
 /**
- * 번역 사전.
+ * The translation dictionary.
  *
- * 키는 평면 문자열(`'login.email'`)이다. 중첩 객체를 쓰지 않는 이유는 타입이 단순해지고,
- * 빠진 키를 `Record<MessageKey, string>` 만으로 컴파일 타임에 잡을 수 있기 때문이다.
- * `ko` 가 키 집합의 기준이고, 다른 로케일은 같은 키를 모두 채워야 한다.
+ * Keys are flat strings such as `'login.email'`. Nested objects are avoided because the flat
+ * form keeps the types simple and lets `Record<MessageKey, string>` alone catch a missing key
+ * at compile time.
+ * `ko` defines the set of keys; every other locale has to fill in all of them.
  */
 const ko = {
-  // 공통
+  // Shared
   'common.cancel': '취소',
   'common.confirm': '확인',
   'common.save': '저장',
   'common.close': '닫기',
   'common.loading': '불러오는 중',
 
-  // 언어 전환
+  // Language switcher
   'locale.switch': '언어 변경',
   'locale.current': '현재 언어: {name}',
 
-  // 로그인
+  // Sign-in
   'login.email': '이메일',
   'login.emailPlaceholder': 'you@company.com',
   'login.requestCode': '인증 코드 받기',
@@ -37,13 +38,13 @@ const ko = {
   'login.cardDescription': '이메일을 입력하면 Slack DM으로 6자리 인증 코드가 발송됩니다.',
   'login.devNoSlack': 'dev 모드: Slack 토큰 미설정 — 서버 콘솔에 OTP가 출력됩니다',
 
-  // 기간 표기 — 화면 곳곳에서 재사용한다.
+  // Durations, reused throughout the UI.
   'duration.hm': '{h}시간 {m}분',
   'duration.h': '{h}시간',
   'duration.m': '{m}분',
   'duration.days': '{days}일',
 
-  // 근태 상태
+  // Attendance states
   'status.working': '근무 중',
   'status.onMeal': '식사 중',
   'status.onBreak': '자리비움',
@@ -56,7 +57,7 @@ const ko = {
   'status.approved': '승인',
   'status.rejected': '반려',
 
-  // 근태 버튼
+  // Attendance buttons
   'attendance.clockIn': '출근',
   'attendance.clockOut': '퇴근',
   'attendance.meal': '식사',
@@ -76,7 +77,7 @@ const ko = {
   'attendance.mealFor': '{duration} 식사 중',
   'attendance.daysWorked': '{days}일 근무',
 
-  // 대시보드
+  // Dashboard
   'dashboard.greeting': '안녕하세요, {name}님',
   'dashboard.today': '오늘의 근태',
   'dashboard.workTime': '근무 시간',
@@ -87,7 +88,7 @@ const ko = {
   'dashboard.leaveBreakdown': '기본 {base} · 추가 {bonus} · 예정 {scheduled} · 사용 {consumed}',
   'dashboard.leavePending': ' · 대기 {pending}',
 
-  // 연차 신청
+  // Requesting leave
   'leave.request': '연차 신청',
   'leave.requestHalf': '반차 신청',
   'leave.fullDay': '종일',
@@ -112,7 +113,7 @@ const ko = {
   'leave.errHalfOnHoliday': '주말·공휴일에는 반차를 신청할 수 없습니다',
   'leave.errEndHoliday': '종료일은 주말·공휴일로 지정할 수 없습니다',
 
-  // 연차 취소
+  // Cancelling leave
   'leave.myRequests': '내 신청 내역',
   'leave.cancellable': '취소 가능한 연차',
   'leave.noCancellable': '취소 가능한 신청이 없습니다',
@@ -126,7 +127,7 @@ const ko = {
   'leave.cancelFailed': '취소 실패',
   'leave.cancelled': '취소되었습니다',
 
-  // Slack 슬래시 커맨드 응답. 이모지는 로케일과 무관하게 유지한다.
+  // Slack slash-command replies. The emoji stay the same in every locale.
   'slack.noUser': '요청에 사용자 정보가 없어요',
   'slack.noAccount': 'offon에 연결된 계정이 없어요. 관리자에게 문의해주세요.',
   'slack.alreadyWorking': '이미 근무중입니다💻',
@@ -143,15 +144,15 @@ const ko = {
   'slack.notAway': '자리비움 상태가 아닙니다⚠️',
   'slack.unknownCommand': '지원하지 않는 명령이에요',
 
-  // Slack 채널 공지. {time} 은 이미 포맷된 시각, {name} 은 멤버 이름.
+  // Slack channel announcements. {time} is an already-formatted time and {name} is a member's name.
   'announce.clockIn': '{time}\n{name}님이 출근하셨습니다☀️',
   'announce.clockOut': '{time}\n{name}님이 퇴근하셨습니다🌙',
   'announce.meal': '{time}\n{name}님이 식사하러 가셨습니다🍽️',
   'announce.away': '{time}\n{name}님이 자리를 비웠습니다⏸️',
   'announce.back': '{time}\n{name}님이 복귀했습니다▶️',
 
-  // 근태 도메인 거절 사유. 도메인은 키만 반환하고, 화면은 보는 사람의 언어로,
-  // Slack 은 배포 언어로 각자 번역한다.
+  // Attendance refusals. The domain returns only keys; the screen renders them in the
+  // viewer's language and Slack in the deployment's.
   'attErr.alreadyWorking': '이미 근무 중입니다',
   'attErr.awayUseBack': '자리비움 상태입니다. 복귀를 사용해주세요',
   'attErr.awayBeforeClockOut': '자리비움 상태입니다. 복귀 후 퇴근해주세요',
@@ -165,7 +166,7 @@ const ko = {
   'attErr.blockedWhileAway': '자리비움 중에는 사용할 수 없습니다',
   'attErr.notAway': '자리비움 상태가 아닙니다',
 
-  // 직원 관리
+  // Managing people
   'member.title': '직원 관리',
   'member.name': '이름',
   'member.email': '이메일',
@@ -246,9 +247,16 @@ const ko = {
   'policy.saved': '저장되었습니다',
   'policy.errOrder': '종료가 시작보다 뒤여야 합니다',
   'policy.errMealRange': '식사는 5분에서 240분 사이여야 합니다',
+  'policy.workTitle': '근무 시간',
+  'policy.workBody': '하루 소정근로와 반차 기준이 이 시간대에서 나옵니다. 지난 기록은 그대로 두고, 앞으로의 집계에만 적용됩니다.',
+  'policy.workStart': '출근',
+  'policy.workEnd': '퇴근',
+  'policy.workDerived': '소정근로 {standard} · 반차 {half} · 오전/오후 반차 경계 {split}',
+  'policy.errWorkOrder': '퇴근이 출근보다 뒤여야 합니다',
+  'policy.errWorkTooShort': '근무 시간이 식사보다 길어야 합니다',
   'settings.title': '설정',
 
-  // 결재
+  // Approvals
   'appr.title': '결재',
   'appr.pendingCount': '대기 {count}건',
   'appr.pendingSection': '대기 중',
@@ -279,7 +287,7 @@ const ko = {
   'appr.approver': '처리자: {name}',
   'appr.cancelled': '취소',
 
-  // 공휴일 관리
+  // Managing holidays
   'weekday.short': '일,월,화,수,목,금,토',
   'holiday.badge': '공휴일',
   'holiday.title': '공휴일 관리',
@@ -301,7 +309,7 @@ const ko = {
   'holiday.count': '{count}건',
   'holiday.emptyYear': '{year}년에 등록된 공휴일이 없습니다',
 
-  // 캘린더
+  // Calendar
   'cal.title': '캘린더',
   'cal.subtitle': '내 근태·연차 또는 팀 연차를 확인합니다',
   'cal.mine': '내 캘린더',
@@ -803,6 +811,13 @@ const en: Messages = {
   'policy.saved': 'Saved',
   'policy.errOrder': 'Closing time has to come after opening time',
   'policy.errMealRange': 'A meal has to be between 5 and 240 minutes',
+  'policy.workTitle': 'Working hours',
+  'policy.workBody': 'A standard day and what a half day is worth both come from these hours. Records already saved are left alone; this applies to totals from here on.',
+  'policy.workStart': 'Starts',
+  'policy.workEnd': 'Ends',
+  'policy.workDerived': 'Standard day {standard} · half day {half} · morning/afternoon split at {split}',
+  'policy.errWorkOrder': 'The day must end after it starts',
+  'policy.errWorkTooShort': 'The working day must be longer than the meal',
   'settings.title': 'Settings',
 
   'appr.title': 'Approvals',
@@ -1130,8 +1145,8 @@ const en: Messages = {
 export const MESSAGES: Record<Locale, Messages> = { ko, en };
 
 /**
- * 키를 문자열로 바꾸고 `{name}` 자리표시자를 채운다.
- * 없는 키는 키 자체를 돌려준다 — 화면이 비는 것보다 무엇이 빠졌는지 보이는 편이 낫다.
+ * Turns a key into a string and fills in `{name}`-style placeholders.
+ * An unknown key comes back as itself: better to see what is missing than an empty screen.
  */
 export function translate(
   messages: Messages,

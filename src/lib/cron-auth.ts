@@ -2,10 +2,11 @@ import { timingSafeEqual } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 
 /**
- * Authenticates a call from the platform cron.
- * - No cron secret gives a misconfigured result, which the caller sees as a 500.
- * - A missing or wrong header gives unauthorized, a 401.
- * timingSafeEqual throws on buffers of different lengths, so lengths are compared first.
+ * Authenticates a call from Vercel Cron.
+ * - No CRON_SECRET gives `misconfigured`, which the caller sees as a 500.
+ * - A missing or wrong header gives `unauthorized`, a 401.
+ * timingSafeEqual throws on buffers of different lengths, so lengths are compared first and
+ * it runs only when they match.
  */
 export type CronAuthResult =
   | { ok: true }

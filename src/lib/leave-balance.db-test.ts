@@ -5,8 +5,9 @@ import { prisma, ensureSchema, resetDatabase, createMember } from '@/test/db';
 import { applyLeaveApproval, applyLeaveCancellation } from './leave-balance';
 
 /**
- * This arithmetic is somebody's leave. Subtracting too much on approval loses days they never took,
- * and returning too little on cancellation loses them just the same. Neither is easy to see from the screen.
+ * This arithmetic is somebody's leave. Subtracting too much on approval loses days they
+ * never took; returning too little on cancellation loses them just the same. Neither is easy
+ * to notice from the screen.
  */
 
 before(() => ensureSchema());

@@ -216,7 +216,8 @@ export function EditRequestDialog({
     setBreaks((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
 
   // The whole meal has to fit inside the working span, the same rule the server applies.
-  // So the latest it can start is the clock-out less its length, and if that falls before the clock-in there is no room.
+  // So the latest it can start is the clock-out less its length, and if that falls before the
+  // clock-in there is no room for it at all.
   const lunchStartMax = () => {
     const co = clockOut ? wallToLocal(clockOut) : null;
     return co ? new Date(co.getTime() - session.mealMinutes * 60_000) : new Date();
@@ -271,7 +272,8 @@ export function EditRequestDialog({
     });
   };
 
-  // Works out the allowed ranges: nothing in the future, the clock-in pinned to the work date, the clock-out no earlier, and breaks inside the working span.
+  // Works out the allowed ranges: nothing in the future, the clock-in pinned to the work date,
+  // the clock-out no earlier than the clock-in, and breaks inside the working span.
   const now = new Date();
   const nowDay = startOfDay(now);
   const ci = wallToLocal(clockIn);

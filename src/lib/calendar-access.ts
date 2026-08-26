@@ -18,7 +18,8 @@ export type CalendarTarget =
  * calendar is a landing screen, and someone who pasted a link wrong is better served by
  * their own calendar than by an error page. It never falls towards somebody else's.
  *
- * Only an admin sees another person's attendance and leave. Sharing leave is handled separately.
+ * Only an admin sees another person's attendance and leave. Sharing leave across the team
+ * is handled separately by /api/team/leaves.
  */
 export function resolveCalendarTarget(
   memberIdRaw: string | null,

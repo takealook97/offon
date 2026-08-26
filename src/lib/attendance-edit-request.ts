@@ -15,8 +15,9 @@ import { dayKey } from './time';
 /**
  * No correction is accepted while someone is away, i.e. while a break is still open.
  *
- * An unfinished span has no length yet, so it cannot go into the proposed timeline. Ignoring it
- * means the approved timeline disagrees with reality once they come back. They can correct it then.
+ * An unfinished span has no length yet, so it cannot go into the proposed timeline. Ignoring
+ * it means the approved timeline disagrees with reality once the person comes back. They can
+ * make the correction then.
  *
  * A meal is a closed span, with its end fixed the moment it starts, so it does not trip this.
  * Even a meal in progress can be corrected or removed.
@@ -43,9 +44,10 @@ export function storedMealMinutes(
 /**
  * Whether the proposed clock-in still falls on the same day as the work date.
  *
- * Moving it to another day contradicts the work date, which robs the one-row-per-day constraint
- * of its meaning and points the reminders at the wrong day. Compared in the org timezone:
- * a clock-in at 23:00 must not roll into tomorrow just because the server runs in UTC.
+ * Moving it to another day contradicts attendance.workDate, which robs
+ * `@@unique([memberId, workDate])` of its meaning and points the missing-record reminders at
+ * the wrong day. The comparison is made in the org timezone: a clock-in at 23:00 must not
+ * roll into tomorrow just because the server runs in UTC.
  *
  * A clock-out crossing midnight is supported, so only the clock-in's date is checked.
  */
@@ -63,12 +65,13 @@ const PENDING_UNIQUE_COLUMN = 'session_id';
  * requests slip through it, both passing the lookup, and the database stops the second.
  * This tells that clash apart from any other P2002, so only a genuine duplicate answers 409.
  *
- * On Postgres, Prisma reports the **column** as the target, not the index name.
- * The version that looked only for the name therefore never matched once, and the losing
- * request fell through to a 500 instead of a 409, and the person saw a server error.
- * This partial index is the only unique constraint on session_id in this table, so the column
- * identifies it. The name is still accepted
- * so a change of driver cannot quietly undo the fix.
+ * On Postgres, Prisma reports the **column** (`session_id`) as the target, not the index
+ * name. The earlier version looked only for the name and therefore never matched once: the
+ * request that lost the race fell through to a 500, and the person who double-clicked saw a
+ * server error instead of being told to try again shortly.
+ * This partial index is the only unique constraint on session_id in this table, so the
+ * column identifies it. The name is still accepted so a change of driver cannot quietly
+ * undo the fix.
  */
 export function isPendingConflict(e: unknown): boolean {
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;

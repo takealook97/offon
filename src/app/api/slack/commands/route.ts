@@ -40,8 +40,9 @@ export async function POST(req: Request) {
     });
   }
 
-  // Slack retries anything not acknowledged within three seconds. A retry most likely means the first attempt succeeded,
-  // so it is answered at once, which avoids a phantom reply and a duplicate channel announcement.
+  // Slack retries anything not acknowledged within three seconds. A retry most likely means
+  // the first attempt already succeeded, so it is answered 200 straight away — otherwise the
+  // person gets a phantom "already working" reply and the channel gets the announcement twice.
   if (req.headers.get('x-slack-retry-num')) return silentOk();
 
   const form = new URLSearchParams(rawBody);
@@ -93,7 +94,8 @@ export async function POST(req: Request) {
   if (command === '/lunch') {
     const r = await startLunch(member.id, 'slack');
     if (r.ok) {
-      // Scheduling the return notice is another round trip, which can blow the three-second budget, so it is deferred.
+      // Scheduling the return notice means another round trip to Slack, which can blow the
+      // three-second budget, so it is deferred until after the acknowledgement.
       const { breakId, endsAt, memberName: name, at } = r;
       const id = member.id;
       after(() => scheduleAutoBack(breakId, name, endsAt, id));

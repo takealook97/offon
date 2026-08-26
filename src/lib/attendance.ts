@@ -6,7 +6,8 @@ import { logAudit } from './audit';
 import { getDeploymentT, getDeploymentLocale } from './i18n/deployment';
 import type { MessageKey } from './i18n/dictionary';
 import { sendChannel, scheduleChannel, cancelScheduledChannel } from './slack';
-import { getAppSettings } from './settings';
+import { getAppSettings, workHours } from './settings';
+import { DEFAULT_WORK_HOURS, standardWorkMinutes } from './work-hours';
 
 const OPEN_SESSION_UNIQUE_INDEX = 'attendance_sessions_open_unique';
 const OPEN_BREAK_UNIQUE_INDEX = 'attendance_breaks_open_unique';
@@ -82,7 +83,7 @@ export type StartLunchResult =
       messageKey: MessageKey;
     };
 
-const STANDARD_MINUTES = 480;
+
 
 /**
  * The fixed length of a meal. A meal is stored with its end time already decided, so
@@ -99,18 +100,21 @@ function lunchInProgressWhere(now: Date) {
 type Tx = Prisma.TransactionClient;
 
 /**
- * Locks the session row so that changes to it happen one at a time.
- * Checks made outside a transaction cannot stop concurrent requests. If a meal and a clock-out overlap,
- * both pass their checks and leave a finished session carrying a meal in the future and a scheduled notice.
- * After taking this lock you must re-read and re-check the state; the lock does not re-run the checks.
+ * Locks the session row so that changes to it — clocking out, stepping away, eating —
+ * happen one at a time. Checks made outside a transaction cannot stop concurrent requests:
+ * if /lunch and /bye overlap, both pass their checks and leave a finished session carrying
+ * a meal in the future and a scheduled return notice.
+ * After taking this lock you must re-read and re-check the state; the lock does not
+ * re-run the checks for you.
  */
 export async function lockSession(tx: Tx, sessionId: number): Promise<void> {
   await tx.$queryRaw`SELECT id FROM attendance_sessions WHERE id = ${sessionId} FOR UPDATE`;
 }
 
 /**
- * The re-check after the lock: the session is still open, the status is working and no meal is running.
- * Shared by starting a break and starting a meal, which must exclude each other.
+ * The re-check taken after the lock: the session is still open, the status is WORKING and
+ * no meal is running. Shared by starting a break and starting a meal, which must exclude
+ * each other.
  */
 async function revalidateWorkingSession(
   tx: Tx,
@@ -158,14 +162,16 @@ type SessionTimes = { startAt: Date; endAt: Date | null };
 type BreakTimes = { startAt: Date; endAt: Date | null };
 
 /**
- * Worked, break and overtime minutes for one attendance row, plus the clock-in, the earliest start,
- * and the clock-out, the latest closed end. Shared by closing out a day and by approving a correction.
+ * Worked, break and overtime minutes plus the clock-in (earliest start) and clock-out
+ * (latest closed end) for one attendance row. Shared by closing out a day and by approving
+ * an attendance correction.
  * - Worked = sum of closed sessions minus sum of closed breaks, clamped at zero.
  * - The status is left alone; that is the caller's job.
  */
 export function computeAttendanceTotals(
   sessions: SessionTimes[],
   breaks: BreakTimes[],
+  standardMinutes: number = standardWorkMinutes(DEFAULT_WORK_HOURS),
 ): {
   workedMinutes: number;
   breakMinutes: number;
@@ -185,7 +191,7 @@ export function computeAttendanceTotals(
       0,
     );
   const worked = Math.max(0, sessionMin - breakMin);
-  const overtime = Math.max(0, worked - STANDARD_MINUTES);
+  const overtime = Math.max(0, worked - standardMinutes);
   const clockInAt = sessions.reduce<Date | null>(
     (min, s) => (min === null || s.startAt < min ? s.startAt : min),
     null,
@@ -452,10 +458,13 @@ export async function clockOutMember(
   }
 
   const clockOut = new Date();
+  // The overtime threshold derives from the org's working hours. Read once, outside the transaction.
+  const standardMinutes = standardWorkMinutes(await workHours());
 
   const outcome = await prisma.$transaction(async (tx) => {
-    // Re-checked after the lock. A meal or a break can commit between the earlier check and this transaction,
-    // Trusting the unlocked check produces states like clocked out while still eating.
+    // Re-check after the lock. /lunch or /break can commit between the earlier check and
+    // this transaction, and trusting the unlocked check produces states like "clocked out
+    // while still eating".
     await lockSession(tx, open.id);
     const live = await tx.attendanceSession.findFirst({
       where: { id: open.id, deletedAt: null },
@@ -463,8 +472,9 @@ export async function clockOutMember(
     });
     if (!live || live.endAt) return { code: 'NO_OPEN_SESSION' as const };
     if (live.attendance.status === 'ON_BREAK') return { code: 'ON_BREAK' as const };
-    // No clocking out mid-meal. Its end and its scheduled return notice are already fixed, so
-    // allowing it would leave the worked time and the notice disagreeing. Cancelling a meal is done by deleting it in a correction.
+    // No clocking out mid-meal. The meal's end time and its scheduled return notice are
+    // already fixed, so allowing it would leave worked time and the notice disagreeing.
+    // Cancelling a meal is done by deleting it through an attendance correction.
     const ongoingLunch = await tx.attendanceBreak.findFirst({
       where: { attendanceId: open.attendanceId, ...lunchInProgressWhere(clockOut) },
       select: { id: true },
@@ -486,7 +496,7 @@ export async function clockOutMember(
         select: { startAt: true, endAt: true },
       }),
     ]);
-    const totals = computeAttendanceTotals(allSessions, allBreaks);
+    const totals = computeAttendanceTotals(allSessions, allBreaks, standardMinutes);
 
     const row = await tx.attendance.update({
       where: { id: open.attendanceId },
@@ -591,10 +601,11 @@ export async function startBreak(
     | { code: 'NOT_WORKING' | 'ALREADY_ON_BREAK' | 'ALREADY_DONE' | 'ON_LUNCH' };
   try {
     outcome = await prisma.$transaction(async (tx) => {
-      // A meal leaves the status at working, so the guard above does not catch it.
-      // A break overlapping a meal would subtract the same minutes twice, so this takes the same session
-      // Taking the lock and deciding again from the post-lock state makes the two paths exclusive.
-      // Checks outside the lock let a break and a meal both through at once.
+      // A meal leaves the status at WORKING, so the guard above does not catch it.
+      // A break overlapping a meal would subtract the same minutes twice, so we take the
+      // same session lock that starting a meal takes and decide again from the post-lock
+      // state, making the two paths exclusive. Checks outside the lock let /break and
+      // /lunch both through.
       await lockSession(tx, open.id);
       const live = await revalidateWorkingSession(tx, open.id, at);
       if (!live.ok) return { code: live.code };
@@ -652,8 +663,9 @@ export async function startBreak(
 }
 
 /**
- * Schedules the Slack return notice for when the meal ends, and stores its id.
- * A failure leaves the attendance state itself consistent, so callers carry on and only record it in the audit log.
+ * Schedules the Slack "back at their desk" notice for when the meal ends, and stores its id.
+ * A failure here leaves the attendance state itself consistent, so callers carry on and only
+ * record it in the audit log.
  */
 export async function scheduleAutoBack(
   breakId: number,
@@ -672,10 +684,11 @@ export async function scheduleAutoBack(
     );
     if (!scheduled) return false;
     try {
-      // The id is stored inside the session lock. The Slack path defers this scheduling with after(),
-      // an approved correction can replace the original break in that window, and a conditional update
-      // alone lets this order slip through: the approval reads the break, we store the id, it deletes the row
-      // That order slips through and both the old and the new notice go out.
+      // The id is stored inside the session lock. The Slack path defers this scheduling with
+      // after(), and in that window an approved correction can replace the original break.
+      // With only a conditional update and no lock, this order slips through — the approval
+      // reads the break, we store the id, the approval then deletes that row and schedules
+      // its own — and both notices go out.
       // Taking the same session-row lock the approval takes serialises the two updates.
       const saved = await prisma.$transaction(async (tx) => {
         // sessionId survives the row being deleted, so it is safe to lock on.
@@ -730,9 +743,10 @@ export async function scheduleAutoBack(
 }
 
 /**
- * Cancels a scheduled return notice, for when the meal is edited or deleted and it would be orphaned.
- * Slack refuses to cancel anything due within 60 seconds, so this can fail.
- * Swallowing a failure would let the caller believe it succeeded, schedule a replacement and send two notices,
+ * Cancels scheduled return notices, for when a meal is edited or deleted and its notice
+ * would otherwise be orphaned.
+ * Slack refuses to cancel anything due within 60 seconds, so this can fail. Swallowing that
+ * would let the caller believe it succeeded, schedule a replacement, and send two notices —
  * so this reports whether everything was cancelled. False means an old notice is still live.
  */
 export async function cancelAutoBack(
@@ -762,11 +776,12 @@ export async function cancelAutoBack(
 
 /**
  * Starts a meal. Unlike a break, there is nothing to come back from.
- * Pressing it creates a closed break of start plus the configured meal length, and leaves the status
- * at working. Work therefore resumes on its own once the time passes,
- * with no job to run, and since no break is left open there is no way to get stuck.
- * Being on a meal is derived from now falling before its end.
- * The only thing scheduled is the Slack return notice for when it ends.
+ * Pressing it creates a closed break ending at start + the configured meal length, and
+ * leaves attendance.status at WORKING. Work therefore resumes on its own once the time
+ * passes, with no job to run, and since no break is left open there is no way to get stuck
+ * between coming back and clocking out.
+ * "On a meal" is derived from now being before endAt.
+ * The only thing scheduled is the Slack return notice, via chat.scheduleMessage.
  */
 export async function startLunch(
   memberId: number,
@@ -805,12 +820,13 @@ export async function startLunch(
   const mealMinutes = (await getAppSettings()).mealMinutes;
   const endsAt = new Date(at.getTime() + mealMinutes * 60_000);
 
-  // Several meals a day are fine, lunch and dinner, so the count is not capped; only overlapping ones are refused.
-  // A meal row has its end filled in, so the index covering rows with a null end
-  // gets no protection from it. If a double-click, a second tab, or the web and Slack at once slip past and
-  // two are created, an hour is wrongly deducted and two return notices go out.
-  // A clock-out or a break can also commit between that check and this transaction, so after locking the row
-  // it confirms again that the session is still open and still working.
+  // Several meals a day are fine (lunch, then dinner), so the count is not capped; only
+  // overlapping ones are refused. A meal row has its endAt filled in, so it gets no
+  // protection from attendance_breaks_open_unique, which covers only rows with a null end.
+  // If a double-click, a second tab, or the web and Slack at once slip past the check and
+  // create two meals, an hour is wrongly deducted from worked time and two return notices go out.
+  // /bye or /break can also commit between that check and this transaction, so after locking
+  // the session row we confirm again that it is still open and still WORKING.
   const outcome = await prisma.$transaction(async (tx) => {
     await lockSession(tx, open.id);
     const live = await revalidateWorkingSession(tx, open.id, at);
@@ -899,16 +915,17 @@ export async function endBreak(
   }
   const attendance = openBreak.attendance;
   if (attendance.status !== 'ON_BREAK') {
-    // An orphan: an open break exists but the attendance does not say away.
-    // Data left behind before the fix, where a clock-out went through while someone was on a break,
-    //  leaving the break open.
-    // Clocking out now refuses whenever an open break exists, so left alone both coming back and clocking out
-    // both fail and the person cannot recover on their own. Closing the break at the recorded clock-out
-    // breaks the deadlock. The stored worked and break minutes are already wrong,
-    // but recomputing them is left to a separate admin step, and the audit log makes it traceable.
-    // If the recorded clock-out were somehow earlier than the break start the duration would go negative,
-    // so it is clamped to the break start. Whether the clamp fired
-    // can be traced by comparing the two in the audit metadata.
+    // An orphan: an open break exists but the attendance is not ON_BREAK. This is data left
+    // behind before the fix, where Slack /bye went through while someone was on a break, closed
+    // the day as DONE, and left the break open.
+    // The current clockOutMember refuses with ON_BREAK whenever an open break exists, so left
+    // alone both /back and /bye fail and the person cannot recover on their own. Closing the
+    // break at attendance.clockOutAt, which exists once the day is DONE, breaks the deadlock.
+    // The stored workedMinutes and breakMinutes are already wrong; recomputing them is left to
+    // a separate admin step, and the audit log makes it traceable.
+    // If clockOutAt were somehow earlier than the break's start the duration would go negative,
+    // so it is clamped to startAt. Whether the clamp fired is visible by comparing breakStartAt
+    // and endAt in the audit metadata.
     const clockOutMs = attendance.clockOutAt?.getTime() ?? Date.now();
     const cleanupEnd = new Date(Math.max(openBreak.startAt.getTime(), clockOutMs));
     await prisma.attendanceBreak.update({

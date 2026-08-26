@@ -4,7 +4,7 @@ import { MESSAGES, translate, type MessageKey } from './dictionary';
 import { DEFAULT_LOCALE, LOCALES, normalizeLocale } from './locale';
 
 test('every locale defines the same keys', () => {
-  // 한 로케일에만 있는 키는 다른 언어에서 화면이 비거나 키가 그대로 노출된다.
+  // A key present in only one locale leaves the other language with a blank, or the raw key on screen.
   const reference = Object.keys(MESSAGES[DEFAULT_LOCALE]).sort();
   for (const locale of LOCALES) {
     assert.deepEqual(
@@ -24,7 +24,7 @@ test('no message is left empty', () => {
 });
 
 test('placeholders match across locales', () => {
-  // 한쪽만 {seconds} 를 쓰면 그 언어에서 숫자가 사라진다.
+  // A placeholder used in only one language means the number disappears in the other.
   const placeholders = (s: string) => (s.match(/\{(\w+)\}/g) ?? []).sort().join(',');
   for (const key of Object.keys(MESSAGES[DEFAULT_LOCALE]) as MessageKey[]) {
     const expected = placeholders(MESSAGES[DEFAULT_LOCALE][key]);
@@ -83,7 +83,7 @@ test('deployment locale comes from DEFAULT_LOCALE and falls back safely', async 
     process.env.DEFAULT_LOCALE = 'ko';
     assert.equal(getDeploymentLocale(), 'ko');
 
-    // 오타나 지원하지 않는 언어를 넣어도 Slack 응답이 키 문자열로 나가면 안 된다.
+    // A typo or an unsupported language must not send a Slack reply consisting of a raw key.
     process.env.DEFAULT_LOCALE = 'de';
     assert.equal(getDeploymentLocale(), DEFAULT_LOCALE);
 

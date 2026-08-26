@@ -29,8 +29,9 @@ export type ScheduledChannelMessage = {
 
 /**
  * Schedules a channel message for a future time, via Slack's chat.scheduleMessage.
- * This is how send-in-N-minutes works without a cron, and it needs no extra scope.
- * The channelId returned is the channel from the response, always an id, so cancelling can use it directly.
+ * This is how send-in-N-minutes works without a cron, and it needs no scope beyond chat:write.
+ * The channelId returned is the `channel` from the response, always an ID, so it can be used
+ * directly when cancelling.
  */
 export async function scheduleChannel(
   channel: string,

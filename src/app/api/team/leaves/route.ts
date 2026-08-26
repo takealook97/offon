@@ -8,6 +8,7 @@ import {
   halfDayIsoRange,
 } from '@/lib/calendar-utils';
 import type { CalendarEvent } from '@/lib/api-types';
+import { workHours } from '@/lib/settings';
 import { getT } from '@/lib/i18n/server';
 import type { MessageKey } from '@/lib/i18n/dictionary';
 
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ startDate: 'asc' }, { memberId: 'asc' }],
     });
 
+    const hours = await workHours();
     const events: CalendarEvent[] = leaves.map((l) => {
       const label = t(typeKey(l.type));
       const title = `${l.member.name} ${label}`;
@@ -63,6 +65,7 @@ export async function GET(req: NextRequest) {
       const range = halfDayIsoRange(
         l.startDate,
         l.type as 'HALF_DAY_AM' | 'HALF_DAY_PM',
+        hours,
       );
       return {
         id: `team-leave-${l.id}`,

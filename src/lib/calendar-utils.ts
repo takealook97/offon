@@ -1,4 +1,5 @@
 import { wallToUtc } from './time';
+import { DEFAULT_WORK_HOURS, halfDayBounds, type WorkHours } from './work-hours';
 
 export function parseDate(s: string | null): Date | null {
   if (!s) return null;
@@ -14,11 +15,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
  *
  * Prisma reads a `@db.Date` as midnight UTC, so its UTC getters are the calendar date.
  *
- * This was called kstIsoFromDate and wrote a fixed offset straight into the string. The file was
- * missed when the timezone was made configurable. The calendar client
- * takes the **instant** and places it on the org timezone's wall clock,
- * so for any organisation outside Seoul leave landed wrong entirely: in America/New_York
- * a full day of leave appeared a day early and a morning half day ran from 8pm the previous evening.
+ * This was called `kstIsoFromDate` and wrote `+09:00` straight into the string. The file
+ * was missed when the timezone was made configurable. The calendar client takes the
+ * **instant** via `toGridDate(new Date(e.start))` and places it on the org's wall clock, so
+ * for any organisation outside Seoul leave landed in the wrong place entirely: in
+ * America/New_York a full day of leave appeared a day early, and a morning half day was
+ * drawn from 8pm the previous evening to midnight.
  */
 export function zonedIsoFromDate(d: Date, h = 0, min = 0): string {
   const y = d.getUTCFullYear();
@@ -36,12 +38,15 @@ export function addDaysUtc(d: Date, n: number): Date {
 /**
  * The span a half day occupies on the calendar.
  *
- * The working hours are not a setting yet and are fixed here. This is display
- * It is display only and is not used for the balance or for approval.
+ * The times derive from the org's working-hours setting; 09, 13 and 18 used to be written
+ * out here. Omitting the argument uses the default hours, which produces the same values.
  */
-export function halfDayIsoRange(workDate: Date, type: 'HALF_DAY_AM' | 'HALF_DAY_PM') {
-  if (type === 'HALF_DAY_AM') {
-    return { start: zonedIsoFromDate(workDate, 9), end: zonedIsoFromDate(workDate, 13) };
-  }
-  return { start: zonedIsoFromDate(workDate, 13), end: zonedIsoFromDate(workDate, 18) };
+export function halfDayIsoRange(
+  workDate: Date,
+  type: 'HALF_DAY_AM' | 'HALF_DAY_PM',
+  hours: WorkHours = DEFAULT_WORK_HOURS,
+) {
+  const { startMinutes, endMinutes } = halfDayBounds(hours, type);
+  const at = (m: number) => zonedIsoFromDate(workDate, Math.floor(m / 60), m % 60);
+  return { start: at(startMinutes), end: at(endMinutes) };
 }
