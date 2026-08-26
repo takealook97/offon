@@ -22,6 +22,8 @@ offon is self-hosted, so each deployment holds one organization's attendance rec
 ## Running it safely
 
 - Set `SESSION_SECRET`, `OTP_PEPPER`, and `CRON_SECRET` to distinct random values (`openssl rand -base64 32`). Never reuse the examples.
+  offon refuses to sign or hash without the first two and names the one that is missing, so a deployment cannot quietly run
+  without them — `OTP_PEPPER` in particular used to fall back to a guessable constant, which defeats the point of a pepper.
 - Serve over HTTPS. The session cookie depends on it.
 - Keep the database off the public internet.
 - **On serverless, the login rate limits are per-instance.** They are counted in process memory, so several instances mean
