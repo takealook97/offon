@@ -6,14 +6,13 @@ description: Issuing and verifying session tokens, the session cookie, the proxy
 # Sessions: a signed token in a cookie
 
 ## Why jose
-- `jsonwebtoken` is Node-only and unreliable in the proxy runtime.
-- `jose` is built on Web Crypto and works in both runtimes, which is what the Next.js authentication guide recommends.
+`jsonwebtoken` is Node-only and unreliable in the proxy runtime. `jose` is built on Web Crypto and works in both, which is what the Next.js authentication guide recommends.
 
 ## Dependencies
-- `jose`
+`jose`.
 
 ## Environment
-- `SESSION_SECRET` — a random secret of at least 32 bytes.
+`SESSION_SECRET` — a random secret of at least 32 bytes.
 
 ## Signing and verifying (`src/lib/auth.ts`)
 ```ts
@@ -120,6 +119,9 @@ return NextResponse.json({ ok: true });
 ```
 
 ## Never
-- Never store the token in `localStorage`.
-- Never set `SameSite=None`; nothing here is cross-site.
-- Nothing identifying goes in the payload: the member id and the role, and nothing else.
+- Store the token in `localStorage`.
+- Set `SameSite=None`; nothing here is cross-site.
+- Put anything identifying in the payload. It carries the member id and the role, and nothing else — no email, no Slack id.
+
+## One more thing the code does that this sketch does not
+`getSession()` also refuses a member who has been deactivated, even while their token is still valid, so deactivation takes effect immediately rather than whenever the token happens to expire. And the cookie is set with both `Max-Age` and an absolute `Expires`: some Android browser stacks keep the latter more reliably, which loses fewer sessions when a home-screen web app is reopened.

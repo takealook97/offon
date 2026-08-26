@@ -1,11 +1,11 @@
 ---
 name: next16-patterns
-description: The Next.js 16 App Router conventions to check before writing anything - route handlers, server actions, proxy.ts (not middleware), the asynchronous cookies() and headers(), and the folder layout. Much of this differs from earlier versions, so read it rather than guessing.
+description: The Next.js 16 App Router conventions to check before writing anything — route handlers, server actions, proxy.ts (not middleware), the asynchronous cookies() and headers(), and the App Router folder layout. Trigger this for adding an API, changing an auth guard, adding a page or touching the proxy config. Much of this differs from earlier versions of Next.js, so read it rather than guessing.
 ---
 
 # Next.js 16 conventions
 
-## Route Handler (`src/app/api/**/route.ts`)
+## Route handlers (`src/app/api/**/route.ts`)
 - The file must be named `route.ts`. It cannot sit in the same segment as a `page.tsx`.
 - Supported methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, each an exported async function.
 - The signature:
@@ -17,15 +17,15 @@ description: The Next.js 16 App Router conventions to check before writing anyth
     return NextResponse.json({ ok: true });
   }
   ```
-- Dynamic segments arrive in a second argument. **From Next 15 onwards `params` is itself a promise**, so it has to be awaited.
+- Dynamic segments arrive in a second argument, `context: { params: Promise<{ id: string }> }`. **From Next 15 onwards `params` is itself a promise**, so `const { id } = await context.params;`.
 
-## Server Action
+## Server actions
 - `'use server'` at the top of the file, or on the function.
-- Imported into a client component and used as a form action, or called from a handler.
+- Imported into a client component and used as `form action={serverAction}`, or called from a handler.
 - The return value has to be serialisable; convert dates to ISO strings.
-- **Every server action needs its own authentication check.** They can be POSTed to directly.
+- **Every server action needs its own authentication check.** They can be POSTed to directly from outside.
 
-## Proxy (Next 16, `src/proxy.ts`)
+## The proxy (`src/proxy.ts`)
 - **Not `middleware.ts`.** Next 16 renamed it.
 - Exactly one, at the project root or in `src/`.
 - The signature:
@@ -64,19 +64,17 @@ cookieStore.set('session', jwt, {
 
 cookieStore.delete('session');
 ```
-- These were synchronous up to 14.x and **asynchronous from 15 onwards**. A missing `await` is a type error.
+These were synchronous up to 14.x and **asynchronous from 15 onwards**. A missing `await` is a type error.
 
 ## App Router layout
 - `src/app/(group)/**` is a route group; it does not appear in the URL. This project uses `(app)` to hold the authenticated pages.
-- `src/app/layout.tsx` is the root layout.
-- `src/app/page.tsx` is the root page.
+- `src/app/layout.tsx` is the root layout, `src/app/page.tsx` the root page.
 - `loading.tsx`, `error.tsx` and `not-found.tsx` belong to their own segment.
 
 ## Fetching data in a page
-- Call the query directly in a server component.
-- Passed down as props. Only the parts that need interaction go inside a 'use client' boundary.
+Call `await prisma.xxx.findMany(...)` directly in a server component and pass the result down as props. Only the parts that need interaction go inside a `'use client'` boundary.
 
-## redirect / notFound
+## redirect and notFound
 ```ts
 import { redirect, notFound } from 'next/navigation';
 if (!session) redirect('/login');
