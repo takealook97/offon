@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
-import { listHolidays } from '@/lib/holidays';
+import { isDayString, listHolidays } from '@/lib/holidays';
 import { logAudit } from '@/lib/audit';
 import { getT } from '@/lib/i18n/server';
 
@@ -12,11 +12,16 @@ const CreateBody = z.object({
 });
 
 export async function GET(req: NextRequest) {
+  const t = await getT();
   try {
     await requireAdmin();
     const { searchParams } = new URL(req.url);
     const from = searchParams.get('from') ?? undefined;
     const to = searchParams.get('to') ?? undefined;
+    // Same reasoning as the read-only route: an unusable bound is reported, not dropped.
+    if ((from !== undefined && !isDayString(from)) || (to !== undefined && !isDayString(to))) {
+      return NextResponse.json({ ok: false, error: t('api.badParams') }, { status: 400 });
+    }
     const holidays = await listHolidays({ from, to });
     return NextResponse.json({ ok: true, holidays });
   } catch (e) {
