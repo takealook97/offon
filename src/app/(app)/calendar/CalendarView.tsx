@@ -12,7 +12,7 @@ import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
 import {
-  CALENDAR_MESSAGES,
+  calendarMessages,
   WEEK_OPTS,
   formats,
   localizer,
@@ -257,7 +257,7 @@ export function CalendarView({ memberId }: { memberId?: number }) {
           onDrillDown={(d) => openDayModal(d)}
           onShowMore={(_evts, d) => openDayModal(d)}
           doShowMoreDrillDown={false}
-          messages={CALENDAR_MESSAGES}
+          messages={calendarMessages(t)}
           style={{ height: '100%' }}
         />
       </div>

@@ -10,7 +10,7 @@ import {
   isBusinessDayKSTDateStr,
   todayKST,
 } from '@/lib/time';
-import { leaveTypeLabel, formatLeaveDateRangeKST } from '@/lib/leave-labels';
+import { leaveTypeKey, formatLeaveDateRangeKST } from '@/lib/leave-labels';
 import { getHolidaySet } from '@/lib/holidays';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
@@ -34,6 +34,7 @@ function dayCount(
 export async function POST(req: NextRequest) {
   const t = await getT();
   const dt = getDeploymentT();
+  const weekdays = dt('weekday.short').split(',');
   try {
     const session = await requireSession();
     const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -146,8 +147,8 @@ export async function POST(req: NextRequest) {
     const admins = await prisma.member.findMany({
       where: { role: 'ADMIN', deletedAt: null },
     });
-    const dateRange = formatLeaveDateRangeKST(startDate, endDate);
-    const action = `requested ${leaveTypeLabel(type)}`;
+    const dateRange = formatLeaveDateRangeKST(startDate, endDate, weekdays);
+    const action = `requested ${dt(leaveTypeKey(type))}`;
     await Promise.all(
       admins.map((a) =>
         sendDm(

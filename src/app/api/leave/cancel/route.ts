@@ -5,7 +5,7 @@ import { requireSession } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { todayKST } from '@/lib/time';
-import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
+import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
 
@@ -14,6 +14,7 @@ const Body = z.object({ id: z.coerce.number().int() });
 export async function POST(req: NextRequest) {
   const t = await getT();
   const dt = getDeploymentT();
+  const weekdays = dt('weekday.short').split(',');
   try {
     const session = await requireSession();
     const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest) {
       prisma.member.findFirst({ where: { id: session.memberId, deletedAt: null } }),
       prisma.member.findMany({ where: { role: 'ADMIN', deletedAt: null } }),
     ]);
-    const dateRange = formatLeaveDateRange(target.startDate, target.endDate);
-    const typeLabel = leaveTypeLabel(target.type);
+    const dateRange = formatLeaveDateRange(target.startDate, target.endDate, weekdays);
+    const typeLabel = dt(leaveTypeKey(target.type));
     await Promise.all(
       admins.map((a) =>
         sendDm(

@@ -7,12 +7,15 @@ import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { formatKST, countBusinessDaysKST } from '@/lib/time';
 import { getHolidaySet } from '@/lib/holidays';
-import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
+import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
 export async function POST(req: NextRequest) {
+  const dt = getDeploymentT();
+  const weekdays = dt('weekday.short').split(',');
   const t = await getT();
   try {
     const admin = await requireAdmin();
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        `${formatLeaveDateRange(target.startDate, target.endDate)} ${leaveTypeLabel(target.type)} was approved.`,
+        `${formatLeaveDateRange(target.startDate, target.endDate, weekdays)} ${dt(leaveTypeKey(target.type))} was approved.`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

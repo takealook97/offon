@@ -4,12 +4,15 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { leaveTypeLabel, formatLeaveDateRange } from '@/lib/leave-labels';
+import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 
 const Body = z.object({ id: z.coerce.number().int(), reason: z.string().max(500).optional() });
 
 export async function POST(req: NextRequest) {
+  const dt = getDeploymentT();
+  const weekdays = dt('weekday.short').split(',');
   const t = await getT();
   try {
     const admin = await requireAdmin();
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        `${formatLeaveDateRange(target.startDate, target.endDate)} ${leaveTypeLabel(target.type)} was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}.`,
+        `${formatLeaveDateRange(target.startDate, target.endDate, weekdays)} ${dt(leaveTypeKey(target.type))} was rejected${parsed.data.reason ? ` (reason: ${parsed.data.reason})` : ''}.`,
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

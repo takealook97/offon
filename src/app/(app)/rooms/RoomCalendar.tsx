@@ -12,7 +12,7 @@ import { Calendar, Views, type SlotInfo } from 'react-big-calendar';
 import { addDays, addWeeks, endOfWeek, format, getDay, startOfWeek } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/cn';
-import { CALENDAR_MESSAGES, WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
+import { calendarMessages, WEEK_OPTS, formats, localizer } from '@/lib/rbc-localizer';
 import type { RoomBookingDTO, RoomBookingsResponse, RoomDTO } from '@/lib/api-types';
 import {
   DEFAULT_BOOKING_MINUTES,
@@ -445,7 +445,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
               onSelectEvent={(e: UiBooking) => setDetail(e.resource)}
               eventPropGetter={eventPropGetter}
               dayPropGetter={dayPropGetter}
-              messages={CALENDAR_MESSAGES}
+              messages={calendarMessages(t)}
             />
           </div>
         </div>
