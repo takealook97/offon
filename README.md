@@ -14,7 +14,7 @@ Self-hosted. MIT licensed. Deploys to Vercel in about 10 minutes.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org)
 
-[Quick start](#quick-start) · [Slack setup](docs/slack-app.md) · [Self-hosting](docs/self-hosting.md) · [Contributing](CONTRIBUTING.md)
+[Quick start](#quick-start) · [Using offon](docs/using-offon.md) · [Slack setup](docs/slack-app.md) · [Self-hosting](docs/self-hosting.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -43,6 +43,8 @@ Someone starts their day by typing this in Slack:
 They're clocked in, and the team channel says so. At lunch, `/lunch` — a meal is a fixed 60 minutes, so they come back automatically without a second command. Stepping out is `/break`, coming back is `/back`, and the day ends with `/bye`.
 
 Everything else — leave requests, approvals, the calendar, corrections when someone forgets to clock out — lives in a web app that people sign into **with a code DM'd to them on Slack**. No passwords to manage, no accounts to provision.
+
+**[docs/using-offon.md](docs/using-offon.md)** is written for your team — hand it to them once you're deployed.
 
 ## Features
 
