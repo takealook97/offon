@@ -6,8 +6,25 @@ import { formatZoned, dayKey, wallToUtc, utcToWall } from './time';
 /** What kind of break is being edited. Older stored JSON may not carry this, so a missing value reads as BREAK. */
 export type EditBreakKind = 'BREAK' | 'LUNCH';
 
-/** The fixed meal length. Must match the constant in src/lib/attendance.ts. */
-export const LUNCH_MINUTES = 60;
+/**
+ * The meal length used before any setting exists. The real value comes from admin settings.
+ */
+export const DEFAULT_MEAL_MINUTES = 60;
+
+/**
+ * The meal-length policy.
+ *
+ * `current` applies to meals being created. `allowed` holds the lengths of meals **already
+ * saved** on this session. After changing the setting from 60 to 45, editing an old 60-minute
+ * meal for an unrelated reason — correcting a clock-out, say — must not quietly shrink it to 45.
+ * A record carries both its start and its end, so it describes its own length and needs no column.
+ */
+export type MealPolicy = { current: number; allowed: readonly number[] };
+
+export const DEFAULT_MEAL_POLICY: MealPolicy = {
+  current: DEFAULT_MEAL_MINUTES,
+  allowed: [],
+};
 
 export function normalizeBreakKind(kind: unknown): EditBreakKind {
   return kind === 'LUNCH' ? 'LUNCH' : 'BREAK';
@@ -16,7 +33,7 @@ export function normalizeBreakKind(kind: unknown): EditBreakKind {
 /**
  * The normalised timeline, as stored and displayed. Every time is a UTC ISO string.
  * A null endAt means the session is still running.
- * A meal ends at its start plus the fixed length, or at the clock-out if that comes first.
+ * A meal's end is derived as its start plus the meal length, or the clock-out if that is earlier.
  */
 export type EditTimeline = {
   startAt: string;
@@ -34,7 +51,7 @@ export const EditRequestBody = z.object({
   reason: z.string().max(500).optional(),
   clockIn: WALL,
   clockOut: WALL.nullable().optional(),
-  // A meal's end is not taken from the client; the server recomputes it from the start plus the fixed length.
+  // A meal's end is not taken from the client; the server recomputes it from the start plus the meal length.
   breaks: z
     .array(
       z.object({
@@ -55,6 +72,8 @@ export type TimelineInput = {
 
 /** A session shaped for the correction dialog. Times are wall clock; a null clockOut means still running. */
 export type EditableSession = {
+  /** The length to use for a newly added meal. Saved meals arrive carrying their own end. */
+  mealMinutes: number;
   id: number;
   dateLabel: string;
   clockIn: string;
@@ -68,9 +87,11 @@ export function buildEditableSession(
   breaks: { startAt: Date; endAt: Date | null; kind?: string }[],
   /** The label contains a weekday name, so it follows the viewer's language. */
   locale: 'ko' | 'en' = 'ko',
+  mealMinutes: number = DEFAULT_MEAL_MINUTES,
 ): EditableSession {
   return {
     id: session.id,
+    mealMinutes,
     dateLabel: formatZoned(session.startAt, 'yyyy-MM-dd (EEE)', locale),
     clockIn: utcToWall(session.startAt),
     clockOut: session.endAt ? utcToWall(session.endAt) : null,
@@ -89,12 +110,25 @@ export function buildEditableSession(
  * Used unchanged by the front end, for immediate feedback, and by the back end, as the trust boundary.
  * The rules: clock-in before clock-out where there is one; nothing in the future; a break starts before it ends;
  *       breaks sit inside [clock-in, clock-out or now], sorted and non-overlapping.
- * A meal takes no end from the input; it is derived as start plus the fixed length, or the clock-out if earlier,
+ * A meal takes no end from the input; it is derived as start plus the configured length, or the clock-out if earlier,
  * A meal in progress may legitimately end in the future, so the no-future rule is not applied to its end.
  */
+/** Decides whether an incoming meal keeps its existing length or takes the current setting. */
+function mealMinutesFor(
+  b: { start: string; end: string },
+  meal: MealPolicy,
+): number {
+  const start = wallToUtc(b.start);
+  const end = wallToUtc(b.end);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return meal.current;
+  const requested = Math.round((end.getTime() - start.getTime()) / 60_000);
+  return meal.allowed.includes(requested) ? requested : meal.current;
+}
+
 export function buildAndValidateTimeline(
   input: TimelineInput,
   now: Date = new Date(),
+  meal: MealPolicy = DEFAULT_MEAL_POLICY,
 ):
   | { ok: true; timeline: EditTimeline }
   /** Failures are message keys. The screen and Slack each render them in their own language. */
@@ -127,13 +161,12 @@ export function buildAndValidateTimeline(
     const kind = normalizeBreakKind(b.kind);
     const labelKey: MessageKey = kind === 'LUNCH' ? 'edit.meal' : 'edit.away';
     const s = wallToUtc(b.start);
-    // A meal ends at its start plus the fixed length, never at an input value; it only moves.
-    // Why it is not trimmed to the clock-out: its length would jump around on every unrelated edit,
-    // such as correcting a clock-out. Anything out of range is reported as an error below.
-    const e =
-      kind === 'LUNCH'
-        ? new Date(s.getTime() + LUNCH_MINUTES * 60_000)
-        : wallToUtc(b.end);
+    // A meal's end is not the user's to set; it only moves. It is not trimmed to the clock-out either, because
+    // because its length would otherwise jump around on every unrelated edit.
+    //
+    // A length matching one already saved on this session is kept; anything else takes the
+    // current setting. Without that allow-list, changing the setting would rewrite the past.
+    const e = kind === 'LUNCH' ? new Date(s.getTime() + mealMinutesFor(b, meal) * 60_000) : wallToUtc(b.end);
     if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
       return { ok: false, messageKey: 'valid.breakBadFormat', kindKey: labelKey };
     }

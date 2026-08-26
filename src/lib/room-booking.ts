@@ -12,10 +12,17 @@ import { z } from 'zod';
  * and the tests all run the same functions -- the same approach attendance-edit.ts takes.
  */
 
-/** When bookings open. Must match the week grid's lower bound. */
-export const ROOM_OPEN_MINUTES = 8 * 60;
-/** When bookings close. Must match the week grid's upper bound. */
-export const ROOM_CLOSE_MINUTES = 19 * 60;
+/**
+ * The bookable window, in minutes from midnight. It varies by organisation and comes from admin settings.
+ * It has to match the week grid's bounds, or the grid offers slots that validation then refuses.
+ */
+export type RoomHours = { openMinutes: number; closeMinutes: number };
+
+/** Used before any setting exists, such as right after seeding: 08:00 to 19:00. */
+export const DEFAULT_ROOM_HOURS: RoomHours = {
+  openMinutes: 8 * 60,
+  closeMinutes: 19 * 60,
+};
 /** The granularity of a time choice, in minutes. Must match the calendar's `step`. */
 export const ROOM_STEP_MINUTES = 10;
 /** The length pre-filled when an empty slot is clicked rather than dragged. */
@@ -89,6 +96,7 @@ export function validateBookingRange(
   start: string,
   end: string,
   nowWall: string,
+  hours: RoomHours,
 ): BookingCheck {
   if (wallDate(start) !== wallDate(end)) {
     return { ok: false, messageKey: 'valid.sameDayOnly' };
@@ -101,9 +109,9 @@ export function validateBookingRange(
   if (e <= s) {
     return { ok: false, messageKey: 'valid.endBeforeStart' };
   }
-  if (s < ROOM_OPEN_MINUTES || e > ROOM_CLOSE_MINUTES) {
-    const open = minutesToHhMm(ROOM_OPEN_MINUTES);
-    const close = minutesToHhMm(ROOM_CLOSE_MINUTES);
+  if (s < hours.openMinutes || e > hours.closeMinutes) {
+    const open = minutesToHhMm(hours.openMinutes);
+    const close = minutesToHhMm(hours.closeMinutes);
     return { ok: false, messageKey: 'valid.openHours', vars: { open, close } };
   }
   if (start < nowWall) {
@@ -130,13 +138,14 @@ export function findConflict(
 
 /**
  * The end time pre-filled when an empty slot is clicked: the default length, clamped to
- * clamped to closing time if it would run past.
+ * closing time if it would run past.
  */
 export function defaultEndWall(
   start: string,
+  closeMinutes: number,
   minutes: number = DEFAULT_BOOKING_MINUTES,
 ): string {
-  const end = Math.min(wallMinutes(start) + minutes, ROOM_CLOSE_MINUTES);
+  const end = Math.min(wallMinutes(start) + minutes, closeMinutes);
   return toWallString(wallDate(start), end);
 }
 

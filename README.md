@@ -60,6 +60,7 @@ Everything else — leave requests, approvals, the calendar, corrections when so
 - **Scheduled nudges** — Missing clock-in and clock-out reminders, and yearly leave rollover.
 - **English and Korean** — Each person picks their language from the header; Slack messages follow `DEFAULT_LOCALE`.
 - **Any timezone** — Set `NEXT_PUBLIC_TIMEZONE` to your IANA zone. Day boundaries and totals follow it, daylight saving included.
+- **Your own policy** — Meeting-room hours and the meal length are admin settings, not constants. Changing the meal length applies to meals started from then on; the ones already recorded keep their own.
 
 ## What it looks like
 
@@ -123,7 +124,6 @@ Worth knowing before you deploy — these are real, and PRs are welcome on all o
 
 - **Postgres only.** The schema and migrations are Postgres-specific. Supabase, Neon, Railway, RDS all qualify; MySQL and SQLite do not.
 - **One organization per deployment.** There's no tenant concept in the schema — run a second deployment for a second org.
-- **Meeting-room hours and meal length are constants**, not settings. Rooms run 08:00–19:00 in 10-minute slots; a meal is 60 minutes.
 
 ## Tech stack
 

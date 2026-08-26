@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DEFAULT_MEAL_POLICY,
+  buildAndValidateTimeline,
   mergeAttendanceEditTimeline,
   type EditTimeline,
 } from './attendance-edit';
@@ -120,4 +122,71 @@ test('a clock-out changed differently on both sides is a conflict', () => {
   const result = mergeAttendanceEditTimeline(base, proposed, live);
 
   assert.deepEqual(result, { ok: false, conflicts: ['endAt'] });
+});
+
+// --- The meal-length policy -------------------------------------------------
+
+/** The smallest input for a day, carrying one meal of the given length. */
+function dayWithMeal(mealStart: string, mealEnd: string) {
+  return {
+    clockIn: '2026-07-25T09:00',
+    clockOut: '2026-07-25T18:00',
+    breaks: [{ start: mealStart, end: mealEnd, kind: 'LUNCH' as const }],
+  };
+}
+
+function mealMinutesOf(result: ReturnType<typeof buildAndValidateTimeline>): number {
+  assert.ok(result.ok, 'expected the timeline to validate');
+  const b = result.timeline.breaks[0];
+  return Math.round(
+    (new Date(b.endAt).getTime() - new Date(b.startAt).getTime()) / 60_000,
+  );
+}
+
+const NOW = new Date('2026-07-25T23:00:00Z');
+
+test('a new meal takes the current setting, whatever the client sent', () => {
+  // Even when the client sends 90 minutes, the server decides from the setting.
+  const result = buildAndValidateTimeline(
+    dayWithMeal('2026-07-25T12:00', '2026-07-25T13:30'),
+    NOW,
+    { current: 45, allowed: [] },
+  );
+  assert.equal(mealMinutesOf(result), 45);
+});
+
+test('an already-stored meal keeps its own length after the setting changes', () => {
+  // A day with a meal recorded at 60 minutes. After the setting moves to 45, correcting only
+  // the clock-out must not shrink that meal — that would let a setting rewrite the past.
+  const result = buildAndValidateTimeline(
+    dayWithMeal('2026-07-25T12:00', '2026-07-25T13:00'),
+    NOW,
+    { current: 45, allowed: [60] },
+  );
+  assert.equal(mealMinutesOf(result), 60);
+});
+
+test('a length that was never stored falls back to the setting', () => {
+  // 90 minutes was never saved on this session. It is treated as an attempt to plant an arbitrary length, and the setting is used.
+  const result = buildAndValidateTimeline(
+    dayWithMeal('2026-07-25T12:00', '2026-07-25T13:30'),
+    NOW,
+    { current: 45, allowed: [60] },
+  );
+  assert.equal(mealMinutesOf(result), 45);
+});
+
+test('moving a stored meal keeps its length', () => {
+  // Moving only the start, from 12:00 to 11:30, keeps the 60 minutes.
+  const result = buildAndValidateTimeline(
+    dayWithMeal('2026-07-25T11:30', '2026-07-25T12:30'),
+    NOW,
+    { current: 45, allowed: [60] },
+  );
+  assert.equal(mealMinutesOf(result), 60);
+});
+
+test('the default policy is a one-hour meal', () => {
+  assert.equal(DEFAULT_MEAL_POLICY.current, 60);
+  assert.deepEqual(DEFAULT_MEAL_POLICY.allowed, []);
 });

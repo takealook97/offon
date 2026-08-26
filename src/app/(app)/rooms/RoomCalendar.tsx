@@ -17,8 +17,7 @@ import type { RoomBookingDTO, RoomBookingsResponse, RoomDTO } from '@/lib/api-ty
 import {
   DEFAULT_BOOKING_MINUTES,
   MEETING_TYPE_KEY,
-  ROOM_CLOSE_MINUTES,
-  ROOM_OPEN_MINUTES,
+  type RoomHours,
   ROOM_STEP_MINUTES,
   bookingsOnDate,
   clampEndToNextBooking,
@@ -40,8 +39,7 @@ import { toGridDate, gridNow, fromGridDate } from '@/lib/time';
  * Kept at module scope. A fresh Date on every render changes the key of the library's slot cache
  * each time, forcing needless recomputation. Only the hours and minutes are read.
  */
-const MIN_TIME = new Date(1970, 0, 1, ROOM_OPEN_MINUTES / 60, 0, 0);
-const MAX_TIME = new Date(1970, 0, 1, ROOM_CLOSE_MINUTES / 60, 0, 0);
+
 /** step x timeslots = 60 minutes. A group is exactly an hour, so the gutter is labelled only on the hour. */
 const SLOTS_PER_GROUP = 60 / ROOM_STEP_MINUTES;
 
@@ -83,7 +81,10 @@ function nextStepMinutes(now: Date): number {
   return Math.ceil(current / ROOM_STEP_MINUTES) * ROOM_STEP_MINUTES;
 }
 
-export function RoomCalendar({ viewerId }: { viewerId: number }) {
+export function RoomCalendar({ viewerId, hours }: { viewerId: number; hours: RoomHours }) {
+  // The grid's min and max must match what validation uses. If they drift, a slot can be clicked but is then refused.
+  const minTime = useMemo(() => new Date(1970, 0, 1, hours.openMinutes / 60, 0, 0), [hours]);
+  const maxTime = useMemo(() => new Date(1970, 0, 1, hours.closeMinutes / 60, 0, 0), [hours]);
   const { t, locale } = useTranslation();
   const [rooms, setRooms] = useState<RoomDTO[]>([]);
   const [bookings, setBookings] = useState<RoomBookingDTO[]>([]);
@@ -241,13 +242,13 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
         if (!blocking) break;
         start = blocking.end;
       }
-      if (wallMinutes(start) >= ROOM_CLOSE_MINUTES) {
+      if (wallMinutes(start) >= hours.closeMinutes) {
         toast.error(t('room.dayFull'));
         return;
       }
 
       // Once the start has moved, the original end means nothing, so fall back to the default length.
-      const end = start === startWall ? endWall : defaultEndWall(start);
+      const end = start === startWall ? endWall : defaultEndWall(start, hours.closeMinutes);
       const clamped = clampEndToNextBooking(daySlots, start, end);
       if (!clamped) {
         toast.error(t('room.slotTaken'));
@@ -255,7 +256,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       }
       setDraft({ mode: 'create', start, end: clamped });
     },
-    [slots, t],
+    [slots, t, hours],
   );
 
   /**
@@ -279,8 +280,8 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
 
       let start = startWall;
       if (day === today && start < toWall(now)) {
-        const bumped = Math.max(nextStepMinutes(now), ROOM_OPEN_MINUTES);
-        if (bumped >= ROOM_CLOSE_MINUTES) {
+        const bumped = Math.max(nextStepMinutes(now), hours.openMinutes);
+        if (bumped >= hours.closeMinutes) {
           toast.error(t('room.pastTimeToday'));
           return;
         }
@@ -292,10 +293,10 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       const end =
         draggedEnd && draggedEnd > start
           ? draggedEnd
-          : defaultEndWall(start, DEFAULT_BOOKING_MINUTES);
+          : defaultEndWall(start, hours.closeMinutes, DEFAULT_BOOKING_MINUTES);
       openDraft(start, end);
     },
-    [rooms.length, openDraft, t],
+    [rooms.length, openDraft, t, hours],
   );
 
   const handleSelectSlot = useCallback(
@@ -334,18 +335,18 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       // A tap outside the grid, such as on a day header, opens at the start of that day.
       const withinGrid = clientY >= r.top && clientY < r.bottom;
       const minutes = withinGrid
-        ? ROOM_OPEN_MINUTES +
-          ((clientY - r.top) / r.height) * (ROOM_CLOSE_MINUTES - ROOM_OPEN_MINUTES)
-        : ROOM_OPEN_MINUTES;
+        ? hours.openMinutes +
+          ((clientY - r.top) / r.height) * (hours.closeMinutes - hours.openMinutes)
+        : hours.openMinutes;
 
       const snapped = Math.floor(minutes / ROOM_STEP_MINUTES) * ROOM_STEP_MINUTES;
       const clamped = Math.min(
-        Math.max(snapped, ROOM_OPEN_MINUTES),
-        ROOM_CLOSE_MINUTES - ROOM_STEP_MINUTES,
+        Math.max(snapped, hours.openMinutes),
+        hours.closeMinutes - ROOM_STEP_MINUTES,
       );
       return toWallString(day, clamped);
     },
-    [range.start],
+    [range.start, hours],
   );
 
   const touchStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
@@ -416,7 +417,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
             // because RBC labels only the start of each group and so omits the last hour.
             style={
               {
-                '--room-close-label': `'${minutesToHhMm(ROOM_CLOSE_MINUTES)}'`,
+                '--room-close-label': `'${minutesToHhMm(hours.closeMinutes)}'`,
               } as CSSProperties
             }
           >
@@ -439,9 +440,9 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
               allDayAccessor="allDay"
               step={ROOM_STEP_MINUTES}
               timeslots={SLOTS_PER_GROUP}
-              min={MIN_TIME}
-              max={MAX_TIME}
-              scrollToTime={MIN_TIME}
+              min={minTime}
+              max={maxTime}
+              scrollToTime={minTime}
               // 'ignoreEvents' keeps a drag begun on top of an event from turning into a slot selection.
               selectable="ignoreEvents"
               // On touch a short swipe passes through as horizontal scrolling; only a held press starts a selection.
@@ -464,6 +465,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           draft={draft}
           roomId={roomId}
           viewerId={viewerId}
+          hours={hours}
           dayBookings={draftDayBookings}
           open
           onOpenChange={(o) => !o && closeDialogs()}

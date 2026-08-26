@@ -75,9 +75,9 @@ model Member {
   leaveBalance     LeaveBalance?
   loginCodes       LoginCode[]
 
-  roomBookings         RoomBooking[]          @relation("RoomBookingOrganizer")
-  roomBookingAttendees RoomBookingAttendee[]  @relation("RoomBookingAttendee")
-  roomBookingReminders RoomBookingReminder[]  @relation("RoomBookingReminder")
+  roomBookings         RoomBooking[]         @relation("RoomBookingOrganizer")
+  roomBookingAttendees RoomBookingAttendee[] @relation("RoomBookingAttendee")
+  roomBookingReminders RoomBookingReminder[] @relation("RoomBookingReminder")
 
   @@index([slackId])
   @@index([email])
@@ -261,6 +261,11 @@ model AppSetting {
   missingClockInNotifyEnabled  Boolean  @default(false) @map("missing_clockin_notify_enabled")
   missingClockOutNotifyEnabled Boolean  @default(false) @map("missing_clockout_notify_enabled")
   lunchReminderNotifyEnabled   Boolean  @default(false) @map("lunch_reminder_notify_enabled")
+  /// The bookable window for rooms, in minutes from midnight. Defaults to 08:00-19:00.
+  roomOpenMinutes              Int      @default(480) @map("room_open_minutes")
+  roomCloseMinutes             Int      @default(1140) @map("room_close_minutes")
+  /// The fixed meal length in minutes. Applies to meals started from now on and leaves the past alone.
+  mealMinutes                  Int      @default(60) @map("meal_minutes")
   updatedAt                    DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
@@ -280,14 +285,14 @@ model MeetingRoom {
 }
 
 model RoomBooking {
-  id       Int         @id @default(autoincrement())
-  roomId   Int         @map("room_id")
-  memberId Int         @map("member_id")
-  type     MeetingType
+  id                Int               @id @default(autoincrement())
+  roomId            Int               @map("room_id")
+  memberId          Int               @map("member_id")
+  type              MeetingType
   /// Why the room was booked. What is typed here becomes the calendar event's title.
-  title    String
-  startAt  DateTime    @map("start_at")
-  endAt    DateTime    @map("end_at")
+  title             String
+  startAt           DateTime          @map("start_at")
+  endAt             DateTime          @map("end_at")
   /// External attendees, as typed. They are not members, so there is nothing to key against.
   externalAttendees String?           @map("external_attendees")
   /// Cancelling flips the status rather than deleting the row, as leave does. Only confirmed bookings count for overlaps.
@@ -324,11 +329,11 @@ model RoomBookingAttendee {
 }
 
 model RoomBookingReminder {
-  id Int @id @default(autoincrement())
-  bookingId Int @map("booking_id")
-  memberId  Int @map("member_id")
+  id                 Int      @id @default(autoincrement())
+  bookingId          Int      @map("booking_id")
+  memberId           Int      @map("member_id")
   /// The Slack DM channel id, passed straight to the cancel call.
-  channelId String @map("channel_id")
+  channelId          String   @map("channel_id")
   /// The scheduled message id Slack returned.
   scheduledMessageId String   @map("scheduled_message_id")
   /// When it is due to be sent, shortly before the meeting. Kept for diagnosis and recomputation.

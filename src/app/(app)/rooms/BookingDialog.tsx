@@ -29,8 +29,7 @@ import type { RoomBookingDTO } from '@/lib/api-types';
 import {
   MEETING_TYPES,
   MEETING_TYPE_KEY,
-  ROOM_CLOSE_MINUTES,
-  ROOM_OPEN_MINUTES,
+  type RoomHours,
   ROOM_STEP_MINUTES,
   findConflict,
   minutesToHhMm,
@@ -50,9 +49,9 @@ type Item = [value: string, label: string];
 /** The bookable hours. The last one is an end time only; the predicate below rules it out as a start. */
 /** The labels are language-dependent, so this cannot be a module constant. */
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
-const hourItems = (t: Translate): Item[] =>
-  Array.from({ length: ROOM_CLOSE_MINUTES / 60 - ROOM_OPEN_MINUTES / 60 + 1 }, (_, i) => {
-    const h = ROOM_OPEN_MINUTES / 60 + i;
+const hourItems = (t: Translate, hours: RoomHours): Item[] =>
+  Array.from({ length: hours.closeMinutes / 60 - hours.openMinutes / 60 + 1 }, (_, i) => {
+    const h = hours.openMinutes / 60 + i;
     return [String(h).padStart(2, '0'), t('room.hour', { h })];
   });
 
@@ -111,10 +110,12 @@ export function BookingDialog({
   roomId,
   viewerId,
   dayBookings,
+  hours,
   open,
   onOpenChange,
   onDone,
 }: {
+  hours: RoomHours;
   draft: BookingDraft;
   roomId: number;
   viewerId: number;
@@ -160,8 +161,8 @@ export function BookingDialog({
    */
   const now = nowWall();
   const startAllowed = (candidate: string) =>
-    validateBookingRange(candidate, toWallString(dateStr, ROOM_CLOSE_MINUTES), now).ok;
-  const endAllowed = (candidate: string) => validateBookingRange(start, candidate, now).ok;
+    validateBookingRange(candidate, toWallString(dateStr, hours.closeMinutes), now, hours).ok;
+  const endAllowed = (candidate: string) => validateBookingRange(start, candidate, now, hours).ok;
 
   const startHourDisabled = (h: string) =>
     !minuteItems(t).some(([m]) => startAllowed(`${dateStr}T${h}:${m}`));
@@ -171,7 +172,7 @@ export function BookingDialog({
     !minuteItems(t).some(([m]) => endAllowed(`${dateStr}T${h}:${m}`));
   const endMinuteDisabled = (m: string) => !endAllowed(`${dateStr}T${hourOf(end)}:${m}`);
 
-  const rangeCheck = validateBookingRange(start, end, now);
+  const rangeCheck = validateBookingRange(start, end, now, hours);
   const conflict = useMemo(
     () => findConflict(dayBookings, start, end, editingId),
     [dayBookings, start, end, editingId],
@@ -244,7 +245,7 @@ export function BookingDialog({
                 label={t('room.startHour')}
                 value={hourOf(start)}
                 onValueChange={(h) => setStartPart(h, minuteOf(start))}
-                items={hourItems(t)}
+                items={hourItems(t, hours)}
                 isDisabled={startHourDisabled}
               />
               <TimeSel
@@ -259,7 +260,7 @@ export function BookingDialog({
                 label={t('room.endHour')}
                 value={hourOf(end)}
                 onValueChange={(h) => setEndPart(h, minuteOf(end))}
-                items={hourItems(t)}
+                items={hourItems(t, hours)}
                 isDisabled={endHourDisabled}
               />
               <TimeSel

@@ -1,12 +1,15 @@
-import { test } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_ROOM_HOURS,
   clampEndToNextBooking,
   defaultEndWall,
   findConflict,
   validateBookingRange,
   type BookingSlot,
 } from './room-booking';
+
+const HOURS = DEFAULT_ROOM_HOURS;
 
 const D = '2026-08-05';
 const at = (hhmm: string) => `${D}T${hhmm}`;
@@ -28,47 +31,47 @@ function expectFail(
 // ── validateBookingRange ──────────────────────────────────────────────
 
 test('accepts the smallest bookable slot at opening time', () => {
-  assert.deepEqual(validateBookingRange(at('08:00'), at('08:10'), NOW), { ok: true });
+  assert.deepEqual(validateBookingRange(at('08:00'), at('08:10'), NOW, HOURS), { ok: true });
 });
 
 test('accepts a booking that ends exactly at closing time', () => {
-  assert.deepEqual(validateBookingRange(at('18:50'), at('19:00'), NOW), { ok: true });
+  assert.deepEqual(validateBookingRange(at('18:50'), at('19:00'), NOW, HOURS), { ok: true });
 });
 
 test('rejects a start before opening time', () => {
-  expectFail(validateBookingRange(at('07:50'), at('08:30'), NOW), 'valid.openHours');
+  expectFail(validateBookingRange(at('07:50'), at('08:30'), NOW, HOURS), 'valid.openHours');
 });
 
 test('rejects an end after closing time', () => {
-  expectFail(validateBookingRange(at('18:00'), at('19:10'), NOW), 'valid.openHours');
+  expectFail(validateBookingRange(at('18:00'), at('19:10'), NOW, HOURS), 'valid.openHours');
 });
 
 test('rejects a start that is not on a 10-minute boundary', () => {
-  expectFail(validateBookingRange(at('10:05'), at('11:00'), NOW), 'valid.stepMinutes');
+  expectFail(validateBookingRange(at('10:05'), at('11:00'), NOW, HOURS), 'valid.stepMinutes');
 });
 
 test('rejects an end that is not on a 10-minute boundary', () => {
-  expectFail(validateBookingRange(at('10:00'), at('10:55'), NOW), 'valid.stepMinutes');
+  expectFail(validateBookingRange(at('10:00'), at('10:55'), NOW, HOURS), 'valid.stepMinutes');
 });
 
 test('rejects an end earlier than the start', () => {
-  expectFail(validateBookingRange(at('11:00'), at('10:00'), NOW), 'valid.endBeforeStart');
+  expectFail(validateBookingRange(at('11:00'), at('10:00'), NOW, HOURS), 'valid.endBeforeStart');
 });
 
 test('rejects a zero-length booking', () => {
-  expectFail(validateBookingRange(at('10:00'), at('10:00'), NOW), 'valid.endBeforeStart');
+  expectFail(validateBookingRange(at('10:00'), at('10:00'), NOW, HOURS), 'valid.endBeforeStart');
 });
 
 test('rejects a booking that crosses midnight into the next day', () => {
-  expectFail(validateBookingRange(`${D}T18:00`, '2026-08-06T09:00', NOW), 'valid.sameDayOnly');
+  expectFail(validateBookingRange(`${D}T18:00`, '2026-08-06T09:00', NOW, HOURS), 'valid.sameDayOnly');
 });
 
 test('rejects a start in the past', () => {
-  expectFail(validateBookingRange(at('09:00'), at('10:00'), at('10:00')), 'valid.pastTime');
+  expectFail(validateBookingRange(at('09:00'), at('10:00'), at('10:00'), HOURS), 'valid.pastTime');
 });
 
 test('accepts a start exactly at the current time', () => {
-  assert.deepEqual(validateBookingRange(at('10:00'), at('11:00'), at('10:00')), {
+  assert.deepEqual(validateBookingRange(at('10:00'), at('11:00'), at('10:00'), HOURS), {
     ok: true,
   });
 });
@@ -112,15 +115,15 @@ test('returns null for a booking on a different day', () => {
 // ── defaultEndWall ────────────────────────────────────────────────────
 
 test('fills in a 30-minute default end', () => {
-  assert.equal(defaultEndWall(at('10:00')), at('10:30'));
+  assert.equal(defaultEndWall(at('10:00'), HOURS.closeMinutes), at('10:30'));
 });
 
 test('clamps the default end to closing time', () => {
-  assert.equal(defaultEndWall(at('18:50')), at('19:00'));
+  assert.equal(defaultEndWall(at('18:50'), HOURS.closeMinutes), at('19:00'));
 });
 
 test('clamps a default end that would overshoot closing time', () => {
-  assert.equal(defaultEndWall(at('18:40')), at('19:00'));
+  assert.equal(defaultEndWall(at('18:40'), HOURS.closeMinutes), at('19:00'));
 });
 
 // ── clampEndToNextBooking ─────────────────────────────────────────────

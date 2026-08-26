@@ -74,7 +74,7 @@ Base 15 · Bonus 0 · Scheduled 5 · Used 2 · Pending 1
 
 ## Booking a meeting room
 
-**Rooms** shows the week. Click an empty slot, or drag across one, to book it. Bookings run 08:00–19:00 in ten-minute steps, and offon won't let you overlap someone else's.
+**Rooms** shows the week. Click an empty slot, or drag across one, to book it. Bookings run in ten-minute steps within the hours your admin set, and offon won't let you overlap someone else's.
 
 Add attendees and offon DMs them when the booking is made, then again three minutes before it starts. External guests can be typed in free-form — they don't need accounts.
 
@@ -114,6 +114,11 @@ Approving a leave request recalculates the day count against the *current* holid
 - **Missing clock-out** — DMs anyone who clocked in but never clocked out, every weekday at 19:00.
 
 Neither sends anything the moment you enable it; they start on the next weekday.
+
+It also carries two policy settings:
+
+- **Meeting room hours** — what the week grid draws and what can be booked. Existing bookings outside a narrowed range stay put; they just can't be recreated.
+- **Meal length** — how long a meal runs before it returns on its own. This applies to meals started from then on. Meals already recorded keep their own length, so changing the policy never rewrites what someone's day actually was.
 
 The same page manages **public holidays**. Holidays behave like weekends: excluded from leave day counts, and nobody can take leave on them.
 

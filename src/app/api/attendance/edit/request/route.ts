@@ -14,6 +14,7 @@ import {
   timelinesEqualAtMinute,
 } from '@/lib/attendance-edit';
 import { getT } from '@/lib/i18n/server';
+import { getAppSettings } from '@/lib/settings';
 import { getDeploymentT } from '@/lib/i18n/deployment';
 import { translateFailure } from '@/lib/i18n/format';
 
@@ -77,7 +78,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const built = buildAndValidateTimeline({ clockIn, clockOut, breaks });
+    // The lengths of meals already saved on this session, so that editing an old one after the setting changed
+    // Passed as an allow-list so that meal does not quietly shrink to the new length.
+    const storedMealMinutes = target.breaks
+      .filter((b) => b.kind === 'LUNCH' && b.endAt)
+      .map((b) => Math.round((b.endAt!.getTime() - b.startAt.getTime()) / 60_000));
+    const built = buildAndValidateTimeline({ clockIn, clockOut, breaks }, new Date(), {
+      current: (await getAppSettings()).mealMinutes,
+      allowed: storedMealMinutes,
+    });
     if (!built.ok) {
       return NextResponse.json({ ok: false, error: translateFailure(t, built) }, { status: 400 });
     }

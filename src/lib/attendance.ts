@@ -6,7 +6,7 @@ import { logAudit } from './audit';
 import { getDeploymentT, getDeploymentLocale } from './i18n/deployment';
 import type { MessageKey } from './i18n/dictionary';
 import { sendChannel, scheduleChannel, cancelScheduledChannel } from './slack';
-import { LUNCH_MINUTES } from './attendance-edit';
+import { getAppSettings } from './settings';
 
 const OPEN_SESSION_UNIQUE_INDEX = 'attendance_sessions_open_unique';
 const OPEN_BREAK_UNIQUE_INDEX = 'attendance_breaks_open_unique';
@@ -89,7 +89,7 @@ const STANDARD_MINUTES = 480;
  * there is nothing to come back from: once the time passes, work resumes on its own with
  * no job to run. Attendance corrections derive from the same value, so it lives in one place.
  */
-export { LUNCH_MINUTES } from './attendance-edit';
+export { DEFAULT_MEAL_MINUTES } from './attendance-edit';
 
 /** A meal is in progress when its end time has not yet arrived. */
 function lunchInProgressWhere(now: Date) {
@@ -762,7 +762,7 @@ export async function cancelAutoBack(
 
 /**
  * Starts a meal. Unlike a break, there is nothing to come back from.
- * Pressing it creates a closed break of start plus the fixed meal length, and leaves the status
+ * Pressing it creates a closed break of start plus the configured meal length, and leaves the status
  * at working. Work therefore resumes on its own once the time passes,
  * with no job to run, and since no break is left open there is no way to get stuck.
  * Being on a meal is derived from now falling before its end.
@@ -801,7 +801,9 @@ export async function startLunch(
   }
 
   const at = new Date();
-  const endsAt = new Date(at.getTime() + LUNCH_MINUTES * 60_000);
+  // The current setting applies only to meals starting now. Meals already saved keep their own length.
+  const mealMinutes = (await getAppSettings()).mealMinutes;
+  const endsAt = new Date(at.getTime() + mealMinutes * 60_000);
 
   // Several meals a day are fine, lunch and dinner, so the count is not capped; only overlapping ones are refused.
   // A meal row has its end filled in, so the index covering rows with a null end

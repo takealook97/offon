@@ -11,6 +11,7 @@ import {
   scheduleBookingReminders,
 } from '@/lib/room-booking-server';
 import { getT } from '@/lib/i18n/server';
+import { roomHours } from '@/lib/settings';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -108,7 +109,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
     const { type, title, start, end, memberIds, externalAttendees } = parsed.data;
 
-    const check = validateBookingRange(start, end, utcToWall(new Date()));
+    const check = validateBookingRange(start, end, utcToWall(new Date()), await roomHours());
     if (!check.ok) {
       return NextResponse.json({ ok: false, error: t(check.messageKey, check.vars) }, { status: 400 });
     }

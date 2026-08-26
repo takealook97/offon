@@ -5,10 +5,25 @@ import { getAppSettings, updateAppSettings } from '@/lib/settings';
 import { logAudit } from '@/lib/audit';
 import { getT } from '@/lib/i18n/server';
 
-const PatchBody = z.object({
-  missingClockInNotifyEnabled: z.boolean().optional(),
-  missingClockOutNotifyEnabled: z.boolean().optional(),
-});
+const minuteOfDay = z.number().int().min(0).max(24 * 60);
+
+const PatchBody = z
+  .object({
+    missingClockInNotifyEnabled: z.boolean().optional(),
+    missingClockOutNotifyEnabled: z.boolean().optional(),
+    roomOpenMinutes: minuteOfDay.optional(),
+    roomCloseMinutes: minuteOfDay.optional(),
+    /** Under five minutes is a mis-click; over four hours is not a break but a split shift. */
+    mealMinutes: z.number().int().min(5).max(240).optional(),
+  })
+  // Sending one side alone would have to be compared against the stored value, so a window is sent whole or not at all.
+  .refine(
+    (v) =>
+      v.roomOpenMinutes === undefined ||
+      v.roomCloseMinutes === undefined ||
+      v.roomCloseMinutes > v.roomOpenMinutes,
+    { message: 'closing time must come after opening time' },
+  );
 
 export async function GET() {
   try {

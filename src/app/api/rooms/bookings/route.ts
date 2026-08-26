@@ -14,6 +14,7 @@ import {
   toBookingDTO,
 } from '@/lib/room-booking-server';
 import { getT } from '@/lib/i18n/server';
+import { roomHours } from '@/lib/settings';
 
 /** The default span when no range is given: one week grid, plus a little slack. */
 const DEFAULT_RANGE_DAYS = 14;
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
     const { roomId, type, title, start, end, memberIds, externalAttendees } =
       parsed.data;
 
-    const check = validateBookingRange(start, end, utcToWall(new Date()));
+    const check = validateBookingRange(start, end, utcToWall(new Date()), await roomHours());
     if (!check.ok) {
       return NextResponse.json({ ok: false, error: t(check.messageKey, check.vars) }, { status: 400 });
     }

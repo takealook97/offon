@@ -4,6 +4,7 @@ import { requireSession } from '@/lib/session';
 import { buildEditableSession } from '@/lib/attendance-edit';
 import { getT } from '@/lib/i18n/server';
 import { getLocale } from '@/lib/i18n/server';
+import { getAppSettings } from '@/lib/settings';
 
 // Returns your own session shaped for editing — clock-in, clock-out and breaks — when a correction is opened from the calendar.
 export async function GET(req: NextRequest) {
@@ -45,6 +46,7 @@ export async function GET(req: NextRequest) {
         { id: target.id, startAt: target.startAt, endAt: target.endAt },
         target.breaks,
         await getLocale(),
+        (await getAppSettings()).mealMinutes,
       ),
     });
   } catch (e) {

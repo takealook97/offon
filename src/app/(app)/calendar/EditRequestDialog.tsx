@@ -28,7 +28,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  LUNCH_MINUTES,
   buildAndValidateTimeline,
   type EditableSession,
 } from '@/lib/attendance-edit';
@@ -62,9 +61,9 @@ function wallToLocal(v: string): Date {
     Number(v.slice(14, 16)),
   );
 }
-/** A meal always ends at its start plus the fixed length. It cannot be set directly, only moved. */
-function lunchEndWall(startWall: string): string {
-  return toWall(new Date(wallToLocal(startWall).getTime() + LUNCH_MINUTES * 60_000));
+/** A meal always ends at its start plus the meal length. It cannot be set directly, only moved. */
+function lunchEndWall(startWall: string, mealMinutes: number): string {
+  return toWall(new Date(wallToLocal(startWall).getTime() + mealMinutes * 60_000));
 }
 
 function atTime(v: string, h: number, m: number): Date {
@@ -220,7 +219,7 @@ export function EditRequestDialog({
   // So the latest it can start is the clock-out less its length, and if that falls before the clock-in there is no room.
   const lunchStartMax = () => {
     const co = clockOut ? wallToLocal(clockOut) : null;
-    return co ? new Date(co.getTime() - LUNCH_MINUTES * 60_000) : new Date();
+    return co ? new Date(co.getTime() - session.mealMinutes * 60_000) : new Date();
   };
   const canAddLunch = wallToLocal(clockIn).getTime() <= lunchStartMax().getTime();
   const addLunch = () => setLunches((prev) => [...prev, clockIn]);
@@ -245,7 +244,7 @@ export function EditRequestDialog({
         ...breaks.map((b) => ({ ...b, kind: 'BREAK' as const })),
         ...lunches.map((s) => ({
           start: s,
-          end: lunchEndWall(s),
+          end: lunchEndWall(s, session.mealMinutes),
           kind: 'LUNCH' as const,
         })),
       ],
@@ -339,7 +338,7 @@ export function EditRequestDialog({
               <p className="text-xs text-muted-foreground">
                 {canAddLunch
                   ? t('edit.noMeal')
-                  : t('edit.tooShortForMeal', { minutes: LUNCH_MINUTES })}
+                  : t('edit.tooShortForMeal', { minutes: session.mealMinutes })}
               </p>
             ) : (
               <div className="space-y-2">
@@ -372,7 +371,7 @@ export function EditRequestDialog({
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {t('edit.mealEndFixed', { time: lunchEndWall(s).slice(11), minutes: LUNCH_MINUTES })}
+                      {t('edit.mealEndFixed', { time: lunchEndWall(s, session.mealMinutes).slice(11), minutes: session.mealMinutes })}
                     </p>
                   </div>
                 ))}
