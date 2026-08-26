@@ -34,7 +34,7 @@ features:
       should_escape: false
     - command: /lunch
       url: https://YOUR-DOMAIN/api/slack/commands
-      description: Start a meal (60 minutes, returns on its own)
+      description: Start a meal (returns on its own when it ends)
       should_escape: false
     - command: /break
       url: https://YOUR-DOMAIN/api/slack/commands
@@ -62,7 +62,7 @@ offon asks for three scopes and nothing else. It never reads your messages — t
 
 | Scope | Why offon needs it | Slack API used |
 |-------|--------------------|----------------|
-| `chat:write` | Send DMs and channel announcements, and schedule the "back from meal" notice an hour ahead | `chat.postMessage`, `chat.scheduleMessage`, `chat.deleteScheduledMessage` |
+| `chat:write` | Send DMs and channel announcements, and schedule the "back from meal" notice for when the meal ends | `chat.postMessage`, `chat.scheduleMessage`, `chat.deleteScheduledMessage` |
 | `im:write` | Open a DM channel with a person so their login code can reach them | `conversations.open` |
 | `commands` | Receive `/hi`, `/bye`, `/lunch`, `/break`, `/back` | — |
 

@@ -20,13 +20,13 @@ Five slash commands. Type them in Slack — a dedicated channel like `#offon` ke
 
 Everything you do here shows up on the web app immediately — they're the same records, not a sync.
 
-**Why a meal is its own command.** Break time is usually a fixed entitlement — an hour, in Korea's case. When everyone marked it with a free-form away/back, the recorded break came out different for every person, and nobody's total meant quite the same thing. `/lunch` settles it: one hour, counted the same way for everyone.
+**Why a meal is its own command.** Break time is usually a fixed entitlement — an hour, in Korea's case. When everyone marked it with a free-form away/back, the recorded break came out different for every person, and nobody's total meant quite the same thing. `/lunch` settles it: one fixed length, set by your admin, counted the same way for everyone.
 
-So it runs itself. `/lunch` fixes the end an hour later, there's no second command to remember, and you get a DM when you're back on the clock. Until then you can't clock out or start a break — offon will tell you how many minutes are left if you try.
+So it runs itself. `/lunch` fixes the end from the moment you press it, there's no second command to remember, and you get a DM when you're back on the clock. Until then you can't clock out or start a break — offon will tell you how many minutes are left if you try.
 
 **`/back` is only for `/break`.** If you're on a meal, waiting is the only option.
 
-**Use `/break` for everything else** — a coffee run, an errand, an appointment. Both meals and breaks are subtracted from your worked total; the difference is that a meal is a fixed hour and a break is however long you're actually gone.
+**Use `/break` for everything else** — a coffee run, an errand, an appointment. Both meals and breaks are subtracted from your worked total; the difference is that a meal is a fixed length and a break is however long you're actually gone.
 
 ## Signing in to the web app
 
@@ -48,7 +48,9 @@ Forgot to clock out? Clocked in late because you were in a meeting? You can ask 
 
 **You can add or remove meals and breaks, not just move them.** Forgot to press `/lunch` at all? Add the meal in the dialog. Pressed `/break` and never left? Delete it. Only the times themselves exist on the clock-in and clock-out — those you can only correct, not remove.
 
-**Meals are the exception.** You can move when a meal *started*, but not when it ended: it's always exactly an hour later. To remove a meal entirely, delete it.
+**Meals are the exception.** You can move when a meal *started*, but not when it ended: that always follows from the start. To remove a meal entirely, delete it.
+
+A meal you recorded before the length was changed keeps the length it had. Changing the policy never rewrites a day that already happened.
 
 You can correct a day you haven't clocked out of yet.
 
@@ -115,10 +117,11 @@ Approving a leave request recalculates the day count against the *current* holid
 
 Neither sends anything the moment you enable it; they start on the next weekday.
 
-It also carries two policy settings:
+It also carries three policy settings:
 
 - **Meeting room hours** — what the week grid draws and what can be booked. Existing bookings outside a narrowed range stay put; they just can't be recreated.
 - **Meal length** — how long a meal runs before it returns on its own. This applies to meals started from then on. Meals already recorded keep their own length, so changing the policy never rewrites what someone's day actually was.
+- **Working hours** — when the day starts and ends. Three things follow from these and the meal length, and the settings page shows all three as you pick: a standard day (the window minus the meal), what a half day is worth (half of that), and where a morning half day ends and an afternoon one begins. Overtime is whatever is worked beyond a standard day, and the export counts against it.
 
 The same page manages **public holidays**. Holidays behave like weekends: excluded from leave day counts, and nobody can take leave on them.
 

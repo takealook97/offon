@@ -21,7 +21,9 @@ export function attendanceMinutesIn(
   dailyTotals: Record<string, DailyAttendanceTotal>,
   range: { start: Date; end: Date },
 ): number {
-  // Assumes the viewer is in the org timezone, where the browser's local date is the day key.
+  // The range comes from the calendar's grid dates, whose local fields are the org's wall
+  // clock, so reading the local date here gives the org's day key whatever zone the viewer
+  // is in. Do not swap these for the UTC getters.
   const cur = new Date(
     range.start.getFullYear(),
     range.start.getMonth(),

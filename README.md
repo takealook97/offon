@@ -40,7 +40,7 @@ Someone starts their day by typing this in Slack:
 /hi
 ```
 
-They're clocked in, and the team channel says so. At lunch, `/lunch` — a meal is a fixed 60 minutes, so they come back automatically without a second command. Stepping out is `/break`, coming back is `/back`, and the day ends with `/bye`.
+They're clocked in, and the team channel says so. At lunch, `/lunch` — a meal runs for a fixed length your admin sets, an hour by default, so they come back automatically without a second command. Stepping out is `/break`, coming back is `/back`, and the day ends with `/bye`.
 
 Everything else — leave requests, approvals, the calendar, corrections when someone forgets to clock out — lives in a web app that people sign into **with a code DM'd to them on Slack**. No passwords to manage, no accounts to provision.
 
@@ -49,7 +49,7 @@ Everything else — leave requests, approvals, the calendar, corrections when so
 ## Features
 
 - **Attendance** — Clock in/out, away-from-desk breaks, meals, and multiple sessions per day (crossing midnight is handled). Worked, break, and overtime minutes are computed for you.
-- **Meals without a second command** — Starting a meal records a break that closes 60 minutes later, so the return happens by the clock. Clocking out and starting a break are blocked until it ends, and the "back now" notice is scheduled with Slack up front.
+- **Meals without a second command** — Starting a meal records a break that closes after the configured length, so the return happens by the clock. Clocking out and starting a break are blocked until it ends, and the "back now" notice is scheduled with Slack up front.
 - **Leave** — Full-day and half-day (AM/PM) requests, business-day counting that skips weekends and the holidays you configure, balance tracking, and approve / reject / cancel flows.
 - **Correction requests** — Forgot to clock out? Request an edit from the calendar; a manager approves and the totals recalculate. In-progress sessions can be corrected too.
 - **Meeting rooms** — Weekly booking grid with conflict detection, attendee lists, a Slack DM to everyone when a meeting is booked, and a reminder 3 minutes before it starts.
@@ -60,7 +60,7 @@ Everything else — leave requests, approvals, the calendar, corrections when so
 - **Scheduled nudges** — Missing clock-in and clock-out reminders, and yearly leave rollover.
 - **English and Korean** — Each person picks their language from the header; Slack messages follow `DEFAULT_LOCALE`.
 - **Any timezone** — Set `NEXT_PUBLIC_TIMEZONE` to your IANA zone. Day boundaries and totals follow it, daylight saving included.
-- **Your own policy** — Meeting-room hours and the meal length are admin settings, not constants. Changing the meal length applies to meals started from then on; the ones already recorded keep their own.
+- **Your own policy** — Working hours, meeting-room hours and the meal length are admin settings, not constants. A standard day, what a half day is worth, and where morning becomes afternoon all derive from the first two, so they cannot drift apart. Changing the meal length applies to meals started from then on; the ones already recorded keep their own.
 
 ## What it looks like
 
@@ -147,6 +147,7 @@ Worth knowing before you deploy — these are real, and PRs are welcome on all o
 - **Ownership is enforced on the server.** Employees can only read and edit their own attendance; corrections and cancellations are scoped to the owner, and approvals require an admin. The client is never trusted for this.
 - **Wall-clock times, stored as UTC instants.** Day boundaries come from `Intl`'s timezone database rather than a fixed offset, so a day that loses or gains an hour to daylight saving is 23 or 25 hours long and the totals still add up. Formatting is independent of the runtime clock.
 - **Soft deletes everywhere.** Records carry `deletedAt` rather than disappearing, because attendance is a record of what happened.
+- **Policy is derived, not repeated.** A standard day is the working window minus the meal; a half day is half of that; the morning/afternoon split is the start plus a half day. Writing those out as separate constants is how a settings screen and a month-end spreadsheet come to disagree without anyone noticing.
 
 ## Scripts
 
@@ -155,6 +156,7 @@ Worth knowing before you deploy — these are real, and PRs are welcome on all o
 | `pnpm dev` | Start the dev server |
 | `pnpm build` | `prisma generate` + production build |
 | `pnpm test` | Run the test suite |
+| `pnpm test:db` | Run the suite that needs a real Postgres |
 | `pnpm lint` | ESLint |
 | `pnpm db:seed` | Seed the initial admin member |
 | `pnpm db:migrate:deploy` | Apply pending migrations |
@@ -176,7 +178,7 @@ docs/                     # Slack app setup, self-hosting guide
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what a good change looks like. The *Known limitations* above are all fair game; the timezone one would help the most people.
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up and what a good change looks like. The *Known limitations* above are all fair game.
 
 Found a security problem? Please report it privately — see [SECURITY.md](SECURITY.md).
 

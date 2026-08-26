@@ -152,4 +152,4 @@ Then redeploy. Migrations are additive and deletes are soft, so rolling forward 
 | Everyone logged out after a deploy | `SESSION_SECRET` changed. Set it once and leave it. |
 | Cron endpoints return 401 | `CRON_SECRET` in the environment doesn't match what the caller sends. |
 | App loads but every page redirects to login | The session cookie isn't sticking — check that you're on HTTPS. |
-| Times are off by hours | offon is pinned to UTC+9. See *Known limitations* in the README. |
+| Times are off by hours | `NEXT_PUBLIC_TIMEZONE` is unset or wrong. It defaults to `Asia/Seoul`; set it to your IANA zone and redeploy. It is inlined at build time, so changing it needs a rebuild, not just a restart. |
