@@ -58,14 +58,14 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const range = resolveMonthRange(year, month, now);
     if (!range.ok) {
-      return NextResponse.json({ ok: false, error: range.error }, { status: 400 });
+      return NextResponse.json({ ok: false, error: t(range.messageKey, range.vars) }, { status: 400 });
     }
 
     // The org sheet is a summary, and admin-only.
     if (scope === 'all') {
       await requireAdmin();
       const report = await buildOrgReport({ range, now });
-      const buffer = await buildOrgWorkbook(report);
+      const buffer = await buildOrgWorkbook(t, report);
       return xlsxResponse(buffer, `attendance_all_${range.yyyymm}.xlsx`, range.yyyymm);
     }
 
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
         { status: 404 },
       );
     }
-    const buffer = await buildIndividualWorkbook(report);
+    const buffer = await buildIndividualWorkbook(t, report);
     return xlsxResponse(
       buffer,
       `attendance_${report.member.name}_${range.yyyymm}.xlsx`,

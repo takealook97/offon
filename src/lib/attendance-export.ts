@@ -1,3 +1,4 @@
+import type { MessageKey } from './i18n/dictionary';
 import { prisma } from './prisma';
 import {
   kstDayKey,
@@ -81,7 +82,9 @@ export type ResolvedMonthRange = {
   dayKeys: string[];
 };
 
-export type MonthRange = { ok: false; error: string } | ({ ok: true } & ResolvedMonthRange);
+export type MonthRange =
+  | { ok: false; messageKey: MessageKey; vars?: Record<string, string | number> }
+  | ({ ok: true } & ResolvedMonthRange);
 
 type FetchedLeave = { type: PrismaLeaveType; startDate: Date; endDate: Date };
 
@@ -120,7 +123,7 @@ function enumerateKeys(startKey: string, endKey: string): string[] {
  */
 export function resolveMonthRange(year: number, month: number, now: Date): MonthRange {
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return { ok: false, error: 'That year or month is not valid' };
+    return { ok: false, messageKey: 'xls.badYearMonth' as const };
   }
   const beforeStart =
     year < FEATURE_START_YEAR ||
@@ -128,14 +131,15 @@ export function resolveMonthRange(year: number, month: number, now: Date): Month
   if (beforeStart) {
     return {
       ok: false,
-      error: `Exports start from ${FEATURE_START_MONTH}/${FEATURE_START_YEAR}`,
+      messageKey: 'xls.beforeStart' as const,
+      vars: { year: FEATURE_START_YEAR, month: FEATURE_START_MONTH },
     };
   }
   const curYear = kstYear(now);
   const curMonth = kstMonthDay(now).month;
   const inFuture = year > curYear || (year === curYear && month > curMonth);
   if (inFuture) {
-    return { ok: false, error: 'A month in the future cannot be chosen' };
+    return { ok: false, messageKey: 'xls.futureMonth' as const };
   }
 
   const yyyymm = `${year}${pad2(month)}`;

@@ -202,7 +202,7 @@ export async function notifyBookingCreated(bookingId: number): Promise<void> {
   if (!booking) return;
 
   const text = [
-    'A meeting has been booked. Please take a look.',
+    getDeploymentT()('dm.meetingBooked'),
     bookingWhen(booking),
     ...bookingDetailLines(booking),
   ].join('\n');
