@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/session';
 import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
-import { formatZoned, countBusinessDays } from '@/lib/time';
+import { formatZoned } from '@/lib/time';
+import { recomputeLeaveDays } from '@/lib/leave';
 import { getHolidaySet } from '@/lib/holidays';
 import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
@@ -39,16 +40,9 @@ export async function POST(req: NextRequest) {
     const startStr = formatZoned(target.startDate, 'yyyy-MM-dd');
     const endStr = formatZoned(target.endDate, 'yyyy-MM-dd');
     const holidays = await getHolidaySet(startStr, endStr);
-    let recomputedDays: Prisma.Decimal;
-    if (target.type === 'FULL_DAY') {
-      recomputedDays = new Prisma.Decimal(
-        countBusinessDays(startStr, endStr, holidays),
-      );
-    } else {
-      recomputedDays = holidays.has(startStr)
-        ? new Prisma.Decimal(0)
-        : new Prisma.Decimal(0.5);
-    }
+    const recomputedDays = new Prisma.Decimal(
+      recomputeLeaveDays(target.type, startStr, endStr, holidays),
+    );
     if (Number(recomputedDays) === 0) {
       return NextResponse.json(
         {

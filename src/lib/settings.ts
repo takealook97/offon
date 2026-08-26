@@ -35,13 +35,25 @@ function toSettings(row: Row): AppSettings {
   };
 }
 
+/** Used when no row exists yet. Must match the schema defaults. */
+const DEFAULTS: AppSettings = {
+  missingClockInNotifyEnabled: false,
+  missingClockOutNotifyEnabled: false,
+  roomOpenMinutes: 8 * 60,
+  roomCloseMinutes: 19 * 60,
+  mealMinutes: 60,
+  updatedAt: new Date(0),
+};
+
+/**
+ * Reading does not write. This used to upsert the row, so two concurrent reads both tried
+ * to create id=1, collided on the unique constraint, and one of them failed. It became
+ * reproducible once starting a meal began reading settings: two people pressing at the same
+ * moment, and one gets a 500.
+ */
 export async function getAppSettings(): Promise<AppSettings> {
-  const row = await prisma.appSetting.upsert({
-    where: { id: 1 },
-    create: { id: 1 },
-    update: {},
-  });
-  return toSettings(row);
+  const row = await prisma.appSetting.findUnique({ where: { id: 1 } });
+  return row ? toSettings(row) : DEFAULTS;
 }
 
 export type AppSettingsPatch = {

@@ -8,6 +8,23 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    # The attendance state machine rests on unique indexes and transactions, so it needs a real Postgres.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: offon
+          POSTGRES_PASSWORD: offon
+          POSTGRES_DB: offon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U offon"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+
     steps:
       - uses: actions/checkout@v4
 
@@ -27,4 +44,7 @@ jobs:
 
       - run: pnpm exec tsc --noEmit
       - run: pnpm test
+      - run: pnpm test:db
+        env:
+          DATABASE_URL: postgresql://offon:offon@localhost:5432/offon_test?schema=public
       - run: pnpm lint
