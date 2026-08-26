@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { formatKST, todayKST } from './time';
 import { logAudit } from './audit';
+import { getDeploymentT } from './i18n/deployment';
 import { sendChannel, scheduleChannel, cancelScheduledChannel } from './slack';
 import { LUNCH_MINUTES } from './attendance-edit';
 
@@ -204,14 +205,14 @@ export function computeAttendanceTotals(
 export async function notifyChannelIn(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} clocked in\u2600\ufe0f`;
+  const text = getDeploymentT()('announce.clockIn', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm'), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
     await logAudit({
       actorId: memberId,
       action: 'SLACK_SEND_FAIL',
-      metadata: { stage: 'channel_Clock in', error: String(err) },
+      metadata: { stage: 'channel_clock_in', error: String(err) },
     });
   }
 }
@@ -219,14 +220,14 @@ export async function notifyChannelIn(name: string, at: Date, memberId: number) 
 export async function notifyChannelOut(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} clocked out\ud83c\udf19`;
+  const text = getDeploymentT()('announce.clockOut', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm'), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
     await logAudit({
       actorId: memberId,
       action: 'SLACK_SEND_FAIL',
-      metadata: { stage: 'channel_Clock out', error: String(err) },
+      metadata: { stage: 'channel_clock_out', error: String(err) },
     });
   }
 }
@@ -234,14 +235,14 @@ export async function notifyChannelOut(name: string, at: Date, memberId: number)
 export async function notifyChannelLunch(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} went for a meal\ud83c\udf7d\ufe0f`;
+  const text = getDeploymentT()('announce.meal', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm'), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
     await logAudit({
       actorId: memberId,
       action: 'SLACK_SEND_FAIL',
-      metadata: { stage: 'channel_Meal', error: String(err) },
+      metadata: { stage: 'channel_meal', error: String(err) },
     });
   }
 }
@@ -249,21 +250,21 @@ export async function notifyChannelLunch(name: string, at: Date, memberId: numbe
 export async function notifyChannelBreak(name: string, at: Date, memberId: number) {
   const channel = process.env.SLACK_OFFON_CHANNEL;
   if (!channel) return;
-  const text = `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} stepped away\u23f8\ufe0f`;
+  const text = getDeploymentT()('announce.away', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm'), name });
   try {
     await sendChannel(channel, text);
   } catch (err) {
     await logAudit({
       actorId: memberId,
       action: 'SLACK_SEND_FAIL',
-      metadata: { stage: 'channel_Away', error: String(err) },
+      metadata: { stage: 'channel_away', error: String(err) },
     });
   }
 }
 
 /** The wording of a return notice. Shared by the immediate one (coming back from a break) and the scheduled one (a meal ending on its own). */
 function buildBackText(name: string, at: Date): string {
-  return `${formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm')}\n${name} is back\u25b6\ufe0f`;
+  return getDeploymentT()('announce.back', { time: formatKST(at, 'yyyy.MM.dd(EEEEE) HH:mm'), name });
 }
 
 export async function notifyChannelBack(name: string, at: Date, memberId: number) {
@@ -276,7 +277,7 @@ export async function notifyChannelBack(name: string, at: Date, memberId: number
     await logAudit({
       actorId: memberId,
       action: 'SLACK_SEND_FAIL',
-      metadata: { stage: 'channel_Back', error: String(err) },
+      metadata: { stage: 'channel_back', error: String(err) },
     });
   }
 }

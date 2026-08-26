@@ -141,6 +141,13 @@ const ko = {
   'slack.mealAutoReturn': '식사 복귀는 자동으로 1시간 뒤에 진행됩니다🍽️',
   'slack.notAway': '자리비움 상태가 아닙니다⚠️',
   'slack.unknownCommand': '지원하지 않는 명령이에요',
+
+  // Slack 채널 공지. {time} 은 이미 포맷된 시각, {name} 은 멤버 이름.
+  'announce.clockIn': '{time}\n{name}님이 출근하셨습니다☀️',
+  'announce.clockOut': '{time}\n{name}님이 퇴근하셨습니다🌙',
+  'announce.meal': '{time}\n{name}님이 식사하러 가셨습니다🍽️',
+  'announce.away': '{time}\n{name}님이 자리를 비웠습니다⏸️',
+  'announce.back': '{time}\n{name}님이 복귀했습니다▶️',
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -272,6 +279,12 @@ const en: Messages = {
   'slack.mealAutoReturn': "You'll be back automatically an hour after the meal starts🍽️",
   'slack.notAway': "You're not away right now⚠️",
   'slack.unknownCommand': "That command isn't supported",
+
+  'announce.clockIn': '{time}\n{name} clocked in☀️',
+  'announce.clockOut': '{time}\n{name} clocked out🌙',
+  'announce.meal': '{time}\n{name} went for a meal🍽️',
+  'announce.away': '{time}\n{name} stepped away⏸️',
+  'announce.back': '{time}\n{name} is back▶️',
 };
 
 export const MESSAGES: Record<Locale, Messages> = { ko, en };
