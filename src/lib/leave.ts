@@ -21,3 +21,23 @@ export function recomputeLeaveDays(
   if (type === 'FULL_DAY') return countBusinessDays(startStr, endStr, holidays);
   return holidays.has(startStr) ? 0 : 0.5;
 }
+
+/** The rollover runs only in the first week of January. The window is wide enough that a late scheduler still catches it once. */
+export const ROLLOVER_WINDOW_MAX_DAY = 7;
+
+/** The leave a new joiner gets in their first year. */
+export const BASE_DEFAULT = 15;
+
+export function isRolloverWindow(month: number, day: number): boolean {
+  return month === 1 && day <= ROLLOVER_WINDOW_MAX_DAY;
+}
+
+/**
+ * The new baseline entitlement when the year turns over.
+ *
+ * At or above the baseline it grows by a day a year; below it, as with a pro-rated first year,
+ * it rises to the baseline. It never falls: losing leave after another year of service would be wrong.
+ */
+export function nextBaseDays(currentBase: number): number {
+  return currentBase >= BASE_DEFAULT ? currentBase + 1 : BASE_DEFAULT;
+}

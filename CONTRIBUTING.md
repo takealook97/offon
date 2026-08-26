@@ -43,6 +43,7 @@ CI runs all four. They pass on `main`, so a red build means the change broke som
 
 - **Add a test when you add a rule.** The domain logic in `src/lib` is where the rules live: business-day counting, break validation, booking overlap, the OTP and signature checks. Those are pure functions and easy to test.
 - **If the rule is enforced by the database, test it there.** `*.db-test.ts` files run against real Postgres. Concurrency guarantees — one open session, one running meal — are the sort of thing that looks fine in a unit test and falls over under a double click.
+- **Keep business logic out of route handlers.** A rule inside a `route.ts` cannot be tested without standing up a request. The scheduled jobs live in `src/lib` and their routes only check the bearer token and call them.
 - **Don't put user-facing prose in the domain layer.** Validators return a `MessageKey`; the screen translates it in the viewer's language and Slack translates it in the deployment's. See `src/lib/i18n/`.
 - **Keep both locales in step.** `ko` is the source of truth for the key set; `en` must define the same keys with the same placeholders. A test enforces this, so a half-added string fails the suite.
 - **Times are wall-clock, stored as UTC.** Everything goes through `src/lib/time.ts`. Please don't reach for `Date` arithmetic directly.
@@ -50,7 +51,7 @@ CI runs all four. They pass on `main`, so a red build means the change broke som
 
 ## Things that would genuinely help
 
-The README lists what's missing under *Known limitations*. The yearly leave rollover and the cron handlers still have no coverage, and a live demo would probably help more than any of it.
+The README lists what's missing under *Known limitations*. A live demo would probably help more than any of it — there is nowhere to click and try this before installing it.
 
 If you touch `src/lib/time.ts`, run the timezone tests. They cover half-hour zones and both daylight-saving transitions, which is where this kind of code goes wrong.
 
