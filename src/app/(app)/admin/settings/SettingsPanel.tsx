@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { useTranslation } from '@/lib/i18n/client';
 import { Label } from '@/components/ui/label';
 
 type SettingKey =
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function SettingsPanel({ initial }: Props) {
+  const { t } = useTranslation();
   const [state, setState] = useState({
     missingClockInNotifyEnabled: initial.missingClockInNotifyEnabled,
     missingClockOutNotifyEnabled: initial.missingClockOutNotifyEnabled,
@@ -41,10 +43,10 @@ export function SettingsPanel({ initial }: Props) {
       };
       if (!res.ok || !data.ok) {
         setState((s) => ({ ...s, [key]: prev }));
-        toast.error(data.error ?? 'Could not save the settings');
+        toast.error(data.error ?? t('settings.saveFailed'));
         return;
       }
-      toast.success(next ? 'Reminders on' : 'Reminders off');
+      toast.success(next ? t('settings.notifyOn') : t('settings.notifyOff'));
     });
   };
 
@@ -53,9 +55,9 @@ export function SettingsPanel({ initial }: Props) {
       <Card>
         <CardHeader className="pb-3">
           <CardDescription className="flex items-center gap-1.5">
-            <BellRing className="size-3.5" /> Reminders
+            <BellRing className="size-3.5" /> {t('settings.notifications')}
           </CardDescription>
-          <CardTitle className="text-lg">Missing clock-in DM</CardTitle>
+          <CardTitle className="text-lg">{t('settings.missingInTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-start justify-between gap-4">
@@ -64,15 +66,13 @@ export function SettingsPanel({ initial }: Props) {
                 htmlFor="missing-clockin-toggle"
                 className="text-sm font-medium"
               >
-                Send a 10:00 missing clock-in reminder
+                {t('settings.missingInSwitch')}
               </Label>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Each weekday morning, anyone with no clock-in, leave aside,
-                is sent a DM reading &ldquo;There is no clock-in recorded
-                yet. Please take a look.&rdquo;
+                {t('settings.missingInBody')} {t('settings.missingInExample')}
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Nothing is sent right away; it starts on the next weekday at 10:00.
+                {t('settings.missingInHint')}
               </p>
             </div>
             <Switch
@@ -82,7 +82,7 @@ export function SettingsPanel({ initial }: Props) {
                 toggle('missingClockInNotifyEnabled', v)
               }
               disabled={pending}
-              aria-label="Toggle missing clock-in DMs"
+              aria-label={t('settings.missingInToggle')}
             />
           </div>
         </CardContent>
@@ -91,9 +91,9 @@ export function SettingsPanel({ initial }: Props) {
       <Card>
         <CardHeader className="pb-3">
           <CardDescription className="flex items-center gap-1.5">
-            <BellRing className="size-3.5" /> Reminders
+            <BellRing className="size-3.5" /> {t('settings.notifications')}
           </CardDescription>
-          <CardTitle className="text-lg">Missing clock-out DM</CardTitle>
+          <CardTitle className="text-lg">{t('settings.missingOutTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-start justify-between gap-4">
@@ -102,15 +102,13 @@ export function SettingsPanel({ initial }: Props) {
                 htmlFor="missing-clockout-toggle"
                 className="text-sm font-medium"
               >
-                Send a 19:00 missing clock-out reminder
+                {t('settings.missingOutSwitch')}
               </Label>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Each weekday evening, anyone who clocked in but not out
-                is sent a DM reading &ldquo;There is no clock-out recorded
-                yet. Please clock out.&rdquo;
+                {t('settings.missingOutBody')} {t('settings.missingOutExample')}
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Nothing is sent right away; it starts on the next weekday at 19:00.
+                {t('settings.missingOutHint')}
               </p>
             </div>
             <Switch
@@ -120,7 +118,7 @@ export function SettingsPanel({ initial }: Props) {
                 toggle('missingClockOutNotifyEnabled', v)
               }
               disabled={pending}
-              aria-label="Toggle missing clock-out DMs"
+              aria-label={t('settings.missingOutToggle')}
             />
           </div>
         </CardContent>
