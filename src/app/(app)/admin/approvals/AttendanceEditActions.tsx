@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 
 export function AttendanceEditActions({ id }: { id: number }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -23,7 +25,7 @@ export function AttendanceEditActions({ id }: { id: number }) {
         warning?: string;
       };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'That did not work');
+        toast.error(data.error ?? t('appr.actionFailed'));
         return;
       }
       toast.success(okMsg);
@@ -36,22 +38,22 @@ export function AttendanceEditActions({ id }: { id: number }) {
     <div className="flex items-center gap-2">
       <Button
         size="sm"
-        onClick={() => act('/api/attendance/edit/approve', 'Approved')}
+        onClick={() => act('/api/attendance/edit/approve', t('appr.approved'))}
         disabled={pending}
         className="gap-1.5"
       >
         <Check className="size-4" />
-        Approve
+        {t('appr.approve')}
       </Button>
       <Button
         size="sm"
         variant="outline"
-        onClick={() => act('/api/attendance/edit/reject', 'Rejected')}
+        onClick={() => act('/api/attendance/edit/reject', t('appr.rejected'))}
         disabled={pending}
         className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
       >
         <X className="size-4" />
-        Reject
+        {t('appr.reject')}
       </Button>
     </div>
   );

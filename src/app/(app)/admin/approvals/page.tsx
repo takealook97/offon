@@ -6,18 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import { PendingList, type PendingRow } from './PendingList';
 import { RecentApprovals, type RecentItem } from './RecentApprovals';
 import { ApproveAllButton, type ApproveAllItem } from './ApproveAllButton';
+import { getT } from '@/lib/i18n/server';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 
 export const dynamic = 'force-dynamic';
 
 const RECENT_TAKE = 20;
 
-const TYPE_LABEL: Record<string, string> = {
-  FULL_DAY: 'Full day',
-  HALF_DAY_AM: 'Morning half day',
-  HALF_DAY_PM: 'Afternoon half day',
+const TYPE_LABEL: Record<string, MessageKey> = {
+  FULL_DAY: 'leave.fullDay',
+  HALF_DAY_AM: 'leave.amHalf',
+  HALF_DAY_PM: 'leave.pmHalf',
 };
 
 export default async function ApprovalsPage() {
+  const t = await getT();
   await requireAdmin();
 
   const [leavePending, leaveRecent, attPending, attRecent] = await Promise.all([
@@ -87,7 +90,7 @@ export default async function ApprovalsPage() {
       key: `leave-${l.id}`,
       name: l.member.name,
       approverName: l.approver?.name ?? null,
-      badgeLabel: l.type === 'FULL_DAY' ? 'Leave' : TYPE_LABEL[l.type] ?? 'Leave',
+      badgeLabel: l.type === 'FULL_DAY' ? t('appr.leave') : t(TYPE_LABEL[l.type] ?? 'leave.fullDay'),
       range: `${formatKST(l.startDate, 'yyyy-MM-dd')} ~ ${formatKST(l.endDate, 'yyyy-MM-dd')}`,
       days: Number(l.days),
       status: l.status as 'APPROVED' | 'REJECTED' | 'CANCELLED',
@@ -118,13 +121,13 @@ export default async function ApprovalsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Approvals</h1>
-        <p className="text-sm text-muted-foreground">{rows.length} waiting</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('appr.title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('appr.pendingCount', { count: rows.length })}</p>
       </header>
 
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">Waiting</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">{t('appr.pendingSection')}</h2>
           {rows.length > 0 && <Badge variant="secondary">{rows.length}</Badge>}
           <ApproveAllButton items={approveAllItems} />
         </div>
@@ -132,7 +135,7 @@ export default async function ApprovalsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">Recently handled</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground">{t('appr.recentSection')}</h2>
         <RecentApprovals items={recentItems} />
       </section>
     </div>

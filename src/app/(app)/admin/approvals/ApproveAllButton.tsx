@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 
 export type ApproveAllItem = { kind: 'leave' | 'att'; id: number };
 
 export function ApproveAllButton({ items }: { items: ApproveAllItem[] }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -38,7 +40,9 @@ export function ApproveAllButton({ items }: { items: ApproveAllItem[] }) {
       // Success shows as the list emptying, so only failures are announced.
       if (failed.length > 0) {
         toast.error(
-          `${failed.length} refused${failed[0].error ? ` (${failed[0].error})` : ''}`,
+          failed[0].error
+            ? t('appr.rejectedCountWhy', { count: failed.length, reason: failed[0].error })
+            : t('appr.rejectedCount', { count: failed.length }),
         );
       }
       router.refresh();
@@ -53,7 +57,7 @@ export function ApproveAllButton({ items }: { items: ApproveAllItem[] }) {
       className="ml-auto gap-1.5"
     >
       <CheckCheck className="size-4" />
-      Approve all
+      {t('appr.approveAll')}
     </Button>
   );
 }

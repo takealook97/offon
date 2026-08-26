@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LeaveActions } from './LeaveActions';
 import { AttendanceEditActions } from './AttendanceEditActions';
+import { getT } from '@/lib/i18n/server';
 
 export type LeaveRow = {
   kind: 'leave';
@@ -24,12 +25,13 @@ export type AttRow = {
 };
 export type PendingRow = LeaveRow | AttRow;
 
-export function PendingList({ rows }: { rows: PendingRow[] }) {
+export async function PendingList({ rows }: { rows: PendingRow[] }) {
+  const t = await getT();
   if (rows.length === 0) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-          Nothing waiting for approval
+          {t('appr.none')}
         </CardContent>
       </Card>
     );
@@ -47,7 +49,8 @@ export function PendingList({ rows }: { rows: PendingRow[] }) {
   );
 }
 
-function LeaveCard({ row }: { row: LeaveRow }) {
+async function LeaveCard({ row }: { row: LeaveRow }) {
+  const t = await getT();
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -58,7 +61,7 @@ function LeaveCard({ row }: { row: LeaveRow }) {
                 variant="outline"
                 className="border-blue-500/40 text-blue-700 dark:text-blue-300"
               >
-                {row.days === 0.5 ? row.typeLabel : 'Leave'}
+                {row.days === 0.5 ? row.typeLabel : t('appr.leave')}
               </Badge>
               <span className="font-medium">{row.name}</span>
               {row.position && (
@@ -68,7 +71,7 @@ function LeaveCard({ row }: { row: LeaveRow }) {
             <p className="text-sm text-muted-foreground">
               <span className="font-mono tabular-nums">{row.range}</span>
               <span className="mx-1.5 text-border">·</span>
-              {row.days}Day
+              {t('duration.days', { days: row.days })}
             </p>
           </div>
         </div>
@@ -78,7 +81,8 @@ function LeaveCard({ row }: { row: LeaveRow }) {
   );
 }
 
-function AttCard({ row }: { row: AttRow }) {
+async function AttCard({ row }: { row: AttRow }) {
+  const t = await getT();
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
@@ -89,7 +93,7 @@ function AttCard({ row }: { row: AttRow }) {
                 variant="outline"
                 className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
               >
-                Attendance correction
+                {t('appr.attendanceEdit')}
               </Badge>
               <span className="font-medium">{row.name}</span>
               {row.position && (
@@ -102,16 +106,16 @@ function AttCard({ row }: { row: AttRow }) {
 
         <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm">
           <div className="flex gap-2">
-            <span className="w-9 shrink-0 text-xs text-muted-foreground">Was</span>
+            <span className="w-9 shrink-0 text-xs text-muted-foreground">{t('appr.before')}</span>
             <span className="text-muted-foreground line-through">{row.before}</span>
           </div>
           <div className="flex gap-2">
-            <span className="w-9 shrink-0 text-xs text-muted-foreground">Now</span>
+            <span className="w-9 shrink-0 text-xs text-muted-foreground">{t('appr.after')}</span>
             <span className="font-medium">{row.after}</span>
           </div>
         </div>
 
-        {row.reason && <p className="text-sm text-muted-foreground">Reason: {row.reason}</p>}
+        {row.reason && <p className="text-sm text-muted-foreground">{t('appr.reasonLabel', { reason: row.reason })}</p>}
 
         <div className="flex justify-end">
           <AttendanceEditActions id={row.id} />

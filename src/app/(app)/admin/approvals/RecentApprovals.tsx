@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getT } from '@/lib/i18n/server';
 
 type RecentStatus = 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
@@ -25,30 +26,32 @@ export type RecentItem =
       status: RecentStatus;
     };
 
-function StatusBadge({ status }: { status: RecentStatus }) {
+async function StatusBadge({ status }: { status: RecentStatus }) {
+  const t = await getT();
   if (status === 'APPROVED')
     return (
       <Badge
         variant="outline"
         className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
       >
-        Approve
+        {t('appr.approve')}
       </Badge>
     );
   if (status === 'REJECTED')
     return (
       <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-300">
-        Reject
+        {t('appr.reject')}
       </Badge>
     );
   return (
     <Badge variant="outline" className="text-muted-foreground">
-      Cancelled
+      {t('appr.cancelled')}
     </Badge>
   );
 }
 
-function KindBadge({ label }: { label: string }) {
+async function KindBadge({ label }: { label: string }) {
+  const t = await getT();
   return (
     <Badge variant="secondary" className="shrink-0">
       {label}
@@ -56,7 +59,8 @@ function KindBadge({ label }: { label: string }) {
   );
 }
 
-export function RecentApprovals({ items }: { items: RecentItem[] }) {
+export async function RecentApprovals({ items }: { items: RecentItem[] }) {
+  const t = await getT();
   return (
     <Card>
       <CardContent className="p-0">
@@ -65,7 +69,7 @@ export function RecentApprovals({ items }: { items: RecentItem[] }) {
             <li key={it.key} className="space-y-2 px-4 py-3 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                  <KindBadge label={it.kind === 'leave' ? it.badgeLabel : 'Time correction'} />
+                  <KindBadge label={it.kind === 'leave' ? it.badgeLabel : t('appr.timeEdit')} />
                   <span className="font-medium">{it.name}</span>
                   <span className="text-border">·</span>
                   {it.kind === 'leave' ? (
@@ -73,7 +77,7 @@ export function RecentApprovals({ items }: { items: RecentItem[] }) {
                       <span className="font-mono tabular-nums text-muted-foreground">
                         {it.range}
                       </span>
-                      <span className="text-muted-foreground">({it.days}Day)</span>
+                      <span className="text-muted-foreground">({t('duration.days', { days: it.days })})</span>
                     </>
                   ) : (
                     <span className="font-mono tabular-nums text-muted-foreground">
@@ -87,24 +91,24 @@ export function RecentApprovals({ items }: { items: RecentItem[] }) {
               {it.kind === 'att' && (
                 <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-3">
                   <div className="flex items-baseline gap-2">
-                    <span className="w-9 shrink-0 text-xs text-muted-foreground">Was</span>
+                    <span className="w-9 shrink-0 text-xs text-muted-foreground">{t('appr.before')}</span>
                     <span className="text-muted-foreground line-through">{it.before}</span>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="w-9 shrink-0 text-xs text-muted-foreground">Now</span>
+                    <span className="w-9 shrink-0 text-xs text-muted-foreground">{t('appr.after')}</span>
                     <span className="font-medium">{it.after}</span>
                   </div>
                 </div>
               )}
 
               {it.approverName && (
-                <p className="text-xs text-muted-foreground">Handled by: {it.approverName}</p>
+                <p className="text-xs text-muted-foreground">{t('appr.approver', { name: it.approverName })}</p>
               )}
             </li>
           ))}
           {items.length === 0 && (
             <li className="px-4 py-10 text-center text-sm text-muted-foreground">
-              Nothing handled yet
+              {t('appr.noneRecent')}
             </li>
           )}
         </ul>

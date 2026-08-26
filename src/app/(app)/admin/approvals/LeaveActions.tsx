@@ -15,8 +15,10 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslation } from '@/lib/i18n/client';
 
 export function LeaveActions({ id }: { id: number }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -31,10 +33,10 @@ export function LeaveActions({ id }: { id: number }) {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Could not approve that');
+        toast.error(data.error ?? t('appr.approveFailed'));
         return;
       }
-      toast.success('Approved');
+      toast.success(t('appr.approved'));
       router.refresh();
     });
 
@@ -47,10 +49,10 @@ export function LeaveActions({ id }: { id: number }) {
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Could not reject that');
+        toast.error(data.error ?? t('appr.rejectFailed'));
         return;
       }
-      toast.success('Rejected');
+      toast.success(t('appr.rejected'));
       setRejectOpen(false);
       setReason('');
       router.refresh();
@@ -61,7 +63,7 @@ export function LeaveActions({ id }: { id: number }) {
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={approve} disabled={pending} className="gap-1.5">
           <Check className="size-4" />
-          Approve
+          {t('appr.approve')}
         </Button>
         <Button
           size="sm"
@@ -71,32 +73,32 @@ export function LeaveActions({ id }: { id: number }) {
           className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
         >
           <X className="size-4" />
-          Reject
+          {t('appr.reject')}
         </Button>
       </div>
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject leave request</DialogTitle>
-            <DialogDescription>The reason is DM\'d to the requester on Slack (optional).</DialogDescription>
+            <DialogTitle>{t('appr.rejectTitle')}</DialogTitle>
+            <DialogDescription>{t('appr.rejectDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
-            <Label htmlFor="reject-reason">Reason (optional)</Label>
+            <Label htmlFor="reject-reason">{t('appr.rejectReason')}</Label>
             <Textarea
               id="reject-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. clashes with the project deadline and needs rescheduling"
+              placeholder={t('appr.rejectPlaceholder')}
               rows={4}
             />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setRejectOpen(false)} disabled={pending}>
-              Cancelled
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={reject} disabled={pending}>
-              {pending ? 'Working…' : 'Reject'}
+              {pending ? t('appr.working') : t('appr.reject')}
             </Button>
           </DialogFooter>
         </DialogContent>
