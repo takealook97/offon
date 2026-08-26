@@ -8,6 +8,7 @@ import { zonedToday } from '@/lib/time';
 import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
 import { getDeploymentT } from '@/lib/i18n/deployment';
+import { applyLeaveCancellation } from '@/lib/leave-balance';
 
 const Body = z.object({ id: z.coerce.number().int() });
 
@@ -44,19 +45,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const previousStatus = target.status;
-    await prisma.$transaction(async (tx) => {
-      await tx.leaveRequest.update({
-        where: { id: target.id },
-        data: { status: 'CANCELLED' },
-      });
-      if (previousStatus === 'APPROVED') {
-        await tx.leaveBalance.update({
-          where: { memberId: target.memberId },
-          data: { usedDays: { decrement: target.days } },
-        });
-      }
-    });
+    const { previousStatus } = await applyLeaveCancellation(target.id);
 
     await logAudit({
       actorId: session.memberId,

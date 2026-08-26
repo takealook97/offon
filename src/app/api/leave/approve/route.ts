@@ -7,6 +7,7 @@ import { sendDm } from '@/lib/slack';
 import { logAudit } from '@/lib/audit';
 import { formatZoned } from '@/lib/time';
 import { recomputeLeaveDays } from '@/lib/leave';
+import { applyLeaveApproval } from '@/lib/leave-balance';
 import { getHolidaySet } from '@/lib/holidays';
 import { leaveTypeKey, formatLeaveDateRange } from '@/lib/leave-labels';
 import { getT } from '@/lib/i18n/server';
@@ -53,21 +54,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requester = await prisma.$transaction(async (tx) => {
-      await tx.leaveRequest.update({
-        where: { id: target.id },
-        data: {
-          status: 'APPROVED',
-          approverId: admin.memberId,
-          days: recomputedDays,
-        },
-      });
-      await tx.leaveBalance.update({
-        where: { memberId: target.memberId },
-        data: { usedDays: { increment: recomputedDays } },
-      });
-      return tx.member.findUnique({ where: { id: target.memberId } });
-    });
+    const { memberId } = await applyLeaveApproval(target.id, admin.memberId, recomputedDays);
+    const requester = await prisma.member.findUnique({ where: { id: memberId } });
 
     await logAudit({
       actorId: admin.memberId,
