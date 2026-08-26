@@ -16,7 +16,7 @@ import { CALENDAR_MESSAGES, WEEK_OPTS, formats, localizer } from '@/lib/rbc-loca
 import type { RoomBookingDTO, RoomBookingsResponse, RoomDTO } from '@/lib/api-types';
 import {
   DEFAULT_BOOKING_MINUTES,
-  MEETING_TYPE_LABEL,
+  MEETING_TYPE_KEY,
   ROOM_CLOSE_MINUTES,
   ROOM_OPEN_MINUTES,
   ROOM_STEP_MINUTES,
@@ -33,6 +33,7 @@ import {
 import { CalendarToolbar } from '../calendar/CalendarToolbar';
 import { BookingDialog, type BookingDraft } from './BookingDialog';
 import { BookingDetailDialog } from './BookingDetailDialog';
+import { useTranslation } from '@/lib/i18n/client';
 
 /**
  * Kept at module scope. A fresh Date on every render changes the key of the library's slot cache
@@ -82,6 +83,7 @@ function nextStepMinutes(now: Date): number {
 }
 
 export function RoomCalendar({ viewerId }: { viewerId: number }) {
+  const { t } = useTranslation();
   const [rooms, setRooms] = useState<RoomDTO[]>([]);
   const [bookings, setBookings] = useState<RoomBookingDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
           setRooms([]);
           setBookings([]);
           toast.error(
-            (data && 'error' in data && data.error) || 'Could not load the bookings',
+            (data && 'error' in data && data.error) || t('room.loadFailed'),
           );
         }
       })
@@ -235,7 +237,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
         start = blocking.end;
       }
       if (wallMinutes(start) >= ROOM_CLOSE_MINUTES) {
-        toast.error('There is no time left that day');
+        toast.error(t('room.dayFull'));
         return;
       }
 
@@ -243,7 +245,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       const end = start === startWall ? endWall : defaultEndWall(start);
       const clamped = clampEndToNextBooking(daySlots, start, end);
       if (!clamped) {
-        toast.error('That slot is already booked');
+        toast.error(t('room.slotTaken'));
         return;
       }
       setDraft({ mode: 'create', start, end: clamped });
@@ -266,7 +268,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       const day = wallDate(startWall);
       const today = wallDate(toWall(now));
       if (day < today) {
-        toast.error('A date in the past cannot be booked');
+        toast.error(t('room.pastDate'));
         return;
       }
 
@@ -274,7 +276,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
       if (day === today && start < toWall(now)) {
         const bumped = Math.max(nextStepMinutes(now), ROOM_OPEN_MINUTES);
         if (bumped >= ROOM_CLOSE_MINUTES) {
-          toast.error('There is no bookable time left today');
+          toast.error(t('room.pastTimeToday'));
           return;
         }
         start = toWallString(day, bumped);
@@ -370,9 +372,9 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
 
   // A week spanning New Year (2026-12-28 to 2027-01-03) needs the year on the far end too, or it cannot be read.
   const spansYears = range.start.getFullYear() !== range.end.getFullYear();
-  const weekLabel = `${format(range.start, 'd MMMM yyyy')} – ${format(
+  const weekLabel = `${format(range.start, 'yyyy-MM-dd')} – ${format(
     range.end,
-    spansYears ? 'd MMMM yyyy' : 'd MMMM',
+    spansYears ? 'yyyy-MM-dd' : 'MM-dd',
   )}`;
 
   const draftDayBookings = draft ? bookingsOnDate(slots, wallDate(draft.start)) : [];
@@ -390,7 +392,7 @@ export function RoomCalendar({ viewerId }: { viewerId: number }) {
 
       {rooms.length === 0 && !loading ? (
         <p className="rounded-lg border border-border/60 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-          No rooms are available
+          {t('room.none')}
         </p>
       ) : (
         // On mobile all seven days stay and the grid scrolls sideways (.rbc-rooms-scroll in
@@ -488,11 +490,11 @@ function Legend() {
     <ul className="flex items-center gap-3 text-xs text-muted-foreground">
       <li className="flex items-center gap-1.5">
         <span className="size-2 rounded-full bg-emerald-500" />
-        {MEETING_TYPE_LABEL.INTERNAL}
+        {MEETING_TYPE_KEY.INTERNAL}
       </li>
       <li className="flex items-center gap-1.5">
         <span className="size-2 rounded-full bg-blue-500" />
-        {MEETING_TYPE_LABEL.EXTERNAL}
+        {MEETING_TYPE_KEY.EXTERNAL}
       </li>
     </ul>
   );

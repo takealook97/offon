@@ -2,7 +2,8 @@ import { prisma } from './prisma';
 import { logAudit } from './audit';
 import { cancelScheduledChannel, scheduleDm, sendDm } from './slack';
 import { formatKST } from './time';
-import { MEETING_TYPE_LABEL } from './room-booking';
+import { MEETING_TYPE_KEY } from './room-booking';
+import { getDeploymentT } from './i18n/deployment';
 import type { RoomBookingDTO } from './api-types';
 
 /**
@@ -179,7 +180,7 @@ function bookingDetailLines(booking: NotifiableBooking): string[] {
   const names = bookingMembers(booking).map((m) => m.name);
   return [
     `- Subject : ${booking.title}`,
-    `- Type : ${MEETING_TYPE_LABEL[booking.type]}`,
+    `- Type : ${getDeploymentT()(MEETING_TYPE_KEY[booking.type])}`,
     `- Attendees : ${names.join(', ')}`,
   ];
 }

@@ -1,3 +1,4 @@
+import type { MessageKey } from './i18n/dictionary';
 import { z } from 'zod';
 
 /**
@@ -23,9 +24,10 @@ export const DEFAULT_BOOKING_MINUTES = 30;
 export const MEETING_TYPES = ['INTERNAL', 'EXTERNAL'] as const;
 export type MeetingTypeValue = (typeof MEETING_TYPES)[number];
 
-export const MEETING_TYPE_LABEL: Record<MeetingTypeValue, string> = {
-  INTERNAL: 'Internal',
-  EXTERNAL: 'External',
+/** The screen renders in the viewer's language and a Slack DM in the deployment's, each translating for itself. */
+export const MEETING_TYPE_KEY: Record<MeetingTypeValue, MessageKey> = {
+  INTERNAL: 'room.internal',
+  EXTERNAL: 'room.external',
 };
 
 const WALL = z

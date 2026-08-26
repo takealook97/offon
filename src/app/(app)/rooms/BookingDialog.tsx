@@ -28,7 +28,7 @@ import { cn } from '@/lib/cn';
 import type { RoomBookingDTO } from '@/lib/api-types';
 import {
   MEETING_TYPES,
-  MEETING_TYPE_LABEL,
+  MEETING_TYPE_KEY,
   ROOM_CLOSE_MINUTES,
   ROOM_OPEN_MINUTES,
   ROOM_STEP_MINUTES,
@@ -41,22 +41,25 @@ import {
   type MeetingTypeValue,
 } from '@/lib/room-booking';
 import { AttendeePicker, type AttendeeOption } from './AttendeePicker';
+import { useTranslation } from '@/lib/i18n/client';
+import type { MessageKey } from '@/lib/i18n/dictionary';
 
 type Item = [value: string, label: string];
 
 /** The bookable hours. The last one is an end time only; the predicate below rules it out as a start. */
-const HOUR_ITEMS: Item[] = Array.from(
-  { length: ROOM_CLOSE_MINUTES / 60 - ROOM_OPEN_MINUTES / 60 + 1 },
-  (_, i) => {
+/** The labels are language-dependent, so this cannot be a module constant. */
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+const hourItems = (t: Translate): Item[] =>
+  Array.from({ length: ROOM_CLOSE_MINUTES / 60 - ROOM_OPEN_MINUTES / 60 + 1 }, (_, i) => {
     const h = ROOM_OPEN_MINUTES / 60 + i;
-    return [String(h).padStart(2, '0'), `${h}h`];
-  },
-);
+    return [String(h).padStart(2, '0'), t('room.hour', { h })];
+  });
 
-const MIN_ITEMS: Item[] = Array.from({ length: 60 / ROOM_STEP_MINUTES }, (_, i) => {
-  const m = i * ROOM_STEP_MINUTES;
-  return [String(m).padStart(2, '0'), `${m}m`];
-});
+const minuteItems = (t: Translate): Item[] =>
+  Array.from({ length: 60 / ROOM_STEP_MINUTES }, (_, i) => {
+    const m = i * ROOM_STEP_MINUTES;
+    return [String(m).padStart(2, '0'), t('room.minute', { m })];
+  });
 
 function TimeSel({
   value,
@@ -120,6 +123,7 @@ export function BookingDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const editingId = draft.mode === 'edit' ? draft.booking?.id : undefined;
 
   const [start, setStart] = useState(draft.start);
@@ -140,7 +144,7 @@ export function BookingDialog({
   const [pending, startSubmit] = useTransition();
 
   const dateStr = start.slice(0, 10);
-  const dateLabel = format(new Date(`${dateStr}T00:00:00`), 'EEE, d MMM yyyy', {
+  const dateLabel = format(new Date(`${dateStr}T00:00:00`), 'yyyy-MM-dd (EEE)', {
     locale: ko,
   });
 
@@ -159,11 +163,11 @@ export function BookingDialog({
   const endAllowed = (candidate: string) => validateBookingRange(start, candidate, now).ok;
 
   const startHourDisabled = (h: string) =>
-    !MIN_ITEMS.some(([m]) => startAllowed(`${dateStr}T${h}:${m}`));
+    !minuteItems(t).some(([m]) => startAllowed(`${dateStr}T${h}:${m}`));
   const startMinuteDisabled = (m: string) =>
     !startAllowed(`${dateStr}T${hourOf(start)}:${m}`);
   const endHourDisabled = (h: string) =>
-    !MIN_ITEMS.some(([m]) => endAllowed(`${dateStr}T${h}:${m}`));
+    !minuteItems(t).some(([m]) => endAllowed(`${dateStr}T${h}:${m}`));
   const endMinuteDisabled = (m: string) => !endAllowed(`${dateStr}T${hourOf(end)}:${m}`);
 
   const rangeCheck = validateBookingRange(start, end, now);
@@ -175,9 +179,9 @@ export function BookingDialog({
   const error = !rangeCheck.ok
     ? rangeCheck.error
     : conflict
-      ? `That time already has a booking from ${minutesToHhMm(wallMinutes(conflict.start))} to ${minutesToHhMm(
+      ? t('room.conflict', { start: minutesToHhMm(wallMinutes(conflict.start)), end: minutesToHhMm(
           wallMinutes(conflict.end),
-        )} is already booked`
+        ) })
       : null;
 
   const canSubmit = !error && title.trim().length > 0;
@@ -202,7 +206,7 @@ export function BookingDialog({
       }).catch(() => null);
 
       if (!res) {
-        toast.error('Request failed');
+        toast.error(t('room.requestFailed'));
         return;
       }
       const data = (await res.json().catch(() => ({}))) as {
@@ -210,13 +214,13 @@ export function BookingDialog({
         error?: string;
       };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Request failed');
+        toast.error(data.error ?? t('room.requestFailed'));
         // On a 409, where someone booked it first, only the view refreshes and the dialog stays open.
         // So the reason and attendees already typed survive and only the time has to change.
         if (res.status === 409) onDone();
         return;
       }
-      toast.success(draft.mode === 'edit' ? 'Booking updated' : 'Room booked');
+      toast.success(draft.mode === 'edit' ? t('room.updated') : t('room.created'));
       onOpenChange(false);
       onDone();
     });
@@ -226,97 +230,97 @@ export function BookingDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base">
-            {draft.mode === 'edit' ? 'Edit booking' : 'Book a room'}
+            {draft.mode === 'edit' ? t('room.editTitle') : t('room.bookTitle')}
           </DialogTitle>
           <DialogDescription>{dateLabel}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Time</Label>
+            <Label>{t('room.time')}</Label>
             <div className="flex flex-nowrap items-center gap-1">
               <TimeSel
-                label="Start hour"
+                label={t('room.startHour')}
                 value={hourOf(start)}
                 onValueChange={(h) => setStartPart(h, minuteOf(start))}
-                items={HOUR_ITEMS}
+                items={hourItems(t)}
                 isDisabled={startHourDisabled}
               />
               <TimeSel
-                label="Start minute"
+                label={t('room.startMinute')}
                 value={minuteOf(start)}
                 onValueChange={(m) => setStartPart(hourOf(start), m)}
-                items={MIN_ITEMS}
+                items={minuteItems(t)}
                 isDisabled={startMinuteDisabled}
               />
               <span className="shrink-0 px-0.5 text-sm text-muted-foreground">~</span>
               <TimeSel
-                label="End hour"
+                label={t('room.endHour')}
                 value={hourOf(end)}
                 onValueChange={(h) => setEndPart(h, minuteOf(end))}
-                items={HOUR_ITEMS}
+                items={hourItems(t)}
                 isDisabled={endHourDisabled}
               />
               <TimeSel
-                label="End minute"
+                label={t('room.endMinute')}
                 value={minuteOf(end)}
                 onValueChange={(m) => setEndPart(hourOf(end), m)}
-                items={MIN_ITEMS}
+                items={minuteItems(t)}
                 isDisabled={endMinuteDisabled}
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="booking-title">Subject</Label>
+            <Label htmlFor="booking-title">{t('room.subject')}</Label>
             <Input
               id="booking-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
-              placeholder="e.g. Sprint retro"
+              placeholder={t('room.subjectPlaceholder')}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Type</Label>
+            <Label>{t('room.kind')}</Label>
             <div className="flex gap-1.5">
-              {MEETING_TYPES.map((t) => (
+              {MEETING_TYPES.map((meetingType) => (
                 <Button
-                  key={t}
+                  key={meetingType}
                   type="button"
-                  variant={type === t ? 'default' : 'outline'}
+                  variant={type === meetingType ? 'default' : 'outline'}
                   size="sm"
                   className="flex-1 gap-1.5"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(meetingType)}
                 >
                   <span
                     className={cn(
                       'size-2 rounded-full',
-                      t === 'INTERNAL' ? 'bg-emerald-500' : 'bg-blue-500',
+                      meetingType === 'INTERNAL' ? 'bg-emerald-500' : 'bg-blue-500',
                     )}
                   />
-                  {MEETING_TYPE_LABEL[t]}
+                  {t(MEETING_TYPE_KEY[meetingType])}
                 </Button>
               ))}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Attendees</Label>
+            <Label>{t('room.attendees')}</Label>
             <AttendeePicker value={attendees} onChange={setAttendees} excludeId={viewerId} />
           </div>
 
           {type === 'EXTERNAL' && (
             <div className="space-y-1.5">
-              <Label htmlFor="booking-external">External attendees</Label>
+              <Label htmlFor="booking-external">{t('room.externalAttendees')}</Label>
               <Textarea
                 id="booking-external"
                 value={externalAttendees}
                 onChange={(e) => setExternalAttendees(e.target.value)}
                 maxLength={500}
                 rows={2}
-                placeholder="e.g. Jane Doe (Acme), John Smith (Globex)"
+                placeholder={t('room.externalPlaceholder')}
               />
             </div>
           )}
@@ -331,11 +335,11 @@ export function BookingDialog({
 
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-            Cancelled
+            {t('common.cancel')}
           </Button>
           <Button size="sm" onClick={submit} disabled={pending || !canSubmit}>
             {pending && <Loader2 className="size-4 animate-spin" />}
-            {draft.mode === 'edit' ? 'Edit' : 'Book'}
+            {draft.mode === 'edit' ? t('room.edit') : t('room.book')}
           </Button>
         </DialogFooter>
       </DialogContent>

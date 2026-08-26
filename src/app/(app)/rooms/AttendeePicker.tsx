@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/client';
 
 export type AttendeeOption = {
   id: number;
@@ -30,6 +31,7 @@ export function AttendeePicker({
   /** The organiser. There is no reason to add them as an attendee, so they are left out of the list. */
   excludeId?: number;
 }) {
+  const { t } = useTranslation();
   const [members, setMembers] = useState<AttendeeOption[]>([]);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -95,7 +97,7 @@ export function AttendeePicker({
                 <button
                   type="button"
                   onClick={() => onChange(value.filter((v) => v.id !== m.id))}
-                  aria-label={`Remove ${m.name}`}
+                  aria-label={t('room.excludeLabel', { name: m.name })}
                   className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
                 >
                   <X className="size-3" />
@@ -115,7 +117,7 @@ export function AttendeePicker({
             setHighlight(0);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Search by name or title"
+          placeholder={t('room.searchPlaceholder')}
           className="h-10 pl-9 pr-9"
           role="combobox"
           aria-expanded={true}
@@ -129,7 +131,7 @@ export function AttendeePicker({
               setQuery('');
               setHighlight(0);
             }}
-            aria-label="Clear search"
+            aria-label={t('room.clearSearch')}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <X className="size-3.5" />
@@ -146,7 +148,7 @@ export function AttendeePicker({
       >
         {matches.length === 0 ? (
           <li className="flex h-full items-center justify-center px-3 text-center text-sm text-muted-foreground">
-            No matches
+            {t('room.noResults')}
           </li>
         ) : (
           matches.map((m, idx) => {

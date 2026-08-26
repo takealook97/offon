@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { enUS, ko } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/cn';
 import type { RoomBookingDTO } from '@/lib/api-types';
-import { MEETING_TYPE_LABEL } from '@/lib/room-booking';
+import { MEETING_TYPE_KEY } from '@/lib/room-booking';
+import { useTranslation } from '@/lib/i18n/client';
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -40,6 +41,7 @@ export function BookingDetailDialog({
   onEdit: () => void;
   onDone: () => void;
 }) {
+  const { t, locale } = useTranslation();
   const [pending, startCancel] = useTransition();
   const start = new Date(booking.start);
   const end = new Date(booking.end);
@@ -51,7 +53,7 @@ export function BookingDetailDialog({
         method: 'DELETE',
       }).catch(() => null);
       if (!res) {
-        toast.error('Request failed');
+        toast.error(t('room.requestFailed'));
         return;
       }
       const data = (await res.json().catch(() => ({}))) as {
@@ -59,10 +61,10 @@ export function BookingDetailDialog({
         error?: string;
       };
       if (!res.ok || !data.ok) {
-        toast.error(data.error ?? 'Could not cancel that');
+        toast.error(data.error ?? t('room.cancelFailed'));
         return;
       }
-      toast.success('Booking cancelled');
+      toast.success(t('room.cancelled'));
       onOpenChange(false);
       onDone();
     });
@@ -81,17 +83,17 @@ export function BookingDetailDialog({
             <span className="min-w-0 truncate">{booking.title}</span>
           </DialogTitle>
           <DialogDescription>
-            {format(start, 'EEE, d MMM yyyy', { locale: ko })} {format(start, 'HH:mm')} ~{' '}
+            {format(start, 'yyyy-MM-dd (EEE)', { locale: locale === 'en' ? enUS : ko })} {format(start, 'HH:mm')} ~{' '}
             {format(end, 'HH:mm')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Row label="Subject">{booking.title}</Row>
-          <Row label="Type">{MEETING_TYPE_LABEL[booking.type]}</Row>
-          <Row label="Organizer">{booking.organizer.name}</Row>
+          <Row label={t('room.subject')}>{booking.title}</Row>
+          <Row label={t('room.kind')}>{t(MEETING_TYPE_KEY[booking.type])}</Row>
+          <Row label={t('room.organizer')}>{booking.organizer.name}</Row>
           {booking.attendees.length > 0 && (
-            <Row label="Attendees">
+            <Row label={t('room.attendees')}>
               <span className="flex flex-wrap gap-x-1.5 gap-y-0.5">
                 {booking.attendees.map((a) => (
                   <span
@@ -99,14 +101,14 @@ export function BookingDetailDialog({
                     className={cn(a.inactive && 'text-muted-foreground line-through')}
                   >
                     {a.name}
-                    {a.inactive && ' (left the company)'}
+                    {a.inactive && t('room.leftCompany')}
                   </span>
                 ))}
               </span>
             </Row>
           )}
           {booking.externalAttendees && (
-            <Row label="External">
+            <Row label={t('room.externalRow')}>
               <span className="whitespace-pre-wrap break-words">
                 {booking.externalAttendees}
               </span>
@@ -125,15 +127,15 @@ export function BookingDetailDialog({
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 {pending && <Loader2 className="size-4 animate-spin" />}
-                Cancel booking
+                {t('room.cancelBooking')}
               </Button>
               <Button size="sm" onClick={onEdit} disabled={pending}>
-                Edit
+                {t('room.edit')}
               </Button>
             </>
           ) : (
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-              Close
+              {t('room.close')}
             </Button>
           )}
         </DialogFooter>
