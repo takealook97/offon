@@ -124,6 +124,23 @@ const ko = {
   'leave.cancelling': '처리 중…',
   'leave.cancelFailed': '취소 실패',
   'leave.cancelled': '취소되었습니다',
+
+  // Slack 슬래시 커맨드 응답. 이모지는 로케일과 무관하게 유지한다.
+  'slack.noUser': '요청에 사용자 정보가 없어요',
+  'slack.noAccount': 'offon에 연결된 계정이 없어요. 관리자에게 문의해주세요.',
+  'slack.alreadyWorking': '이미 근무중입니다💻',
+  'slack.clockOutWhileAway': '자리비움 상태입니다. 복귀 후 퇴근해주세요🙏',
+  'slack.clockOutWhileMeal': '식사 중입니다. 식사 종료 후 퇴근해주세요🍽️',
+  'slack.noClockIn': '출근 기록이 없습니다⚠️',
+  'slack.alreadyOnMeal': '이미 식사 중입니다🍽️',
+  'slack.blockedWhileAway': '자리비움 중에는 사용할 수 없습니다⏸️',
+  'slack.alreadyDone': '오늘 근무가 이미 종료되었습니다🌙',
+  'slack.clockInFirst': '출근 후 사용해주세요☀️',
+  'slack.blockedWhileMeal': '식사 중에는 사용할 수 없습니다🍽️',
+  'slack.alreadyAway': '이미 자리비움 상태입니다⏸️',
+  'slack.mealAutoReturn': '식사 복귀는 자동으로 1시간 뒤에 진행됩니다🍽️',
+  'slack.notAway': '자리비움 상태가 아닙니다⚠️',
+  'slack.unknownCommand': '지원하지 않는 명령이에요',
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -239,6 +256,22 @@ const en: Messages = {
   'leave.cancelling': 'Working…',
   'leave.cancelFailed': "Couldn't cancel",
   'leave.cancelled': 'Cancelled',
+
+  'slack.noUser': "The request didn't include who you are",
+  'slack.noAccount': 'No offon account is linked to you. Ask your admin to add you.',
+  'slack.alreadyWorking': "You're already clocked in💻",
+  'slack.clockOutWhileAway': "You're away. Come back before clocking out🙏",
+  'slack.clockOutWhileMeal': "You're on a meal. Clock out once it ends🍽️",
+  'slack.noClockIn': "You haven't clocked in today⚠️",
+  'slack.alreadyOnMeal': "You're already on a meal🍽️",
+  'slack.blockedWhileAway': "You can't use that while away⏸️",
+  'slack.alreadyDone': "You've already finished for today🌙",
+  'slack.clockInFirst': 'Clock in first☀️',
+  'slack.blockedWhileMeal': "You can't use that during a meal🍽️",
+  'slack.alreadyAway': "You're already away⏸️",
+  'slack.mealAutoReturn': "You'll be back automatically an hour after the meal starts🍽️",
+  'slack.notAway': "You're not away right now⚠️",
+  'slack.unknownCommand': "That command isn't supported",
 };
 
 export const MESSAGES: Record<Locale, Messages> = { ko, en };

@@ -1,5 +1,6 @@
 import { after } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getDeploymentT } from '@/lib/i18n/deployment';
 import {
   clockInMember,
   clockOutMember,
@@ -46,14 +47,15 @@ export async function POST(req: Request) {
   const form = new URLSearchParams(rawBody);
   const command = form.get('command');
   const slackUserId = form.get('user_id');
-  if (!slackUserId) return ephemeral('That request carried no user information');
+  const t = getDeploymentT();
+  if (!slackUserId) return ephemeral(t('slack.noUser'));
 
   const member = await prisma.member.findFirst({
     where: { slackId: slackUserId, deletedAt: null },
     select: { id: true, name: true },
   });
   if (!member) {
-    return ephemeral('No offon account is linked to you. Ask your admin to add you.');
+    return ephemeral(t('slack.noAccount'));
   }
 
   if (command === '/hi') {
@@ -67,7 +69,7 @@ export async function POST(req: Request) {
       }
       return silentOk();
     }
-    return ephemeral('You are already clocked in\ud83d\udcbb');
+    return ephemeral(t('slack.alreadyWorking'));
   }
   if (command === '/bye') {
     const r = await clockOutMember(member.id, 'slack');
@@ -81,12 +83,12 @@ export async function POST(req: Request) {
       return silentOk();
     }
     if (r.code === 'ON_BREAK') {
-      return ephemeral('You are away. Come back before clocking out\ud83d\ude4f');
+      return ephemeral(t('slack.clockOutWhileAway'));
     }
     if (r.code === 'ON_LUNCH') {
-      return ephemeral('You are on a meal. Clock out once it ends\ud83c\udf7d\ufe0f');
+      return ephemeral(t('slack.clockOutWhileMeal'));
     }
-    return ephemeral('There is no clock-in recorded\u26a0\ufe0f');
+    return ephemeral(t('slack.noClockIn'));
   }
   if (command === '/lunch') {
     const r = await startLunch(member.id, 'slack');
@@ -98,10 +100,10 @@ export async function POST(req: Request) {
       if (name) after(() => notifyChannelLunch(name, at, id));
       return silentOk();
     }
-    if (r.code === 'ON_LUNCH') return ephemeral('You are already on a meal\ud83c\udf7d\ufe0f');
-    if (r.code === 'ALREADY_ON_BREAK') return ephemeral('That cannot be used while you are away\u23f8\ufe0f');
-    if (r.code === 'ALREADY_DONE') return ephemeral('Today is already finished\ud83c\udf19');
-    return ephemeral('Clock in first☀️');
+    if (r.code === 'ON_LUNCH') return ephemeral(t('slack.alreadyOnMeal'));
+    if (r.code === 'ALREADY_ON_BREAK') return ephemeral(t('slack.blockedWhileAway'));
+    if (r.code === 'ALREADY_DONE') return ephemeral(t('slack.alreadyDone'));
+    return ephemeral(t('slack.clockInFirst'));
   }
   if (command === '/break') {
     const r = await startBreak(member.id, 'slack');
@@ -114,10 +116,10 @@ export async function POST(req: Request) {
       }
       return silentOk();
     }
-    if (r.code === 'ON_LUNCH') return ephemeral('That cannot be used while you are on a meal\ud83c\udf7d\ufe0f');
-    if (r.code === 'ALREADY_ON_BREAK') return ephemeral('You are already marked away\u23f8\ufe0f');
-    if (r.code === 'ALREADY_DONE') return ephemeral('Today is already finished\ud83c\udf19');
-    return ephemeral('Clock in first☀️');
+    if (r.code === 'ON_LUNCH') return ephemeral(t('slack.blockedWhileMeal'));
+    if (r.code === 'ALREADY_ON_BREAK') return ephemeral(t('slack.alreadyAway'));
+    if (r.code === 'ALREADY_DONE') return ephemeral(t('slack.alreadyDone'));
+    return ephemeral(t('slack.clockInFirst'));
   }
   if (command === '/back') {
     const r = await endBreak(member.id, 'slack');
@@ -130,12 +132,12 @@ export async function POST(req: Request) {
       }
       return silentOk();
     }
-    if (r.code === 'ALREADY_WORKING') return ephemeral('You are already clocked in\ud83d\udcbb');
+    if (r.code === 'ALREADY_WORKING') return ephemeral(t('slack.alreadyWorking'));
     // There is nothing to come back from on a meal, so someone on one — rather than on a break — is told it ends by itself.
     if (await findOngoingLunch(member.id)) {
-      return ephemeral('A meal ends by itself an hour after it starts\ud83c\udf7d\ufe0f');
+      return ephemeral(t('slack.mealAutoReturn'));
     }
-    return ephemeral('You are not marked away\u26a0\ufe0f');
+    return ephemeral(t('slack.notAway'));
   }
-  return ephemeral('That command is not supported');
+  return ephemeral(t('slack.unknownCommand'));
 }

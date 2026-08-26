@@ -48,6 +48,7 @@ Everything else — leave requests, approvals, the calendar, corrections when so
 - **Excel export** — Hand your accountant a spreadsheet instead of a screenshot.
 - **Passwordless login** — A 6-digit code, DM'd on Slack, hashed with argon2.
 - **Scheduled nudges** — Missing clock-in and clock-out reminders, and yearly leave rollover.
+- **English and Korean** — Each person picks their language from the header; Slack messages follow `DEFAULT_LOCALE`.
 
 ## Quick start
 
@@ -89,6 +90,7 @@ Copy `.env.example` to `.env.local` and fill in these:
 | `SLACK_BOT_TOKEN` | yes | Bot User OAuth Token (`xoxb-…`) |
 | `SLACK_SIGNING_SECRET` | yes | Verifies slash commands really came from Slack |
 | `SLACK_OFFON_CHANNEL` | yes | Channel ID for clock-event announcements |
+| `DEFAULT_LOCALE` | no | Language for Slack messages and reminders (`ko` or `en`, default `ko`) |
 | `CRON_SECRET` | production | Authorizes the scheduled-job endpoints |
 | `SEED_ADMIN_*` | seed only | Used once by `pnpm db:seed` to create the first admin |
 

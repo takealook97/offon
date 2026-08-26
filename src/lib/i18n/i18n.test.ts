@@ -71,3 +71,26 @@ test('returns a plain message untouched', () => {
   assert.equal(translate(MESSAGES.en, 'login.submit'), 'Sign in');
   assert.equal(translate(MESSAGES.ko, 'login.submit'), '로그인');
 });
+
+test('deployment locale comes from DEFAULT_LOCALE and falls back safely', async () => {
+  const { getDeploymentLocale, getDeploymentT } = await import('./deployment');
+  const previous = process.env.DEFAULT_LOCALE;
+  try {
+    process.env.DEFAULT_LOCALE = 'en';
+    assert.equal(getDeploymentLocale(), 'en');
+    assert.equal(getDeploymentT()('slack.clockInFirst'), 'Clock in first☀️');
+
+    process.env.DEFAULT_LOCALE = 'ko';
+    assert.equal(getDeploymentLocale(), 'ko');
+
+    // 오타나 지원하지 않는 언어를 넣어도 Slack 응답이 키 문자열로 나가면 안 된다.
+    process.env.DEFAULT_LOCALE = 'de';
+    assert.equal(getDeploymentLocale(), DEFAULT_LOCALE);
+
+    delete process.env.DEFAULT_LOCALE;
+    assert.equal(getDeploymentLocale(), DEFAULT_LOCALE);
+  } finally {
+    if (previous === undefined) delete process.env.DEFAULT_LOCALE;
+    else process.env.DEFAULT_LOCALE = previous;
+  }
+});
