@@ -13,20 +13,17 @@ import {
   formatTimelineDate,
   timelinesEqualAtMinute,
 } from '@/lib/attendance-edit';
+import {
+  isAwayNow,
+  storedMealMinutes,
+  clockInMatchesWorkDate,
+  isPendingConflict,
+  findPendingEditRequest,
+} from '@/lib/attendance-edit-request';
 import { getT } from '@/lib/i18n/server';
 import { getAppSettings } from '@/lib/settings';
 import { getDeploymentT } from '@/lib/i18n/deployment';
 import { translateFailure } from '@/lib/i18n/format';
-
-const PENDING_UNIQUE_INDEX = 'attendance_edit_requests_pending_unique';
-
-function isPendingConflict(e: unknown): boolean {
-  if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;
-  if (e.code !== 'P2002') return false;
-  const target = e.meta?.target;
-  if (target === PENDING_UNIQUE_INDEX) return true;
-  return Array.isArray(target) && target.includes(PENDING_UNIQUE_INDEX);
-}
 
 export async function POST(req: NextRequest) {
   const t = await getT();
@@ -60,17 +57,14 @@ export async function POST(req: NextRequest) {
     // A session still running can have its clock-in and breaks corrected.
     // The one exception is someone away right now, who is asked to come back first.
     // A meal is a closed break with its end already fixed, so it does not trip this; even one in progress can be edited or removed.
-    if (target.breaks.some((b) => !b.endAt)) {
+    if (isAwayNow(target.breaks)) {
       return NextResponse.json(
         { ok: false, error: t('api.editWhileAway') },
         { status: 400 },
       );
     }
 
-    const dup = await prisma.attendanceEditRequest.findFirst({
-      where: { sessionId, status: 'REQUESTED', deletedAt: null },
-      select: { id: true },
-    });
+    const dup = await findPendingEditRequest(sessionId);
     if (dup) {
       return NextResponse.json(
         { ok: false, error: t('api.editPending') },
@@ -78,24 +72,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // The lengths of meals already saved on this session, so that editing an old one after the setting changed
-    // Passed as an allow-list so that meal does not quietly shrink to the new length.
-    const storedMealMinutes = target.breaks
-      .filter((b) => b.kind === 'LUNCH' && b.endAt)
-      .map((b) => Math.round((b.endAt!.getTime() - b.startAt.getTime()) / 60_000));
     const built = buildAndValidateTimeline({ clockIn, clockOut, breaks }, new Date(), {
       current: (await getAppSettings()).mealMinutes,
-      allowed: storedMealMinutes,
+      allowed: storedMealMinutes(target.breaks),
     });
     if (!built.ok) {
       return NextResponse.json({ ok: false, error: translateFailure(t, built) }, { status: 400 });
     }
 
-    // The clock-in has to fall on the same day as the work date. Moving it elsewhere
-    // contradicts the work date, which robs the one-row-per-day constraint of meaning and misdirects the reminders.
-    // A clock-out crossing midnight is supported, so only the start date is checked.
     const workDateKey = dayKey(target.attendance.workDate);
-    if (dayKey(new Date(built.timeline.startAt)) !== workDateKey) {
+    if (!clockInMatchesWorkDate(built.timeline.startAt, target.attendance.workDate)) {
       return NextResponse.json(
         { ok: false, error: t('api.clockInDayMismatch', { date: workDateKey }) },
         { status: 400 },
