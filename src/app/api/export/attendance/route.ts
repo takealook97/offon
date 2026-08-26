@@ -39,6 +39,7 @@ function xlsxResponse(buffer: Uint8Array<ArrayBuffer>, koreanFilename: string, y
 
 export async function GET(req: NextRequest) {
   const t = await getT();
+  const weekdays = t('weekday.short').split(',');
   try {
     const sp = req.nextUrl.searchParams;
     const parsed = Query.safeParse({
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
     // The org sheet is a summary, and admin-only.
     if (scope === 'all') {
       await requireAdmin();
-      const report = await buildOrgReport({ range, now });
+      const report = await buildOrgReport({ range, now, weekdays });
       const buffer = await buildOrgWorkbook(t, report);
       return xlsxResponse(buffer, t('xls.fileAll', { yyyymm: range.yyyymm }), range.yyyymm);
     }
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const report = await buildIndividualReport({ memberId: targetMemberId, range, now });
+    const report = await buildIndividualReport({ memberId: targetMemberId, range, now, weekdays });
     if (!report) {
       return NextResponse.json(
         { ok: false, error: t('api.targetNotFound') },
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest) {
     const buffer = await buildIndividualWorkbook(t, report);
     return xlsxResponse(
       buffer,
-      `attendance_${report.member.name}_${range.yyyymm}.xlsx`,
+      t('xls.fileOne', { name: report.member.name, yyyymm: range.yyyymm }),
       range.yyyymm,
     );
   } catch (e) {

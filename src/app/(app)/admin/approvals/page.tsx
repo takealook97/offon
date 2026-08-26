@@ -72,8 +72,8 @@ export default async function ApprovalsPage() {
         name: r.member.name,
         position: r.member.position,
         dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)'),
-        before: formatTimelineSummary(before),
-        after: formatTimelineSummary(after),
+        before: formatTimelineSummary(t, before),
+        after: formatTimelineSummary(t, after),
         reason: r.reason,
       } satisfies PendingRow,
     };
@@ -107,8 +107,8 @@ export default async function ApprovalsPage() {
         name: r.member.name,
         approverName: r.approver?.name ?? null,
         dateLabel: formatKST(new Date(before.startAt), 'yyyy-MM-dd (EEE)'),
-        before: formatTimelineSummary(before),
-        after: formatTimelineSummary(after),
+        before: formatTimelineSummary(t, before),
+        after: formatTimelineSummary(t, after),
         status: r.status as 'APPROVED' | 'REJECTED' | 'CANCELLED',
       } satisfies RecentItem,
     };

@@ -104,6 +104,7 @@ export function ShowMoreDialog({
     const segEnd: Date | null = e.resource.isOpenSession ? null : e.end;
     const { startLabel, endLabel, minutes } = kstClipSegmentLabel(e.start, segEnd, dayKey, {
       now,
+      openLabel: t('status.inProgress'),
     });
     return `${startLabel} ~ ${endLabel} · ${formatDuration(t, minutes)}`;
   };

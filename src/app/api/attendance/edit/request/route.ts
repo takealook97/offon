@@ -148,8 +148,8 @@ export async function POST(req: NextRequest) {
     const text =
       `${dt('dm.editRequestedLine', { name: requester?.name ?? dt('dm.employee') })}\n` +
       `${formatTimelineDate(snapshot)}\n\n` +
-      `${dt('dm.before')} ${formatTimelineSummary(snapshot)}\n` +
-      `${dt('dm.after')} ${formatTimelineSummary(built.timeline)}`;
+      `${dt('dm.before')} ${formatTimelineSummary(t, snapshot)}\n` +
+      `${dt('dm.after')} ${formatTimelineSummary(t, built.timeline)}`;
     await Promise.all(
       recipients.map((r) =>
         sendDm(r.slackId, text).catch((err) =>

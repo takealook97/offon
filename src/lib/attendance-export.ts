@@ -25,7 +25,7 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 
 type PrismaLeaveType = 'FULL_DAY' | 'HALF_DAY_AM' | 'HALF_DAY_PM';
 
-export type LeaveLabel = 'Leave' | 'Morning half day' | 'Afternoon half day' | '';
+export type LeaveLabel = MessageKey | '';
 
 export type DailyRow = {
 /** The displayed date, e.g. '2026.05.26 (Tue)'. */
@@ -93,11 +93,11 @@ function prevDayKey(key: string): string {
   return new Date(Date.parse(`${key}T00:00:00Z`) - DAY_MS).toISOString().slice(0, 10);
 }
 
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
-/** A day key as a display string with its weekday. The weekday itself is timezone-independent. */
-function formatDateLabel(key: string): string {
-  const dow = WEEKDAY_KO[new Date(`${key}T00:00:00Z`).getUTCDay()];
+
+/** A day key as a display string. The weekday itself is timezone-independent; only its name follows the language. */
+function formatDateLabel(key: string, weekdays: readonly string[]): string {
+  const dow = weekdays[new Date(`${key}T00:00:00Z`).getUTCDay()];
   return `${key.replace(/-/g, '.')} (${dow})`;
 }
 
@@ -178,9 +178,9 @@ function buildLeaveMap(
 }
 
 function leaveLabelFor(t: PrismaLeaveType | undefined): LeaveLabel {
-  if (t === 'FULL_DAY') return 'Leave';
-  if (t === 'HALF_DAY_AM') return 'Morning half day';
-  if (t === 'HALF_DAY_PM') return 'Afternoon half day';
+  if (t === 'FULL_DAY') return 'appr.leave';
+  if (t === 'HALF_DAY_AM') return 'leave.amHalf';
+  if (t === 'HALF_DAY_PM') return 'leave.pmHalf';
   return '';
 }
 
@@ -194,6 +194,7 @@ function computeReport(
   range: ResolvedMonthRange,
   holidays: ReadonlySet<string>,
   now: Date,
+  weekdays: readonly string[],
 ): { rows: DailyRow[]; summary: ReportSummary } {
   const daily = clippedDailyTotals(attendances, now);
   const leaveMap = buildLeaveMap(leaves, range.startKey, range.endKey);
@@ -229,7 +230,7 @@ function computeReport(
     }
 
     rows.push({
-      date: formatDateLabel(key),
+      date: formatDateLabel(key, weekdays),
       workMinutes: gross,
       breakMinutes: brk,
       isHoliday,
@@ -284,8 +285,10 @@ export async function buildIndividualReport(params: {
   memberId: number;
   range: ResolvedMonthRange;
   now: Date;
+  /** Weekday names for the date column. They are language-dependent, so the caller supplies them. */
+  weekdays: readonly string[];
 }): Promise<IndividualReport | null> {
-  const { memberId, range, now } = params;
+  const { memberId, range, now, weekdays } = params;
   const member = await prisma.member.findFirst({
     where: { id: memberId, deletedAt: null },
     select: { id: true, name: true, position: true },
@@ -317,6 +320,7 @@ export async function buildIndividualReport(params: {
     range,
     holidays,
     now,
+    weekdays,
   );
   return { member, yyyymm: range.yyyymm, rows, summary };
 }
@@ -324,8 +328,9 @@ export async function buildIndividualReport(params: {
 export async function buildOrgReport(params: {
   range: ResolvedMonthRange;
   now: Date;
+  weekdays: readonly string[];
 }): Promise<OrgReport> {
-  const { range, now } = params;
+  const { range, now, weekdays } = params;
   const { gte, lte } = rangeBoundsUtc(range);
 
   const [members, attendances, leaves, holidays] = await Promise.all([
@@ -373,6 +378,7 @@ export async function buildOrgReport(params: {
         range,
         holidays,
         now,
+        weekdays,
       );
       return { name: m.name, position: m.position, summary };
     });

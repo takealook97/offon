@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireSession } from '@/lib/session';
+import { getT } from '@/lib/i18n/server';
 import {
   asTimeline,
   formatTimelineDate,
@@ -9,6 +10,7 @@ import {
 
 // Returns all of your own pending attendance corrections, for the list below the calendar.
 export async function GET() {
+  const t = await getT();
   try {
     const session = await requireSession();
     const rows = await prisma.attendanceEditRequest.findMany({
@@ -22,8 +24,8 @@ export async function GET() {
       return {
         id: r.id,
         dateLabel: formatTimelineDate(after),
-        before: formatTimelineSummary(before),
-        after: formatTimelineSummary(after),
+        before: formatTimelineSummary(t, before),
+        after: formatTimelineSummary(t, after),
       };
     });
     return NextResponse.json({ ok: true, items });

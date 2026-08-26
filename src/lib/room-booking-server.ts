@@ -179,9 +179,9 @@ function bookingDetailLines(booking: NotifiableBooking): string[] {
   // The organiser is in the meeting, so they lead the attendee line. People who have left stay, so the record remains true.
   const names = bookingMembers(booking).map((m) => m.name);
   return [
-    `- Subject : ${booking.title}`,
-    `- Type : ${getDeploymentT()(MEETING_TYPE_KEY[booking.type])}`,
-    `- Attendees : ${names.join(', ')}`,
+    getDeploymentT()('dm.meetingSubject', { title: booking.title }),
+    getDeploymentT()('dm.meetingKind', { kind: getDeploymentT()(MEETING_TYPE_KEY[booking.type]) }),
+    getDeploymentT()('dm.meetingAttendees', { names: names.join(', ') }),
   ];
 }
 
@@ -236,7 +236,7 @@ export async function scheduleBookingReminders(bookingId: number): Promise<void>
   if (postAt.getTime() <= Date.now()) return;
 
   const text = [
-    `Your meeting starts in ${REMINDER_LEAD_MINUTES} minutes.`,
+    getDeploymentT()('dm.meetingSoon', { minutes: REMINDER_LEAD_MINUTES }),
     bookingWhen(booking),
     ...bookingDetailLines(booking),
   ].join('\n');

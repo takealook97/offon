@@ -148,12 +148,11 @@ export async function POST(req: NextRequest) {
       where: { role: 'ADMIN', deletedAt: null },
     });
     const dateRange = formatLeaveDateRangeKST(startDate, endDate, weekdays);
-    const action = `requested ${dt(leaveTypeKey(type))}`;
     await Promise.all(
       admins.map((a) =>
         sendDm(
           a.slackId,
-          `${requester?.name ?? dt('dm.employee')} ${action} ${dateRange}.`,
+          dt('dm.leaveRequestedLine', { name: requester?.name ?? dt('dm.employee'), range: dateRange, type: dt(leaveTypeKey(type)) }),
         ).catch((err) =>
           logAudit({
             actorId: session.memberId,

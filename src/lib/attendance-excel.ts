@@ -85,7 +85,7 @@ export async function buildIndividualWorkbook(t: Translate, report: IndividualRe
     styleDataCell(ws.getCell(r, 2), formatHM(t, row.workMinutes));
     styleDataCell(ws.getCell(r, 3), formatHM(t, row.breakMinutes));
     styleDataCell(ws.getCell(r, 4), row.isHoliday ? 'Y' : 'N');
-    styleDataCell(ws.getCell(r, 5), row.leaveLabel);
+    styleDataCell(ws.getCell(r, 5), row.leaveLabel ? t(row.leaveLabel) : '');
     styleDataCell(ws.getCell(r, 6), formatHM(t, row.sumMinutes));
   });
 

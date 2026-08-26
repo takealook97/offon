@@ -11,14 +11,8 @@ import {
 import { clippedDailyTotals } from '@/lib/calendar-aggregation';
 import type { CalendarEvent } from '@/lib/api-types';
 import { getT } from '@/lib/i18n/server';
+import { formatDuration } from '@/lib/i18n/format';
 
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
-}
 
 export async function GET(req: NextRequest) {
   const t = await getT();
@@ -106,7 +100,7 @@ export async function GET(req: NextRequest) {
         const outLabel = s.endAt ? formatKST(s.endAt, 'HH:mm') : t('status.inProgress');
         events.push({
           id: `sess-${s.id}`,
-          title: `${inLabel} ~ ${outLabel} · ${formatDuration(minutes)}`,
+          title: `${inLabel} ~ ${outLabel} · ${formatDuration(t, minutes)}`,
           start: s.startAt.toISOString(),
           end: endAt.toISOString(),
           allDay: false,
@@ -145,7 +139,7 @@ export async function GET(req: NextRequest) {
         const suffix = l.type === 'HALF_DAY_AM' ? t('evt.am') : t('evt.pm');
         events.push({
           id: `leave-${l.id}`,
-          title: `Half day${suffix}`,
+          title: t('evt.halfPrefix', { suffix }),
           start: s,
           end: e,
           allDay: false,

@@ -237,10 +237,12 @@ export function kstClipSegmentLabel(
   segStart: Date,
   segEnd: Date | null,
   dayKey: string,
-  opts: { now: Date },
+  /** openLabel: what to show for a segment that has not ended. This file is a pure time utility and knows nothing of the dictionary. */
+  opts: { now: Date; openLabel: string },
 ): { startLabel: string; endLabel: string; minutes: number } {
   const isOpen = segEnd === null;
   const effectiveEnd = segEnd ?? opts.now;
+  const openLabel = opts.openLabel;
   const { start: ds, end: de } = kstDayBoundsUtc(dayKey);
   const clipStartMs = Math.max(segStart.getTime(), ds.getTime());
   const clipEndMs = Math.min(effectiveEnd.getTime(), de.getTime());
@@ -250,7 +252,7 @@ export function kstClipSegmentLabel(
   if (clipEndMs === de.getTime()) {
     endLabel = '24:00';
   } else if (isOpen) {
-    endLabel = 'In progress';
+    endLabel = openLabel;
   } else {
     endLabel = kstHhMm(new Date(clipEndMs));
   }

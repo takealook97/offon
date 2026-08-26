@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (requester?.slackId) {
       await sendDm(
         requester.slackId,
-        `${formatLeaveDateRange(target.startDate, target.endDate, weekdays)} ${dt(leaveTypeKey(target.type))} was approved.`,
+        dt('dm.leaveApproved', { range: formatLeaveDateRange(target.startDate, target.endDate, weekdays), type: dt(leaveTypeKey(target.type)) }),
       ).catch((err) =>
         logAudit({
           actorId: admin.memberId,

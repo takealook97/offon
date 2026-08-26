@@ -1,5 +1,5 @@
 import type { MessageKey } from './i18n/dictionary';
-import type { Failure } from './i18n/format';
+import type { Failure, Translate } from './i18n/format';
 import { z } from 'zod';
 import { formatKST, kstDayKey, kstWallToUtc, utcToKstWall } from './time';
 
@@ -26,7 +26,7 @@ export type EditTimeline = {
 
 const WALL = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/, 'That time is not in a valid format');
+  .regex(/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/, 'valid.badTimeFormat');
 
 /** The request body sent by the client. Times are wall clock (`yyyy-MM-ddTHH:mm`); no clockOut means still running. */
 export const EditRequestBody = z.object({
@@ -387,24 +387,29 @@ function dayOffset(baseIso: string, iso: string): number {
 }
 
 /** An HH:mm label, marked as next day or +N days when it falls after the session's own date. */
-function timeLabel(baseIso: string, iso: string): string {
+function timeLabel(t: Translate, baseIso: string, iso: string): string {
   const hhmm = formatKST(new Date(iso), 'HH:mm');
   const off = dayOffset(baseIso, iso);
   if (off <= 0) return hhmm;
-  return off === 1 ? `(next day) ${hhmm}` : `(+${off} days) ${hhmm}`;
+  return off === 1 ? t('tl.nextDay', { time: hhmm }) : t('tl.plusDays', { days: off, time: hhmm });
 }
 
 /** A one-line summary of times only. The date is shown separately by formatTimelineDate, and anything past midnight is marked as the next day. */
-export function formatTimelineSummary(t: EditTimeline): string {
-  const base = t.startAt;
-  const inLabel = timeLabel(base, t.startAt);
-  const outLabel = t.endAt ? timeLabel(base, t.endAt) : 'In progress';
-  const breaks = t.breaks
+export function formatTimelineSummary(t: Translate, timeline: EditTimeline): string {
+  const base = timeline.startAt;
+  const inLabel = timeLabel(t, base, base);
+  const outLabel = timeline.endAt
+    ? timeLabel(t, base, timeline.endAt)
+    : t('status.inProgress');
+  const breaks = timeline.breaks
     .map(
       (b) =>
-        `${normalizeBreakKind(b.kind) === 'LUNCH' ? 'Meal' : 'Away'} ` +
-        `${timeLabel(base, b.startAt)} ~ ${timeLabel(base, b.endAt)}`,
+        `${t(normalizeBreakKind(b.kind) === 'LUNCH' ? 'edit.meal' : 'edit.away')} ` +
+        `${timeLabel(t, base, b.startAt)} ~ ${timeLabel(t, base, b.endAt)}`,
     )
     .join(', ');
-  return `In ${inLabel} · Out ${outLabel}${breaks ? ` · ${breaks}` : ''}`;
+  return (
+    t('tl.summary', { in: inLabel, out: outLabel }) +
+    (breaks ? t('tl.breakSuffix', { breaks }) : '')
+  );
 }
