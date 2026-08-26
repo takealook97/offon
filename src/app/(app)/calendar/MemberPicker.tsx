@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/client';
 
 export type PickerMember = {
   id: number;
@@ -24,6 +25,7 @@ export function MemberPicker({
   value: PickerMember | null;
   onChange: (member: PickerMember | null) => void;
 }) {
+  const { t } = useTranslation();
   const [members, setMembers] = useState<PickerMember[]>([]);
   const [query, setQuery] = useState('');
   const [highlight, setHighlight] = useState(0);
@@ -89,7 +91,7 @@ export function MemberPicker({
             setHighlight(0);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Search by name or title"
+          placeholder={t('cal.searchMember')}
           className="h-10 pl-9 pr-9"
           role="combobox"
           aria-expanded={true}
@@ -104,7 +106,7 @@ export function MemberPicker({
               setQuery('');
               setHighlight(0);
             }}
-            aria-label="Clear"
+            aria-label={t('cal.clear')}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <X className="size-3.5" />
@@ -120,7 +122,7 @@ export function MemberPicker({
       >
         {matches.length === 0 ? (
           <li className="flex h-full items-center justify-center px-3 text-center text-sm text-muted-foreground">
-            No matches
+            {t('cal.noResults')}
           </li>
         ) : (
           matches.map((m, idx) => {
@@ -151,7 +153,7 @@ export function MemberPicker({
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5">
                     {m.role === 'ADMIN' && (
-                      <span className="text-xs text-muted-foreground">Admin</span>
+                      <span className="text-xs text-muted-foreground">{t('cal.admin')}</span>
                     )}
                     {selected && <Check className="size-4" />}
                   </span>

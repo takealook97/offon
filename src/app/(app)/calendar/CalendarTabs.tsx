@@ -7,10 +7,12 @@ import { CalendarView } from './CalendarView';
 import { TeamCalendarView } from './TeamCalendarView';
 import { MemberSearch } from './MemberSearch';
 import { ExportButton } from './ExportButton';
+import { useTranslation } from '@/lib/i18n/client';
 
 type Mode = 'personal' | 'team' | 'search';
 
 export function CalendarTabs({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('personal');
 
   return (
@@ -18,11 +20,11 @@ export function CalendarTabs({ isAdmin }: { isAdmin: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex gap-1 rounded-md bg-muted p-0.5">
-            <TabButton label="My calendar" active={mode === 'personal'} onClick={() => setMode('personal')} />
-            <TabButton label="Team calendar" active={mode === 'team'} onClick={() => setMode('team')} />
+            <TabButton label={t('cal.mine')} active={mode === 'personal'} onClick={() => setMode('personal')} />
+            <TabButton label={t('cal.team')} active={mode === 'team'} onClick={() => setMode('team')} />
             {/* Searching for a colleague is admin-only */}
             {isAdmin && (
-              <TabButton label="Search" active={mode === 'search'} onClick={() => setMode('search')} />
+              <TabButton label={t('cal.search')} active={mode === 'search'} onClick={() => setMode('search')} />
             )}
           </div>
           <ExportButton isAdmin={isAdmin} />
@@ -66,20 +68,22 @@ function TabButton({
 }
 
 function PersonalLegend() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-      <Dot cls="bg-emerald-500" label="Working" />
-      <Dot cls="bg-blue-500" label="Leave" />
-      <Dot cls="bg-violet-500" label="Half day" />
+      <Dot cls="bg-emerald-500" label={t('cal.legendWork')} />
+      <Dot cls="bg-blue-500" label={t('cal.legendLeave')} />
+      <Dot cls="bg-violet-500" label={t('cal.legendHalf')} />
     </div>
   );
 }
 
 function TeamLegend() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-      <Dot cls="bg-blue-500" label="Leave" />
-      <Dot cls="bg-violet-500" label="Half day" />
+      <Dot cls="bg-blue-500" label={t('cal.legendLeave')} />
+      <Dot cls="bg-violet-500" label={t('cal.legendHalf')} />
     </div>
   );
 }

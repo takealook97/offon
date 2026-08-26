@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n/client';
 
 type PendingItem = { id: number; dateLabel: string; before: string; after: string };
 
 export function PendingEditRequests({ refreshKey = 0 }: { refreshKey?: number }) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<PendingItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
@@ -36,13 +38,13 @@ export function PendingEditRequests({ refreshKey = 0 }: { refreshKey?: number })
       .then((r) => r.json())
       .then((d: { ok?: boolean; error?: string }) => {
         if (d?.ok) {
-          toast.success('Request cancelled');
+          toast.success(t('cal.cancelled'));
           load();
         } else {
-          toast.error(d?.error ?? 'Could not cancel that');
+          toast.error(d?.error ?? t('cal.cancelFailed'));
         }
       })
-      .catch(() => toast.error('Could not cancel that'))
+      .catch(() => toast.error(t('cal.cancelFailed')))
       .finally(() => setBusy(null));
   };
 
@@ -52,7 +54,7 @@ export function PendingEditRequests({ refreshKey = 0 }: { refreshKey?: number })
     <section className="rounded-lg border border-border/60 bg-card">
       <header className="border-b border-border/60 px-4 py-3">
         <h3 className="text-sm font-semibold text-muted-foreground">
-          {items.length} corrections waiting
+          {t('cal.pendingEdits', { count: items.length })}
         </h3>
       </header>
       <ul className="divide-y divide-border/60">
@@ -74,7 +76,7 @@ export function PendingEditRequests({ refreshKey = 0 }: { refreshKey?: number })
               className="shrink-0 gap-1.5 self-end border-destructive/40 text-destructive hover:bg-destructive/10 sm:self-auto"
             >
               <X className="size-3.5" />
-              Cancelled
+              {t('common.cancel')}
             </Button>
           </li>
         ))}
