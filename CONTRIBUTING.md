@@ -31,11 +31,34 @@ createdb offon_test   # or: docker exec offon-local-pg createdb -U offon offon_t
 DATABASE_URL="postgresql://offon:offon@localhost:55432/offon_test?schema=public" pnpm test:db
 ```
 
-It refuses to run unless the database name ends in `_test`, because it truncates every table between cases.
+It refuses to run unless the database name ends in `_test`, because it empties every table between cases.
+
+And a third that drives a real browser against a real build. These cover what the other two
+cannot: that the pages render, that a form posts what the route expects, and that the answer
+comes back on screen. A mismatch between a route and the component reading it passes every
+other suite in this repository and fails here.
+
+```bash
+pnpm exec playwright install chromium   # once
+createdb offon_e2e   # or: docker exec offon-local-pg createdb -U offon offon_e2e
+pnpm build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/
+pnpm test:e2e
+```
+
+Slack is never involved: the sign-in code is written straight into the database by the seed, so
+the real sign-in endpoint runs with a real code and nothing is DM'd. The seed refuses any
+database whose name does not end in `_e2e`, for the same reason as above.
+
+Two things to know before writing one. The display language is a per-person cookie that
+defaults to Korean, so every context sets `locale=en` and the assertions are written in
+English. And call API routes from inside the page with the `apiGet` helper rather than
+Playwright's `request` fixture — the session cookie is `Secure`, and that fixture's Node-side
+cookie jar will not send a Secure cookie over http, so the request silently arrives signed out
+and the guard hands back the sign-in page with a 200.
 
 There is also a `Dockerfile` for self-hosters. It is not built in CI, so if you touch it, run `docker build .` yourself.
 
-CI runs the four commands above. They pass on `main`, so a red build means the change broke something.
+CI runs all of the above. They pass on `main`, so a red build means the change broke something.
 
 **Run the app too.** Type checking and linting both pass on code that cannot boot — server-only imports leaking into client bundles and missing `'use client'` directives only show up at runtime.
 
