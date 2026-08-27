@@ -17,7 +17,8 @@
     "db:local:psql": "docker exec -it offon-local-pg psql -U offon -d offon",
     "test:db": "tsx --test --test-concurrency=1 \"src/**/*.db-test.ts\"",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:gaps": "bash scripts/coverage-gaps.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

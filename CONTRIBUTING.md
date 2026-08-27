@@ -56,6 +56,12 @@ Playwright's `request` fixture — the session cookie is `Secure`, and that fixt
 cookie jar will not send a Secure cookie over http, so the request silently arrives signed out
 and the guard hands back the sign-in page with a 200.
 
+If you add a module to `src/lib`, `pnpm test:gaps` will tell you whether anything imports it
+from a test. It exists because working this out by eye kept producing the same wrong answers —
+reading it off matching filenames misses a module covered by a differently-named suite, and a
+careless pattern silently skips `rateLimit.ts` or a dynamic `await import(...)`. A module that
+genuinely does not need a test gets an entry in the script saying why.
+
 There is also a `Dockerfile` for self-hosters. It is not built in CI, so if you touch it, run `docker build .` yourself.
 
 CI runs all of the above. They pass on `main`, so a red build means the change broke something.

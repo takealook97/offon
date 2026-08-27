@@ -158,6 +158,7 @@ Worth knowing before you deploy — these are real, and PRs are welcome on all o
 | `pnpm test` | Run the test suite |
 | `pnpm test:db` | Run the suite that needs a real Postgres |
 | `pnpm test:e2e` | Drive a browser against a real build |
+| `pnpm test:gaps` | List modules in `src/lib` no test imports |
 | `pnpm lint` | ESLint |
 | `pnpm db:seed` | Seed the initial admin member |
 | `pnpm db:migrate:deploy` | Apply pending migrations |
