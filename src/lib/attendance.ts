@@ -9,25 +9,59 @@ import { sendChannel, scheduleChannel, cancelScheduledChannel } from './slack';
 import { getAppSettings, workHours } from './settings';
 import { DEFAULT_WORK_HOURS, standardWorkMinutes } from './work-hours';
 
-const OPEN_SESSION_UNIQUE_INDEX = 'attendance_sessions_open_unique';
-const OPEN_BREAK_UNIQUE_INDEX = 'attendance_breaks_open_unique';
+/**
+ * The uniques this file has to recognise when a concurrent write loses a race, each with both
+ * the index name and the columns it covers.
+ *
+ * Both are needed because Prisma reports `meta.target` inconsistently for these: sometimes the
+ * index name, sometimes the column list, depending on the path the write took. Matching only
+ * the name is what let a real conflict escape as a 500 in roughly one clock-in race in ten.
+ */
+const OPEN_SESSION_UNIQUE = {
+  name: 'attendance_sessions_open_unique',
+  columns: ['attendance_id'],
+} as const;
+const OPEN_BREAK_UNIQUE = {
+  name: 'attendance_breaks_open_unique',
+  columns: ['session_id'],
+} as const;
+/** One attendance row per member per day. */
+const ATTENDANCE_DAY_UNIQUE = {
+  name: 'attendances_member_id_work_date_key',
+  columns: ['member_id', 'work_date'],
+} as const;
 
-function isOpenSessionConflict(e: unknown): boolean {
+type UniqueConstraint = { name: string; columns: readonly string[] };
+
+function isUniqueViolation(e: unknown, constraint: UniqueConstraint): boolean {
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;
   if (e.code !== 'P2002') return false;
   const target = e.meta?.target;
-  if (target === OPEN_SESSION_UNIQUE_INDEX) return true;
-  if (Array.isArray(target) && target.includes(OPEN_SESSION_UNIQUE_INDEX)) return true;
-  return false;
+  if (target === constraint.name) return true;
+  if (!Array.isArray(target)) return false;
+  if (target.includes(constraint.name)) return true;
+  return constraint.columns.every((column) => target.includes(column));
+}
+
+function isOpenSessionConflict(e: unknown): boolean {
+  return isUniqueViolation(e, OPEN_SESSION_UNIQUE);
 }
 
 function isOpenBreakConflict(e: unknown): boolean {
-  if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return false;
-  if (e.code !== 'P2002') return false;
-  const target = e.meta?.target;
-  if (target === OPEN_BREAK_UNIQUE_INDEX) return true;
-  if (Array.isArray(target) && target.includes(OPEN_BREAK_UNIQUE_INDEX)) return true;
-  return false;
+  return isUniqueViolation(e, OPEN_BREAK_UNIQUE);
+}
+
+/**
+ * Whether a clock-in lost the race to create today's attendance row.
+ *
+ * Two clock-ins arriving together — a double click, a second tab, the web and Slack at once —
+ * both read no attendance for today and both try to create one. The winner takes it; the loser
+ * hits this unique before it ever reaches the open-session index. By the time it fires the
+ * other transaction has committed a row with an open session, so the member is working, and
+ * that is what to say rather than a 500.
+ */
+function isSameDayAttendanceConflict(e: unknown): boolean {
+  return isUniqueViolation(e, ATTENDANCE_DAY_UNIQUE);
 }
 
 export type AttendanceSource = 'web' | 'slack';
@@ -383,7 +417,7 @@ export async function clockInMember(
       return a;
     });
   } catch (e) {
-    if (isOpenSessionConflict(e)) {
+    if (isOpenSessionConflict(e) || isSameDayAttendanceConflict(e)) {
       return { ok: false, code: 'ALREADY_WORKING', messageKey: 'attErr.alreadyWorking' };
     }
     throw e;
